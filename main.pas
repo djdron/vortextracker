@@ -20,7 +20,8 @@ interface
 uses Windows, SysUtils, Classes, Graphics, Forms, Controls, Menus,
   StdCtrls, Dialogs, Buttons, Messages, ExtCtrls, ComCtrls, StdActns,
   ActnList, ToolWin, ImgList, AY, WaveOutAPI, trfuncs, grids, ChildWin,
-  MidiType, MidiIn, ColorThemes, ShellAPI, inifiles, RegExpr{$IFDEF LOGGER}, Logger {$ENDIF};
+  MidiType, MidiIn, ColorThemes, ShellAPI, inifiles, RegExpr, UiTypes, System.ImageList,
+  System.Actions{$IFDEF LOGGER}, Logger {$ENDIF};
 
 const
   UM_REDRAWTRACKS   = WM_USER + 1;
@@ -2871,7 +2872,7 @@ begin
   begin
     if not VTM2PT3(@PT3, CW.VTMP, Size) then
     begin
-      Application.MessageBox(ErrMsg, PAnsiChar(FileName));
+      Application.MessageBox(ErrMsg, PWideChar(FileName));
       exit;
     end;
     AssignFile(f, FileName);
@@ -2883,7 +2884,7 @@ begin
         TSData.Size1 := Size;
         if not VTM2PT3(@PT3, CW.TSWindow.VTMP, Size) then
         begin
-          Application.MessageBox(ErrMsg, PAnsiChar(FileName));
+          Application.MessageBox(ErrMsg, PWideChar(FileName));
           exit;
         end;
         BlockWrite(f, PT3, Size);
@@ -2933,7 +2934,7 @@ begin
   begin
     if not VTM2PT3(@PT3, CW.VTMP, Size) then
     begin
-      Application.MessageBox(ErrMsg, PAnsiChar(FileName));
+      Application.MessageBox(ErrMsg, PWideChar(FileName));
       exit;
     end;
     AssignFile(f, FileName);
@@ -2945,7 +2946,7 @@ begin
         TSData.Size1 := Size;
         if not VTM2PT3(@PT3, CW.TSWindow.VTMP, Size) then
         begin
-          Application.MessageBox(ErrMsg, PAnsiChar(FileName));
+          Application.MessageBox(ErrMsg, PWideChar(FileName));
           exit;
         end;
         BlockWrite(f, PT3, Size);
@@ -4386,7 +4387,7 @@ begin
   p := LockResource(LoadResource(HInstance, i));
   if not VTM2PT3(@PT3, CurrentWindow.VTMP, Size) then
   begin
-    Application.MessageBox('Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.', PAnsiChar(SaveDialogSNDH.FileName));
+    Application.MessageBox('Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.', PWideChar(SaveDialogSNDH.FileName));
     exit
   end;
   AssignFile(f, SaveDialogSNDH.FileName);
@@ -4496,13 +4497,13 @@ begin
   CurrentWindow := TMDIChild(ActiveMDIChild);
   if not VTM2PT3(@PT3_1, CurrentWindow.VTMP, ZXModSize1) then
   begin
-    Application.MessageBox(ErrMsg, PAnsiChar(CurrentWindow.Caption));
+    Application.MessageBox(ErrMsg, PWideChar(CurrentWindow.Caption));
     exit;
   end;
   ZXModSize2 := 0;
   if (CurrentWindow.TSWindow <> nil) and not VTM2PT3(@PT3_2, CurrentWindow.TSWindow.VTMP, ZXModSize2) then
   begin
-    Application.MessageBox(ErrMsg, PAnsiChar(CurrentWindow.TSWindow.Caption));
+    Application.MessageBox(ErrMsg, PWideChar(CurrentWindow.TSWindow.Caption));
     exit;
   end;
   if CurrentWindow.TSWindow = nil then

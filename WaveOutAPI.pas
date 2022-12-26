@@ -15,7 +15,7 @@ unit WaveOutAPI;
 interface
 
 uses Windows, Messages, Dialogs, MMSystem, SysUtils, Forms, trfuncs, Classes,
-     ExportWav, ayumi;
+     ExportWav, UiTypes, ayumi;
 
 type
 //Digital sound data buffer

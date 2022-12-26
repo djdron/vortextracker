@@ -17,7 +17,7 @@ interface
 uses
   Windows, Messages, SysUtils, StrUtils, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ComCtrls, ExtCtrls, Buttons, Menus, HotKeys,
-  trfuncs, ColorThemes, HSL_ColorPickerDlgUnit, ColorPickerDlgUnit;
+  trfuncs, ColorThemes, HSL_ColorPickerDlgUnit, ColorPickerDlgUnit, UiTypes;
 
 type
 
@@ -1193,7 +1193,7 @@ begin
   for i := 0 to Screen.Fonts.Count - 1 do
   begin
     Fnt := Screen.Fonts[i];
-    FontValid := EnumFontFamilies(Canvas.Handle, PChar(Fnt), @EnumFontsProc, 0) and
+    FontValid := (EnumFontFamilies(Canvas.Handle, PChar(Fnt), @EnumFontsProc, 0) <> 0) and
                 (AnsiIndexText(Fnt, FontsBlackList) = -1) and
                 (FontsList.Items.IndexOf(Fnt) = -1) and
                 MainForm.IsFontValid(Fnt);

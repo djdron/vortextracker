@@ -751,16 +751,16 @@ type
     procedure Edit3Change(Sender: TObject);
     procedure Edit4Change(Sender: TObject);
     procedure ChangePattern(n: Integer);
-    procedure PatternNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure PatternNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure PatternNumEditChange(Sender: TObject);
     function GetSpeedBPMString(TrackSpeed: Smallint): string;
     procedure UpdateSpeedBPM;
-    procedure SpeedBpmUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
-    procedure UpDown4ChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure SpeedBpmUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
+    procedure UpDown4ChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure Edit7Exit(Sender: TObject);
     procedure Edit7Change(Sender: TObject);
     procedure PatternLenEditExit(Sender: TObject);
-    procedure PatternLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure PatternLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure CheckTracksAfterSizeChanged(NL: Integer);
     procedure ChangePatternLength(NL: Integer);
     procedure OctaveEditExit(Sender: TObject);
@@ -805,9 +805,9 @@ type
     procedure SaveHeadClick(Sender: TObject);
     procedure SampleNumEditChange(Sender: TObject);
     procedure SampleNumEditExit(Sender: TObject);
-    procedure SampleNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure SampleNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure SampleLenEditExit(Sender: TObject);
-    procedure SampleLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure SampleLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure ChangeSample(n: Integer; UpdateUpDown: Boolean);
     procedure ClearShownOrnament;
     procedure ClearShownSample;
@@ -819,7 +819,7 @@ type
     procedure ValidateSample2(sam: Integer);
     procedure ValidateOrnament(orn: Integer);
     procedure SampleLoopEditExit(Sender: TObject);
-    procedure SampleLoopUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure SampleLoopUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure CalculatePos0;
     procedure CalculatePos(Line: Integer);
     procedure CheckStringGrid1Position;
@@ -829,12 +829,12 @@ type
     procedure CalcTotLen;
     procedure ReCalcTimes(PSBegin: Integer);
     procedure SetInitDelay(nd: Integer);
-    procedure OrnamentNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure OrnamentNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure OrnamentNumEditChange(Sender: TObject);
     procedure OrnamentNumEditExit(Sender: TObject);
-    procedure OrnamentLoopUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure OrnamentLoopUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure OrnamentLoopEditExit(Sender: TObject);
-    procedure OrnamentLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure OrnamentLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure OrnamentLenEditExit(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ToggleAutoEnv;
@@ -856,9 +856,9 @@ type
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure ToggleAutoStep;
     procedure AutoStepBtnClick(Sender: TObject);
-    procedure OrnamentCopyToUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure OrnamentCopyToUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure CopyOrnButClick(Sender: TObject);
-    procedure SampleCopyToUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure SampleCopyToUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure CopySamButClick(Sender: TObject);
     procedure SaveSampleFile(FullPath: String);
     procedure SaveSampleBtnClick(Sender: TObject);
@@ -873,7 +873,7 @@ type
     procedure PasteFamiTrackerPattern;
     procedure PasteModPlugPattern(txt: String);
     procedure PasteRenoisePattern(txt: String);    
-    procedure UpDown15ChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+    procedure UpDown15ChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
     procedure AutoHLCheckClick(Sender: TObject);
     procedure CalcHLStep;
     procedure Edit17Exit(Sender: TObject);
@@ -958,12 +958,12 @@ type
     procedure UpdateSamToneShiftControls;
     procedure SamToneShiftAsNoteOptClick(Sender: TObject);
     procedure SamOctaveNumChangingEx(Sender: TObject;
-      var AllowChange: Boolean; NewValue: Smallint;
+      var AllowChange: Boolean; NewValue: Integer;
       Direction: TUpDownDirection);
     procedure UpdateOrnToneShiftControls;
     procedure OrnToneShiftAsNoteOptClick(Sender: TObject);
     procedure OrnOctaveNumChangingEx(Sender: TObject;
-      var AllowChange: Boolean; NewValue: Smallint;
+      var AllowChange: Boolean; NewValue: Integer;
       Direction: TUpDownDirection);
     function  GetValue(const s: string): Integer;
     function  GetValueF(s: string): Double;    
@@ -15525,7 +15525,7 @@ begin
     SetToolsPattern;
 end;
 
-procedure TMDIChild.PatternNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.PatternNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   if DisableChangingEx then Exit;
   AllowChange := NewValue in [0..MaxPatNum];
@@ -15559,7 +15559,7 @@ begin
   SpeedBpmEdit.Text := GetSpeedBPMString(SpeedBpmUpDown.Position);
 end;
 
-procedure TMDIChild.SpeedBpmUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.SpeedBpmUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   AllowChange := NewValue in [1..255];
   if AllowChange then
@@ -15603,7 +15603,7 @@ begin
   end;
 end;
 
-procedure TMDIChild.UpDown4ChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.UpDown4ChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   AllowChange := NewValue in [0..4];
   if not AllowChange then Exit;
@@ -15688,7 +15688,7 @@ begin
   //ChangePatternLength(PatternLenUpDown.Position)
 end;
 
-procedure TMDIChild.PatternLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.PatternLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   if DisableChangingEx then Exit;
   AllowChange := (NewValue > 0) and (NewValue <= MaxPatLen);
@@ -16330,7 +16330,7 @@ begin
   SampleNumEdit.Text := IntToStr(SampleNumUpDown.Position)
 end;
 
-procedure TMDIChild.SampleNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.SampleNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   AllowChange := NewValue in [1..31];
   if AllowChange then begin
@@ -16374,7 +16374,7 @@ begin
   //ChangeSampleLength(SampleLenUpDown.Position)
 end;
 
-procedure TMDIChild.SampleLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.SampleLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   AllowChange := NewValue in [1..MaxSamLen];
 
@@ -16735,7 +16735,7 @@ begin
   //ChangeSampleLoop(SampleLoopUpDown.Position)
 end;
 
-procedure TMDIChild.SampleLoopUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.SampleLoopUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 var
   l: Integer;
 begin
@@ -16957,7 +16957,7 @@ begin
   end
 end; }
 
-procedure TMDIChild.OrnamentNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.OrnamentNumUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   AllowChange := NewValue in [1..15];
   if AllowChange then
@@ -16975,7 +16975,7 @@ begin
   OrnamentNumEdit.Text := IntToStr(OrnamentNumUpDown.Position)
 end;
 
-procedure TMDIChild.OrnamentLoopUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.OrnamentLoopUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 var
   l: Integer;
 begin
@@ -17034,7 +17034,7 @@ begin
 
 end;
 
-procedure TMDIChild.OrnamentLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.OrnamentLenUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   AllowChange := NewValue in [1..MaxOrnLen];
 
@@ -17494,7 +17494,7 @@ begin
   ToggleAutoStep;
 end;
 
-procedure TMDIChild.OrnamentCopyToUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.OrnamentCopyToUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   AllowChange := NewValue in [1..15]
 end;
@@ -17507,7 +17507,7 @@ begin
 end;
 
 
-procedure TMDIChild.SampleCopyToUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.SampleCopyToUpDownChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   AllowChange := NewValue in [1..31]
 end;
@@ -19146,7 +19146,7 @@ begin
   TMDIChild(ParentWin).ShowStat
 end;
 
-procedure TMDIChild.UpDown15ChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Smallint; Direction: TUpDownDirection);
+procedure TMDIChild.UpDown15ChangingEx(Sender: TObject; var AllowChange: Boolean; NewValue: Integer; Direction: TUpDownDirection);
 begin
   AllowChange := (NewValue >= 0) and (NewValue <= MaxPatLen);
   if AllowChange then
@@ -21498,7 +21498,7 @@ begin
 end;
 
 procedure TMDIChild.SamOctaveNumChangingEx(Sender: TObject;
-  var AllowChange: Boolean; NewValue: Smallint;
+  var AllowChange: Boolean; NewValue: Integer;
   Direction: TUpDownDirection);
 
 begin
@@ -21533,7 +21533,7 @@ begin
 end;
 
 procedure TMDIChild.OrnOctaveNumChangingEx(Sender: TObject;
-  var AllowChange: Boolean; NewValue: Smallint;
+  var AllowChange: Boolean; NewValue: Integer;
   Direction: TUpDownDirection);
 begin
   AllowChange := (NewValue >= 1) and (NewValue <= 8);

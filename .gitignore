@@ -9,8 +9,10 @@ FastMM*
 *.bk1
 *.bk2
 *.orig
-/*.dcu
-!Midi*.dcu
-!CircBuf.dcu
+*.dcu
 gpprof*
 *.~*
+*.local
+*.identcache
+*.otares
+*.vlb

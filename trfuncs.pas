@@ -14,7 +14,7 @@ unit trfuncs;
 
 interface
 
-uses SysUtils, Controls, Dialogs, Math;
+uses SysUtils, Controls, Dialogs, Math, UiTypes;
 
 type
   TChansArray = array[0..2] of integer;

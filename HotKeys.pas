@@ -10,7 +10,7 @@ unit HotKeys;
 
 interface
 
-uses ActnList, Menus, Classes, Dialogs, ComCtrls, StrUtils, Controls, SysUtils;
+uses ActnList, Menus, Classes, Dialogs, ComCtrls, StrUtils, Controls, SysUtils, UiTypes;
 
 const
   HK_PLAY_STOP            = 0;

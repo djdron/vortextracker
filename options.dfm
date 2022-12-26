@@ -4,7 +4,7 @@ object Form1: TForm1
   BorderIcons = [biSystemMenu]
   BorderStyle = bsSingle
   Caption = 'Options'
-  ClientHeight = 568
+  ClientHeight = 569
   ClientWidth = 545
   Color = clBtnFace
   Constraints.MaxHeight = 607
@@ -14,7 +14,7 @@ object Form1: TForm1
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
-  Font.Name = 'MS Sans Serif'
+  Font.Name = 'Segoe UI'
   Font.Style = []
   KeyPreview = True
   OldCreateOrder = False
@@ -29,12 +29,12 @@ object Form1: TForm1
     Top = 0
     Width = 545
     Height = 529
-    ActivePage = CurWinds
+    ActivePage = ColorThemesTab
     Align = alTop
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
     Font.Height = -11
-    Font.Name = 'MS Sans Serif'
+    Font.Name = 'Segoe UI'
     Font.Style = []
     ParentFont = False
     TabOrder = 0
@@ -124,14 +124,14 @@ object Form1: TForm1
         object Label16: TLabel
           Left = 12
           Top = 66
-          Width = 30
+          Width = 29
           Height = 13
           Caption = 'Every:'
         end
         object Label17: TLabel
           Left = 104
           Top = 66
-          Width = 36
+          Width = 41
           Height = 13
           Caption = 'minutes'
         end
@@ -204,14 +204,14 @@ object Form1: TForm1
         object start1: TLabel
           Left = 12
           Top = 30
-          Width = 93
+          Width = 100
           Height = 13
           Caption = 'When Vortex starts:'
         end
         object TemplPathLab: TLabel
           Left = 12
           Top = 82
-          Width = 91
+          Width = 99
           Height = 13
           Caption = 'Use template song:'
         end
@@ -221,7 +221,6 @@ object Form1: TForm1
           Width = 221
           Height = 21
           Style = csDropDownList
-          ItemHeight = 13
           TabOrder = 0
           OnChange = StartsActionChange
           Items.Strings = (
@@ -256,7 +255,7 @@ object Form1: TForm1
         object Label15: TLabel
           Left = 12
           Top = 30
-          Width = 120
+          Width = 127
           Height = 13
           Hint = 'Default Frequency Table for new tracks'
           Caption = 'Default Frequency Table:'
@@ -266,7 +265,7 @@ object Form1: TForm1
         object TableName: TLabel
           Left = 11
           Top = 83
-          Width = 114
+          Width = 115
           Height = 13
           Caption = 'ASM or PSC (1.75 MHz)'
         end
@@ -430,7 +429,7 @@ object Form1: TForm1
         object LDefinition: TLabel
           Left = 20
           Top = 30
-          Width = 44
+          Width = 52
           Height = 13
           Caption = 'Definition'
           Color = 16382455
@@ -439,7 +438,7 @@ object Form1: TForm1
         object LCurrPat: TLabel
           Left = 154
           Top = 30
-          Width = 70
+          Width = 80
           Height = 13
           Caption = 'Current pattern'
           Color = 16382455
@@ -448,7 +447,7 @@ object Form1: TForm1
         object LNextPrevPat: TLabel
           Left = 278
           Top = 30
-          Width = 85
+          Width = 89
           Height = 13
           Caption = 'Next/Prev pattern'
           Color = 16382455
@@ -960,7 +959,7 @@ object Form1: TForm1
         object LSampleOrnament: TLabel
           Left = 401
           Top = 30
-          Width = 86
+          Width = 93
           Height = 13
           Caption = 'Sample/Ornament'
           Color = 16382455
@@ -1182,7 +1181,6 @@ object Form1: TForm1
           Width = 113
           Height = 21
           Style = csDropDownList
-          ItemHeight = 13
           ItemIndex = 0
           TabOrder = 0
           Text = 'Default'
@@ -1223,7 +1221,7 @@ object Form1: TForm1
         object Label1: TLabel
           Left = 192
           Top = 96
-          Width = 45
+          Width = 50
           Height = 13
           Caption = 'Positions:'
         end
@@ -1295,7 +1293,7 @@ object Form1: TForm1
       object Label7: TLabel
         Left = 16
         Top = 485
-        Width = 166
+        Width = 180
         Height = 13
         Caption = 'Some changes will be heared after:'
         Visible = False
@@ -1303,7 +1301,7 @@ object Form1: TForm1
       object LBChg: TLabel
         Left = 186
         Top = 485
-        Width = 40
+        Width = 41
         Height = 13
         Caption = '2178 ms'
         Visible = False
@@ -1416,7 +1414,7 @@ object Form1: TForm1
         object Label10: TLabel
           Left = 132
           Top = 61
-          Width = 10
+          Width = 11
           Height = 13
           Caption = 'Hi'
         end
@@ -1484,7 +1482,7 @@ object Form1: TForm1
         object BPanLabel: TLabel
           Left = 11
           Top = 54
-          Width = 7
+          Width = 6
           Height = 13
           Caption = 'B'
         end
@@ -1592,7 +1590,7 @@ object Form1: TForm1
         object DCCutOffLab: TLabel
           Left = 74
           Top = 38
-          Width = 49
+          Width = 54
           Height = 13
           Caption = 'DC Cutoff:'
         end
@@ -1646,33 +1644,6 @@ object Form1: TForm1
         Width = 55
         Height = 25
         Action = MainForm.Stop
-        Glyph.Data = {
-          36030000424D3603000000000000360000002800000010000000100000000100
-          1800000000000003000000000000000000000000000000000000FF00FFFF00FF
-          FF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00
-          FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF
-          00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FF
-          FF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00
-          FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF
-          00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FF
-          FF00FFFF00FFFF00FF000000000000000000000000000000000000000000FF00
-          FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FF00000000000000
-          0000000000000000000000000000FF00FFFF00FFFF00FFFF00FFFF00FFFF00FF
-          FF00FFFF00FFFF00FF000000000000000000000000000000000000000000FF00
-          FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FF00000000000000
-          0000000000000000000000000000FF00FFFF00FFFF00FFFF00FFFF00FFFF00FF
-          FF00FFFF00FFFF00FF000000000000000000000000000000000000000000FF00
-          FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FF00000000000000
-          0000000000000000000000000000FF00FFFF00FFFF00FFFF00FFFF00FFFF00FF
-          FF00FFFF00FFFF00FF000000000000000000000000000000000000000000FF00
-          FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FF00000000000000
-          0000000000000000000000000000FF00FFFF00FFFF00FFFF00FFFF00FFFF00FF
-          FF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00
-          FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF
-          00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FF
-          FF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00
-          FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF
-          00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FFFF00FF}
         Margin = 2
       end
       object grp1: TGroupBox
@@ -1782,14 +1753,14 @@ object Form1: TForm1
         object Label6: TLabel
           Left = 16
           Top = 104
-          Width = 87
+          Width = 98
           Height = 13
           Caption = 'Number of buffers:'
         end
         object LbLen: TLabel
           Left = 88
           Top = 32
-          Width = 34
+          Width = 35
           Height = 13
           Caption = '726 ms'
         end
@@ -1803,21 +1774,21 @@ object Form1: TForm1
         object Label4: TLabel
           Left = 16
           Top = 169
-          Width = 63
+          Width = 67
           Height = 13
           Caption = 'Total Length:'
         end
         object LBTot: TLabel
           Left = 85
           Top = 169
-          Width = 40
+          Width = 41
           Height = 13
           Caption = '2178 ms'
         end
         object Label5: TLabel
           Left = 16
           Top = 32
-          Width = 67
+          Width = 73
           Height = 13
           Caption = 'Buffer Length:'
         end
@@ -1880,7 +1851,6 @@ object Form1: TForm1
           Width = 217
           Height = 21
           Style = csDropDownList
-          ItemHeight = 13
           TabOrder = 1
           Visible = False
           OnChange = ComboBox1Change
@@ -1919,7 +1889,7 @@ object Form1: TForm1
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clWindowText
           Font.Height = -11
-          Font.Name = 'MS Sans Serif'
+          Font.Name = 'Segoe UI'
           Font.Style = []
           GridLines = True
           IconOptions.Arrangement = iaLeft
@@ -1998,8 +1968,9 @@ object Form1: TForm1
             end>
           ColumnClick = False
           GridLines = True
-          Items.Data = {
-            200000000100000000000000FFFFFFFFFFFFFFFF000000000000000003567433}
+          Items.ItemData = {
+            05200000000100000000000000FFFFFFFFFFFFFFFF00000000FFFFFFFF000000
+            0003560074003300}
           ReadOnly = True
           RowSelect = True
           TabOrder = 2

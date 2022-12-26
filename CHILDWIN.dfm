@@ -7,10 +7,14 @@ object MDIChild: TMDIChild
   BorderStyle = bsSingle
   Caption = 'Module'
   ClientHeight = 718
-  ClientWidth = 662
+  ClientWidth = 653
   Color = clBtnFace
   Constraints.MinHeight = 470
-  ParentFont = True
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Segoe UI'
+  Font.Style = []
   FormStyle = fsMDIChild
   KeyPreview = True
   OldCreateOrder = False
@@ -50,14 +54,7 @@ object MDIChild: TMDIChild
     OnChange = PageControl1Change
     object PatternsSheet: TTabSheet
       Caption = 'Patterns'
-      Font.Charset = DEFAULT_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -11
-      Font.Name = 'MS Sans Serif'
-      Font.Pitch = fpVariable
-      Font.Style = []
       ImageIndex = 29
-      ParentFont = False
       ParentShowHint = False
       ShowHint = True
       object AutoHLBox: TGroupBox
@@ -332,20 +329,13 @@ object MDIChild: TMDIChild
         object Label6: TLabel
           Left = 239
           Top = 13
-          Width = 11
+          Width = 12
           Height = 13
           BiDiMode = bdLeftToRight
           Caption = 'by'
           Color = clBtnFace
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
           ParentBiDiMode = False
           ParentColor = False
-          ParentFont = False
         end
         object Edit3: TEdit
           Left = 2
@@ -390,32 +380,18 @@ object MDIChild: TMDIChild
         object Label2: TLabel
           Left = 60
           Top = 15
-          Width = 34
+          Width = 37
           Height = 13
           Hint = 'Current pattern (press [+]/[-] on NUMpad to change)'
           Caption = 'Pattern'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -12
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
-          ParentFont = False
         end
         object Label5: TLabel
           Left = 113
           Top = 15
-          Width = 33
+          Width = 36
           Height = 13
           Hint = 'Pattern length'
           Caption = 'Length'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -12
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
-          ParentFont = False
         end
         object SpeedButton26: TSpeedButton
           Left = 2
@@ -425,13 +401,6 @@ object MDIChild: TMDIChild
           Hint = 'Load pattern'
           BiDiMode = bdLeftToRight
           Caption = 'Load'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -4
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
-          ParentFont = False
           ParentBiDiMode = False
           OnClick = SpeedButton26Click
         end
@@ -442,13 +411,6 @@ object MDIChild: TMDIChild
           Height = 21
           Hint = 'Save pattern'
           Caption = 'Save'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = 8
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
-          ParentFont = False
           OnClick = SpeedButton27Click
         end
         object PatternNumUpDown: TUpDown
@@ -521,17 +483,10 @@ object MDIChild: TMDIChild
         object Label3: TLabel
           Left = 14
           Top = 15
-          Width = 59
+          Width = 58
           Height = 13
           Hint = 'Initial speed'
           Caption = 'Speed/BPM'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
-          ParentFont = False
         end
         object SpeedBpmEdit: TEdit
           Left = 14
@@ -579,13 +534,6 @@ object MDIChild: TMDIChild
           Height = 13
           Hint = 'Alt+1..8, Numpad 1-8'
           Caption = 'Octave'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
-          ParentFont = False
         end
         object OctaveEdit: TEdit
           Left = 14
@@ -633,14 +581,7 @@ object MDIChild: TMDIChild
           AllowAllUp = True
           GroupIndex = 11
           Caption = 'Auto Step'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
           Layout = blGlyphRight
-          ParentFont = False
           OnClick = AutoStepBtnClick
         end
         object AutoStepUpDown: TUpDown
@@ -661,14 +602,7 @@ object MDIChild: TMDIChild
           Height = 20
           Hint = 'Ctrl + 0-9 for change'
           AutoSize = False
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
           MaxLength = 2
-          ParentFont = False
           TabOrder = 0
           Text = '0'
           OnExit = AutoStepEditExit
@@ -744,14 +678,7 @@ object MDIChild: TMDIChild
           Hint = 'Envelope As Note (press [/] on Numpad to change)'
           Caption = 'Envelope as Note'
           Ctl3D = True
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
           ParentCtl3D = False
-          ParentFont = False
           TabOrder = 0
           OnClick = EnvelopeAsNoteOptClick
           OnMouseUp = EnvelopeAsNoteOptMouseUp
@@ -763,13 +690,6 @@ object MDIChild: TMDIChild
           Height = 17
           Hint = 'Use sample, envelope, ornament and value of last note'
           Caption = 'Use last note params'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
-          ParentFont = False
           TabOrder = 1
           OnMouseDown = DuplicateNoteParamsMouseDown
         end
@@ -780,13 +700,6 @@ object MDIChild: TMDIChild
           Height = 17
           Hint = 'Move continuously between patterns while editing'
           Caption = 'Move between patterns'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Pitch = fpVariable
-          Font.Style = []
-          ParentFont = False
           TabOrder = 2
           OnMouseDown = BetweenPatternsMouseDown
         end
@@ -795,7 +708,7 @@ object MDIChild: TMDIChild
         Left = 0
         Top = 85
         Width = 677
-        Height = 36
+        Height = 35
         HorzScrollBar.Smooth = True
         HorzScrollBar.Style = ssFlat
         HorzScrollBar.Tracking = True
@@ -807,18 +720,22 @@ object MDIChild: TMDIChild
         ParentColor = False
         ParentCtl3D = False
         TabOrder = 9
+        DesignSize = (
+          673
+          31)
         object StringGrid1: TStringGrid
-          Left = 0
-          Top = 0
-          Width = 673
-          Height = 42
+          Left = -2
+          Top = -2
+          Width = 626
+          Height = 34
           Cursor = crArrow
           Hint = 'Position list'
+          Anchors = [akLeft, akTop, akRight]
           BiDiMode = bdLeftToRight
           BorderStyle = bsNone
           Color = clWhite
           ColCount = 20
-          Constraints.MinHeight = 42
+          Constraints.MinHeight = 30
           Ctl3D = True
           DefaultColWidth = 42
           DefaultRowHeight = 32
@@ -921,7 +838,7 @@ object MDIChild: TMDIChild
         object SamOctaveLabel: TLabel
           Left = 145
           Top = 12
-          Width = 66
+          Width = 70
           Height = 13
           Hint = 'Alt+1..8, Numpad 1-8'
           Caption = 'Editor octave:'
@@ -931,16 +848,10 @@ object MDIChild: TMDIChild
         object SamOctaveTxt: TLabel
           Left = 215
           Top = 12
-          Width = 8
+          Width = 6
           Height = 13
           Hint = 'Alt+1..8, Numpad 1-8'
           Caption = '3'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = [fsBold]
-          ParentFont = False
           ParentShowHint = False
           ShowHint = True
         end
@@ -1003,13 +914,7 @@ object MDIChild: TMDIChild
         Width = 183
         Height = 273
         Ctl3D = True
-        Font.Charset = DEFAULT_CHARSET
-        Font.Color = clWindowText
-        Font.Height = -11
-        Font.Name = 'MS Sans Serif'
-        Font.Style = []
         ParentCtl3D = False
-        ParentFont = False
         TabOrder = 4
         object HideSamBrowserBtn: TButton
           Left = 16
@@ -1051,48 +956,30 @@ object MDIChild: TMDIChild
         object Label9: TLabel
           Left = 16
           Top = 18
-          Width = 35
+          Width = 37
           Height = 13
           Hint = 'Current sample'
           Caption = 'Sample'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = []
-          ParentFont = False
           ParentShowHint = False
           ShowHint = True
         end
         object Label11: TLabel
           Left = 16
           Top = 70
-          Width = 24
+          Width = 26
           Height = 13
           Hint = 'Sample loop'
           Caption = 'Loop'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = []
-          ParentFont = False
           ParentShowHint = False
           ShowHint = True
         end
         object Label10: TLabel
           Left = 85
           Top = 18
-          Width = 33
+          Width = 36
           Height = 13
           Hint = 'Sample length'
           Caption = 'Length'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = []
-          ParentFont = False
           ParentShowHint = False
           ShowHint = True
         end
@@ -1283,12 +1170,6 @@ object MDIChild: TMDIChild
           Height = 27
           Hint = 'Load sample'
           Caption = 'Load'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = []
-          ParentFont = False
           ParentShowHint = False
           ShowHint = True
           TabOrder = 0
@@ -1318,7 +1199,7 @@ object MDIChild: TMDIChild
         object OrnOctaveLabel: TLabel
           Left = 145
           Top = 12
-          Width = 66
+          Width = 70
           Height = 13
           Hint = 'Alt+1..8, Numpad 1-8'
           Caption = 'Editor octave:'
@@ -1328,16 +1209,10 @@ object MDIChild: TMDIChild
         object OrnOctaveTxt: TLabel
           Left = 215
           Top = 12
-          Width = 8
+          Width = 6
           Height = 13
           Hint = 'Alt+1..8, Numpad 1-8'
           Caption = '3'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = [fsBold]
-          ParentFont = False
           ParentShowHint = False
           ShowHint = True
         end
@@ -1454,41 +1329,23 @@ object MDIChild: TMDIChild
         object Label31: TLabel
           Left = 16
           Top = 18
-          Width = 46
+          Width = 52
           Height = 13
           Caption = 'Ornament'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = []
-          ParentFont = False
         end
         object Label30: TLabel
           Left = 16
           Top = 70
-          Width = 24
+          Width = 26
           Height = 13
           Caption = 'Loop'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = []
-          ParentFont = False
         end
         object Label29: TLabel
           Left = 85
           Top = 18
-          Width = 33
+          Width = 36
           Height = 13
           Caption = 'Length'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clMenuText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = []
-          ParentFont = False
         end
         object CopyOrnBut: TSpeedButton
           Left = 85
@@ -1781,12 +1638,6 @@ object MDIChild: TMDIChild
           Width = 25
           Height = 23
           Caption = 'B'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = [fsBold]
-          ParentFont = False
           OnClick = BoldClick
         end
         object Italic: TSpeedButton
@@ -1795,12 +1646,6 @@ object MDIChild: TMDIChild
           Width = 25
           Height = 23
           Caption = 'I'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = [fsBold]
-          ParentFont = False
           OnClick = ItalicClick
         end
         object Underline: TSpeedButton
@@ -1809,12 +1654,6 @@ object MDIChild: TMDIChild
           Width = 25
           Height = 23
           Caption = 'U'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = [fsBold, fsUnderline]
-          ParentFont = False
           OnClick = UnderlineClick
         end
         object ShowInfoOnLoad: TCheckBox
@@ -1844,14 +1683,15 @@ object MDIChild: TMDIChild
             Align = alLeft
             BorderStyle = bsNone
             Color = clCream
-            Font.Charset = DEFAULT_CHARSET
+            Font.Charset = RUSSIAN_CHARSET
             Font.Color = clWindowText
-            Font.Height = -16
-            Font.Name = 'Courier New'
+            Font.Height = -11
+            Font.Name = 'Segoe UI'
             Font.Style = []
             ParentFont = False
             TabOrder = 0
             WantTabs = True
+            Zoom = 100
             OnKeyDown = TrackInfoKeyDown
             OnKeyUp = TrackInfoKeyUp
           end
