@@ -2463,6 +2463,8 @@ begin
   OrnamentLoopUpDown.Max := MaxOrnLen - 1;
   VtmFeaturesGrp.ItemIndex := FeaturesLevel;
   SaveHead.ItemIndex := Ord(not VortexModuleHeader);
+  TrackChipFreq.HandleNeeded;
+  TrackIntSel.HandleNeeded;
   TrackOptsScrollBox.BorderStyle := bsNone;
 
   StringGrid1.Cells[0, 0] := 'L0';
