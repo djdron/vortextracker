@@ -15,4 +15,5 @@ gpprof*
 *.local
 *.identcache
 *.otares
+*.res
 *.vlb
