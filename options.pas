@@ -491,6 +491,8 @@ begin
   AyumiDCFiltBox.Top  := FiltersGroup.Top;
 
   OpsPages.ActivePageIndex := 0;  
+  BR.HandleNeeded;
+  SR.HandleNeeded;
 end;
 
 
