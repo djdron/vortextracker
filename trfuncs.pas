@@ -1,6 +1,6 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2005 S.V.Bulba
+(c)2000-2006 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/
@@ -40,6 +40,7 @@ const
   Detect3xxxInterpretation:boolean = True;
   VortexModuleHeader:boolean = True;
   DetectModuleHeader:boolean = True;
+  MaxNumberOfSoundChips = 2;
 type
   BytePtr = ^byte;
   WordPtr = ^word;
@@ -258,31 +259,40 @@ var
  TxtFile:TextFile;
  TxtLine:integer;
  TxtString:string;
- AYRegisters:TRegisters;
- CurrentPosition:integer;
- CurrentPattern:integer;
- CurrentLine:Integer;
- Env_Base:smallint;
- ParamsOfChan:array [0..2] of record
-  SamplePosition:byte;
-  OrnamentPosition:byte;
-  SoundEnabled:boolean;
-  Slide_To_Note,Note:Byte;
-  Ton_Slide_Delay:shortint;
-  Ton_Slide_Count:shortint;
-  Ton_Slide_Step,Ton_Slide_Delta:SmallInt;
-  Ton_Slide_Type:integer;
-  Current_Ton_Sliding:SmallInt;
-  OnOff_Delay,OffOn_Delay,Current_OnOff:shortint;
-  Ton,Ton_Accumulator:word;
-  Amplitude:byte;
-  Current_Amplitude_Sliding:shortint;
-  Current_Envelope_Sliding:shortint;
-  Current_Noise_Sliding:shortint;
- end;
  MidChan:integer = 1;
+ CurChip:integer;
+ PlVars:array[1..MaxNumberOfSoundChips] of record
+   CurrentPosition:integer;
+   CurrentPattern:integer;
+   CurrentLine:Integer;
+   Env_Base:smallint;
+   ParamsOfChan:array [0..2] of record
+    SamplePosition:byte;
+    OrnamentPosition:byte;
+    SoundEnabled:boolean;
+    Slide_To_Note,Note:Byte;
+    Ton_Slide_Delay:shortint;
+    Ton_Slide_Count:shortint;
+    Ton_Slide_Step,Ton_Slide_Delta:SmallInt;
+    Ton_Slide_Type:integer;
+    Current_Ton_Sliding:SmallInt;
+    OnOff_Delay,OffOn_Delay,Current_OnOff:shortint;
+    Ton,Ton_Accumulator:word;
+    Amplitude:byte;
+    Current_Amplitude_Sliding:shortint;
+    Current_Envelope_Sliding:shortint;
+    Current_Noise_Sliding:shortint;
+   end;
+   Delay,DelayCounter:shortint;
+   Cur_Env_Slide:smallint;
+   Cur_Env_Delay,Env_Delay:shortint;
+   Env_Slide_Add:smallint;
+   AddToEnv,AddToNoise:shortint;
+   PT3Noise:Byte;
+   IntCnt:integer;
+ end;
 
-procedure Module_SetPointer(ModulePointer:PModule);
+procedure Module_SetPointer(ModulePointer:PModule; Chip:integer);
 {устанавливает указатель на структуру модул€}
 {¬ызываетс€ хот€ бы раз перед использованием других процедур}
 
@@ -467,31 +477,27 @@ uses AY,WaveOutAPI,FXMImport,Main;
 
 var
  VTM:PModule;
- Delay,DelayCounter:shortint;
- Cur_Env_Slide:smallint;
- Cur_Env_Delay,Env_Delay:shortint;
- Env_Slide_Add:smallint;
- AddToEnv,AddToNoise:shortint;
- PT3Noise:Byte;
 
-procedure Module_SetPointer(ModulePointer:PModule);
+procedure Module_SetPointer(ModulePointer:PModule; Chip:integer);
 begin
-VTM := ModulePointer
+VTM := ModulePointer;
+CurChip := Chip
 end;
 
 procedure Module_SetDelay(Dl:shortint);
 begin
-Delay := Dl
+PlVars[CurChip].Delay := Dl
 end;
 
 procedure InitTrackerParameters;
 var
  k:integer;
 begin
-ResetAYChipEmulation;
-DelayCounter := 1;
-PT3Noise := 0;
-Env_Base := 0;
+ResetAYChipEmulation(CurChip);
+PlVars[CurChip].DelayCounter := 1;
+PlVars[CurChip].PT3Noise := 0;
+PlVars[CurChip].Env_Base := 0;
+PlVars[CurChip].IntCnt := 0;
 if All then
  for k := 0 to 2 do
   begin
@@ -502,36 +508,36 @@ if All then
   end;
 for k := 0 to 2 do
  begin
-  ParamsOfChan[k].SamplePosition := 0;
-  ParamsOfChan[k].OrnamentPosition := 0;
-  ParamsOfChan[k].SoundEnabled := False;
-  ParamsOfChan[k].Note := 0;
-  ParamsOfChan[k].Ton_Slide_Count := 0;
-  ParamsOfChan[k].Current_Ton_Sliding := 0;
-  ParamsOfChan[k].Current_OnOff := 0;
-  ParamsOfChan[k].Ton_Accumulator := 0;
-  ParamsOfChan[k].Ton := 0;
-  ParamsOfChan[k].Current_Amplitude_Sliding := 0;
-  ParamsOfChan[k].Current_Envelope_Sliding := 0;
-  ParamsOfChan[k].Current_Noise_Sliding := 0
+  PlVars[CurChip].ParamsOfChan[k].SamplePosition := 0;
+  PlVars[CurChip].ParamsOfChan[k].OrnamentPosition := 0;
+  PlVars[CurChip].ParamsOfChan[k].SoundEnabled := False;
+  PlVars[CurChip].ParamsOfChan[k].Note := 0;
+  PlVars[CurChip].ParamsOfChan[k].Ton_Slide_Count := 0;
+  PlVars[CurChip].ParamsOfChan[k].Current_Ton_Sliding := 0;
+  PlVars[CurChip].ParamsOfChan[k].Current_OnOff := 0;
+  PlVars[CurChip].ParamsOfChan[k].Ton_Accumulator := 0;
+  PlVars[CurChip].ParamsOfChan[k].Ton := 0;
+  PlVars[CurChip].ParamsOfChan[k].Current_Amplitude_Sliding := 0;
+  PlVars[CurChip].ParamsOfChan[k].Current_Envelope_Sliding := 0;
+  PlVars[CurChip].ParamsOfChan[k].Current_Noise_Sliding := 0
  end;
-CurrentLine := 0
+PlVars[CurChip].CurrentLine := 0
 end;
 
 procedure Pattern_SetCurrentLine(Line:Integer);
 begin
-CurrentLine := Line
+PlVars[CurChip].CurrentLine := Line
 end;
 
 procedure Module_SetCurrentPattern(Pattern:Integer);
 begin
-CurrentPattern := Pattern;
+PlVars[CurChip].CurrentPattern := Pattern;
 Pattern_SetCurrentLine(0)
 end;
 
 procedure Module_SetCurrentPosition(Position:Integer);
 begin
-CurrentPosition := Position;
+PlVars[CurChip].CurrentPosition := Position;
 Module_SetCurrentPattern(VTM.Positions.Value[Position])
 end;
 
@@ -555,7 +561,7 @@ var
   j:byte;
   w:word;
  begin
-  with ParamsOfChan[ChNum],VTM.IsChans[ChNum] do
+  with PlVars[CurChip].ParamsOfChan[ChNum],VTM.IsChans[ChNum] do
    begin
     if SoundEnabled then
      begin
@@ -631,15 +637,15 @@ var
           if VTM.Samples[Sample].Items[SamplePosition].
                           Envelope_or_Noise_Accumulation then
            Current_Envelope_Sliding := j;
-          inc(AddToEnv,j)
+          inc(PlVars[CurChip].AddToEnv,j)
          end
         else
          begin
-          PT3Noise := Current_Noise_Sliding +
+          PlVars[CurChip].PT3Noise := Current_Noise_Sliding +
              VTM.Samples[Sample].Items[SamplePosition].Add_to_Envelope_or_Noise;
           if VTM.Samples[Sample].Items[SamplePosition].
                           Envelope_or_Noise_Accumulation then
-           Current_Noise_Sliding := PT3Noise
+           Current_Noise_Sliding := PlVars[CurChip].PT3Noise
          end;
 
         if not VTM.Samples[Sample].Items[SamplePosition].Mixer_Ton then
@@ -677,7 +683,7 @@ var
          Current_OnOff := OffOn_Delay
        end
      end;
-    if CurrentPattern = -1 then exit;
+    if PlVars[CurChip].CurrentPattern = -1 then exit;
     if not VTM.IsChans[ChNum].Global_Ton then
      TempMixer := TempMixer or 4;
     if not VTM.IsChans[ChNum].Global_Noise then
@@ -697,31 +703,36 @@ end;
 var
  k:integer;
 begin
-AddToEnv := 0;
+Inc(PlVars[CurChip].IntCnt);
+PlVars[CurChip].AddToEnv := 0;
 TempMixer := 0;
 for k := 0 to 2 do
  GetRegisters(k);
 
-SetMixerRegister(TempMixer);
-
-AYRegisters.TonA := ParamsOfChan[0].Ton;
-AYRegisters.TonB := ParamsOfChan[1].Ton;
-AYRegisters.TonC := ParamsOfChan[2].Ton;
-
-SetAmplA(ParamsOfChan[0].Amplitude);
-SetAmplB(ParamsOfChan[1].Amplitude);
-SetAmplC(ParamsOfChan[2].Amplitude);
-
-AYRegisters.Noise := (PT3Noise + AddToNoise) and 31;
-
-AYRegisters.Envelope := AddToEnv + Cur_Env_Slide + Env_Base;
-if Cur_Env_Delay > 0 then
+with SoundChip[CurChip] do
  begin
-  Dec(Cur_Env_Delay);
-  if Cur_Env_Delay = 0 then
+  SetMixerRegister(TempMixer);
+
+  AYRegisters.TonA := PlVars[CurChip].ParamsOfChan[0].Ton;
+  AYRegisters.TonB := PlVars[CurChip].ParamsOfChan[1].Ton;
+  AYRegisters.TonC := PlVars[CurChip].ParamsOfChan[2].Ton;
+
+  SetAmplA(PlVars[CurChip].ParamsOfChan[0].Amplitude);
+  SetAmplB(PlVars[CurChip].ParamsOfChan[1].Amplitude);
+  SetAmplC(PlVars[CurChip].ParamsOfChan[2].Amplitude);
+
+  AYRegisters.Noise := (PlVars[CurChip].PT3Noise + PlVars[CurChip].AddToNoise) and 31;
+
+  AYRegisters.Envelope := PlVars[CurChip].AddToEnv + PlVars[CurChip].Cur_Env_Slide + PlVars[CurChip].Env_Base;
+ end;
+
+if PlVars[CurChip].Cur_Env_Delay > 0 then
+ begin
+  Dec(PlVars[CurChip].Cur_Env_Delay);
+  if PlVars[CurChip].Cur_Env_Delay = 0 then
    begin
-    Cur_Env_Delay := Env_Delay;
-    Inc(Cur_Env_Slide,Env_Slide_Add)
+    PlVars[CurChip].Cur_Env_Delay := PlVars[CurChip].Env_Delay;
+    Inc(PlVars[CurChip].Cur_Env_Slide,PlVars[CurChip].Env_Slide_Add)
    end
  end
 end;
@@ -733,124 +744,123 @@ function Pattern_PlayCurrentLine:integer;
   TS,PrNote,Ch:integer;
  begin
   Ch := ChNum;
-  if CurrentPattern = -1 then Ch := MidChan;
-  with VTM.Patterns[CurrentPattern].Items[CurrentLine].Channel[ChNum] do
+  if PlVars[CurChip].CurrentPattern = -1 then Ch := MidChan;
+  with VTM.Patterns[PlVars[CurChip].CurrentPattern].Items[PlVars[CurChip].CurrentLine].Channel[ChNum] do
    begin
-    TS := ParamsOfChan[Ch].Current_Ton_Sliding;
-    PrNote := ParamsOfChan[Ch].Note;
+    TS := PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding;
+    PrNote := PlVars[CurChip].ParamsOfChan[Ch].Note;
     if Note = -2 then
      begin
-      ParamsOfChan[Ch].SoundEnabled := False;
-      ParamsOfChan[Ch].Current_Envelope_Sliding := 0;
-      ParamsOfChan[Ch].Ton_Slide_Count := 0;
-      ParamsOfChan[Ch].SamplePosition := 0;
-      ParamsOfChan[Ch].OrnamentPosition := 0;
-      ParamsOfChan[Ch].Current_Noise_Sliding := 0;
-      ParamsOfChan[Ch].Current_Amplitude_Sliding := 0;
-      ParamsOfChan[Ch].Current_OnOff := 0;
-      ParamsOfChan[Ch].Current_Ton_Sliding := 0;
-      ParamsOfChan[Ch].Ton_Accumulator := 0
+      PlVars[CurChip].ParamsOfChan[Ch].SoundEnabled := False;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_Envelope_Sliding := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].SamplePosition := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_Noise_Sliding := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_Amplitude_Sliding := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Accumulator := 0
      end
     else if Note <> -1 then
      begin
-      ParamsOfChan[Ch].SoundEnabled := True;
-      ParamsOfChan[Ch].Note := Note;
-      ParamsOfChan[Ch].Current_Envelope_Sliding := 0;
-      ParamsOfChan[Ch].Ton_Slide_Count := 0;
-      ParamsOfChan[Ch].SamplePosition := 0;
-      ParamsOfChan[Ch].OrnamentPosition := 0;
-      ParamsOfChan[Ch].Current_Noise_Sliding := 0;
-      ParamsOfChan[Ch].Current_Amplitude_Sliding := 0;
-      ParamsOfChan[Ch].Current_OnOff := 0;
-      ParamsOfChan[Ch].Current_Ton_Sliding := 0;
-      ParamsOfChan[Ch].Ton_Accumulator := 0
+      PlVars[CurChip].ParamsOfChan[Ch].SoundEnabled := True;
+      PlVars[CurChip].ParamsOfChan[Ch].Note := Note;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_Envelope_Sliding := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].SamplePosition := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_Noise_Sliding := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_Amplitude_Sliding := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Accumulator := 0
      end;
     if (Note <> - 1) and (Sample <> 0) then
      VTM.IsChans[Ch].Sample := Sample;
     if not (Envelope in [0,15]) then
      begin
       VTM.IsChans[Ch].EnvelopeEnabled := True;
-      Env_Base :=
-        VTM.Patterns[CurrentPattern].Items[CurrentLine].Envelope;
-      SetEnvelopeRegister(Envelope);
+      PlVars[CurChip].Env_Base := VTM.Patterns[PlVars[CurChip].CurrentPattern].Items[PlVars[CurChip].CurrentLine].Envelope;
+      SoundChip[CurChip].SetEnvelopeRegister(Envelope);
       VTM.IsChans[Ch].Ornament := Ornament;
-      ParamsOfChan[Ch].OrnamentPosition := 0;
-      Cur_Env_Slide := 0;
-      Cur_Env_Delay := 0
+      PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition := 0;
+      PlVars[CurChip].Cur_Env_Slide := 0;
+      PlVars[CurChip].Cur_Env_Delay := 0
      end
     else if Envelope = 15 then
      begin
       VTM.IsChans[Ch].EnvelopeEnabled := False;
       VTM.IsChans[Ch].Ornament := Ornament;
-      ParamsOfChan[Ch].OrnamentPosition := 0
+      PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition := 0
      end
-    else if Ornament <> 0 then //new fucking standard in PT 3.69 - AlCo, stop experiments!
+    else if Ornament <> 0 then
      begin
       VTM.IsChans[Ch].Ornament := Ornament;
-      ParamsOfChan[Ch].OrnamentPosition := 0
+      PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition := 0
      end;
     if Volume > 0 then VTM.IsChans[Ch].Volume := Volume;
     case Additional_Command.Number of
     1:
      begin
-      ParamsOfChan[Ch].Ton_Slide_Delay := Additional_Command.Delay;
-      ParamsOfChan[Ch].Ton_Slide_Count := ParamsOfChan[Ch].Ton_Slide_Delay;
-      ParamsOfChan[Ch].Ton_Slide_Step := Additional_Command.Parameter;
-      ParamsOfChan[Ch].Ton_Slide_Type := 0;
-      ParamsOfChan[Ch].Current_OnOff := 0
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := Additional_Command.Delay;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step := Additional_Command.Parameter;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Type := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff := 0
      end;
     2:
      begin
-      ParamsOfChan[Ch].Ton_Slide_Delay := Additional_Command.Delay;
-      ParamsOfChan[Ch].Ton_Slide_Count := ParamsOfChan[Ch].Ton_Slide_Delay;
-      ParamsOfChan[Ch].Ton_Slide_Step := -Additional_Command.Parameter;
-      ParamsOfChan[Ch].Ton_Slide_Type := 0;
-      ParamsOfChan[Ch].Current_OnOff := 0
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := Additional_Command.Delay;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step := -Additional_Command.Parameter;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Type := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff := 0
      end;
     3:
      if (Note >= 0) or ((Note <> -2) and VTM.New3xxxInterpretation) then
       begin
-       ParamsOfChan[Ch].Ton_Slide_Delay := Additional_Command.Delay;
-       ParamsOfChan[Ch].Ton_Slide_Count := ParamsOfChan[Ch].Ton_Slide_Delay;
-       ParamsOfChan[Ch].Ton_Slide_Step := Additional_Command.Parameter;
-       ParamsOfChan[Ch].Ton_Slide_Delta :=
-          GetNoteFreq(VTM.Ton_Table,ParamsOfChan[Ch].Note) -
+       PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := Additional_Command.Delay;
+       PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay;
+       PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step := Additional_Command.Parameter;
+       PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delta :=
+          GetNoteFreq(VTM.Ton_Table,PlVars[CurChip].ParamsOfChan[Ch].Note) -
             GetNoteFreq(VTM.Ton_Table,PrNote);
-       ParamsOfChan[Ch].Slide_To_Note := ParamsOfChan[Ch].Note;
-       ParamsOfChan[Ch].Note := PrNote;
+       PlVars[CurChip].ParamsOfChan[Ch].Slide_To_Note := PlVars[CurChip].ParamsOfChan[Ch].Note;
+       PlVars[CurChip].ParamsOfChan[Ch].Note := PrNote;
        if VTM.New3xxxInterpretation then
-        ParamsOfChan[Ch].Current_Ton_Sliding := TS;
-       if ParamsOfChan[Ch].Ton_Slide_Delta -
-                ParamsOfChan[Ch].Current_Ton_Sliding < 0 then
-        ParamsOfChan[Ch].Ton_Slide_Step :=
-                                  -ParamsOfChan[Ch].Ton_Slide_Step;
-       ParamsOfChan[Ch].Ton_Slide_Type := 1;
-       ParamsOfChan[Ch].Current_OnOff := 0
+        PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding := TS;
+       if PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delta -
+                PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding < 0 then
+        PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step :=
+                                  -PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step;
+       PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Type := 1;
+       PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff := 0
       end;
-    4: ParamsOfChan[Ch].SamplePosition := Additional_Command.Parameter;
-    5: ParamsOfChan[Ch].OrnamentPosition := Additional_Command.Parameter;
+    4: PlVars[CurChip].ParamsOfChan[Ch].SamplePosition := Additional_Command.Parameter;
+    5: PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition := Additional_Command.Parameter;
     6:
      begin
-      ParamsOfChan[Ch].OffOn_Delay := Additional_Command.Parameter and 15;
-      ParamsOfChan[Ch].OnOff_Delay := Additional_Command.Parameter shr 4;
-      ParamsOfChan[Ch].Current_OnOff := ParamsOfChan[Ch].OnOff_Delay;
-      ParamsOfChan[Ch].Ton_Slide_Count := 0;
-      ParamsOfChan[Ch].Current_Ton_Sliding := 0
+      PlVars[CurChip].ParamsOfChan[Ch].OffOn_Delay := Additional_Command.Parameter and 15;
+      PlVars[CurChip].ParamsOfChan[Ch].OnOff_Delay := Additional_Command.Parameter shr 4;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff := PlVars[CurChip].ParamsOfChan[Ch].OnOff_Delay;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := 0;
+      PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding := 0
      end;
     9:
      begin
-      Env_Delay := Additional_Command.Delay;
-      Cur_Env_Delay := Env_Delay;
-      Env_Slide_Add := Additional_Command.Parameter
+      PlVars[CurChip].Env_Delay := Additional_Command.Delay;
+      PlVars[CurChip].Cur_Env_Delay := PlVars[CurChip].Env_Delay;
+      PlVars[CurChip].Env_Slide_Add := Additional_Command.Parameter
      end;
     10:
      begin
-      Env_Delay := Additional_Command.Delay;
-      Cur_Env_Delay := Env_Delay;
-      Env_Slide_Add := -Additional_Command.Parameter
+      PlVars[CurChip].Env_Delay := Additional_Command.Delay;
+      PlVars[CurChip].Cur_Env_Delay := PlVars[CurChip].Env_Delay;
+      PlVars[CurChip].Env_Slide_Add := -Additional_Command.Parameter
      end;
     11: if Additional_Command.Parameter <> 0 then
-         Delay := Additional_Command.Parameter
+         PlVars[CurChip].Delay := Additional_Command.Parameter
     end
    end
  end;
@@ -859,28 +869,28 @@ var
  k:integer;
 begin
 Result := 0;
-if CurrentPattern = -1 then
+if PlVars[CurChip].CurrentPattern = -1 then
  begin
-  AddToNoise := VTM.Patterns[-1].Items[CurrentLine].Noise;
+  PlVars[CurChip].AddToNoise := VTM.Patterns[-1].Items[PlVars[CurChip].CurrentLine].Noise;
   PatternInterpreter(0)
  end
 else
  begin
-  Dec(DelayCounter);
-  if DelayCounter = 0 then
+  Dec(PlVars[CurChip].DelayCounter);
+  if PlVars[CurChip].DelayCounter = 0 then
    begin
     Inc(Result);
-    if VTM.Patterns[CurrentPattern].Length <= CurrentLine then
+    if VTM.Patterns[PlVars[CurChip].CurrentPattern].Length <= PlVars[CurChip].CurrentLine then
      begin
-      Inc(DelayCounter);
+      Inc(PlVars[CurChip].DelayCounter);
       Inc(Result);
       exit
      end;
-    AddToNoise := VTM.Patterns[CurrentPattern].Items[CurrentLine].Noise;
+    PlVars[CurChip].AddToNoise := VTM.Patterns[PlVars[CurChip].CurrentPattern].Items[PlVars[CurChip].CurrentLine].Noise;
     for k := 0 to 2 do
      PatternInterpreter(k);
-    Inc(CurrentLine);
-    DelayCounter := Delay
+    Inc(PlVars[CurChip].CurrentLine);
+    PlVars[CurChip].DelayCounter := PlVars[CurChip].Delay
    end
  end;
 Pattern_PlayOnlyCurrentLine
@@ -891,14 +901,14 @@ begin
 Result := Pattern_PlayCurrentLine;
 if Result = 2 then
  begin
-  inc(CurrentPosition);
-  if CurrentPosition >= VTM.Positions.Length then
+  inc(PlVars[CurChip].CurrentPosition);
+  if PlVars[CurChip].CurrentPosition >= VTM.Positions.Length then
    begin
-    CurrentPosition := VTM.Positions.Loop;
+    PlVars[CurChip].CurrentPosition := VTM.Positions.Loop;
     inc(Result)
    end;
-  CurrentPattern := VTM.Positions.Value[CurrentPosition];
-  CurrentLine := 0;
+  PlVars[CurChip].CurrentPattern := VTM.Positions.Value[PlVars[CurChip].CurrentPosition];
+  PlVars[CurChip].CurrentLine := 0;
   Pattern_PlayCurrentLine
  end
 end;
@@ -7892,8 +7902,12 @@ Pos := 0;
 while Pos < 256 do
  begin
   CPat.Numb := PSM.Index[PSM.PSM_PositionsPointer + Pos * 2];
-  if CPat.Numb = 255 then break;
   CPat.Trans := shortint(PSM.Index[PSM.PSM_PositionsPointer + Pos * 2 + 1]);
+  if CPat.Numb = 255 then
+   begin
+    if CPat.Trans <> -1 then VTM.Positions.Loop := byte(CPat.Trans);
+    break;
+   end;
   j := PatMax;
   for i := 0 to PatMax - 1 do
    if (Pats[i].Numb = CPat.Numb) and

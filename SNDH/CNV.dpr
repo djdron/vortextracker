@@ -3,7 +3,7 @@ Converts MC68KPT3.S standard MC68000 assembler text was produced by PP68K.EXE to
 make it compatible with X68K.EXE assembler. Additionally strips some not used
 data, changes all static jumps and calls to relative ones (branches), makes
 all memory access relative to PC to load program at any address.
-(c)2003 S.V.Bulba
+(c)2003-2006 S.V.Bulba
 }
 program CNV;
 
@@ -15,6 +15,7 @@ var
  s,sa:string;
  si:array of string;
  i1,i2,i,lc:integer;
+ bi:shortint;
 begin
 if ParamCount <> 1 then exit;
 AssignFile(f1,ParamStr(1));
@@ -68,6 +69,8 @@ try
         end;
        if i1 > 1 then
         begin
+        if si[1] = 'sge.b' then si[1] := 'sge';
+        if si[1] = 'sne.b' then si[1] := 'sne';
         if si[1] = 'moveq.l' then si[1] := 'moveq';
         if si[1] = 'pea.l' then si[1] := 'pea';
         if si[1] = 'jsr' then si[1] := 'bsr';
@@ -75,10 +78,20 @@ try
          s := s + #9 + si[1];
          if i1 > 2 then
           begin
+           if i1 > 3 then
+            if si[2] = 'DC.B' then
+             begin
+              Val(si[3],bi,i);
+              if (i = 0) and (bi < 0) then
+               si[3] := IntToStr(bi)
+             end;
+
            if si[2] = '_SYSATARI$$_INC$WORD$LONGINT' then
             si[2] := 'INCW';
            if si[2] = '_SYSATARI$$_ABS$LONGINT' then
             si[2] := 'AABS';
+           if si[2] = '_SYSATARI$$_DEC$INTEGER$LONGINT' then
+            si[2] := 'DECI';
            if si[2] = '_SYSATARI$$_INC$INTEGER$LONGINT' then
             si[2] := 'INCI';
            if si[2] = '_SYSATARI$$_INC$BYTE$LONGINT' then
@@ -106,10 +119,13 @@ try
        Writeln(f2,s)
       end
   end;
+ for i := 1 to 256{vt} + 192{nt} + 16{pt3} + 48*3{pt3_a+pt3_b+pt3_c} do
+  Writeln(f2,#9'DC.B'#9'0');
+
+{ Writeln(f2,#9'DC.L'#9'0,0,0,0,0,0,0,0,0,0,0');
  Writeln(f2,#9'DC.L'#9'0,0,0,0,0,0,0,0,0,0,0');
  Writeln(f2,#9'DC.L'#9'0,0,0,0,0,0,0,0,0,0,0');
- Writeln(f2,#9'DC.L'#9'0,0,0,0,0,0,0,0,0,0,0');
- Writeln(f2,#9'DC.L'#9'0,0,0,0,0,0,0,0,0,0,0');
+ Writeln(f2,#9'DC.L'#9'0,0,0,0,0,0,0,0,0,0,0');}
  Writeln(f2,#9'END'#9'0');
 finally
  CloseFile(f2);

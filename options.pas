@@ -1,6 +1,6 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2005 S.V.Bulba
+(c)2000-2006 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/
@@ -62,11 +62,19 @@ type
     FiltersGroup: TGroupBox;
     FiltChk: TCheckBox;
     FiltNK: TTrackBar;
-    Label8: TLabel;
     Label9: TLabel;
     Label10: TLabel;
     OtherOps: TTabSheet;
     PriorGrp: TRadioGroup;
+    EdChipFrq: TEdit;
+    EdIntFrq: TEdit;
+    GroupBox1: TGroupBox;
+    Label8: TLabel;
+    Label11: TLabel;
+    Label12: TLabel;
+    Label13: TLabel;
+    Label14: TLabel;
+    ColorDialog1: TColorDialog;
     procedure Edit1Exit(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure ChipSelClick(Sender: TObject);
@@ -90,6 +98,15 @@ type
     procedure FiltChkClick(Sender: TObject);
     procedure FiltNKChange(Sender: TObject);
     procedure PriorGrpClick(Sender: TObject);
+    function GetValue(const s:string):integer;
+    procedure EdChipFrqExit(Sender: TObject);
+    procedure EdIntFrqExit(Sender: TObject);
+    procedure ChangeTrColor(Lb1,Lb2:TLabel;Bk:boolean);
+    procedure Label8Click(Sender: TObject);
+    procedure Label12Click(Sender: TObject);
+    procedure Label14Click(Sender: TObject);
+    procedure Label11Click(Sender: TObject);
+    procedure Label13Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -104,6 +121,14 @@ implementation
 uses AY, WaveOutAPI, Main, Childwin, trfuncs, MMSystem;
 
 {$R *.DFM}
+
+function TForm1.GetValue(const s:string):integer;
+var
+ Er:integer;
+begin
+Val(Trim(s),Result,Er);
+if Er <> 0 then Result := -1
+end;
 
 procedure TForm1.Edit1Exit(Sender: TObject);
 begin
@@ -138,6 +163,19 @@ begin
 case IntSel.ItemIndex of
 0:f := 50000;
 1:f := 48828;
+2:f := 60000;
+3:f := 100000;
+4:f := 200000;
+5:
+ begin
+  if not EdIntFrq.Focused and EdIntFrq.CanFocus then
+   begin
+    EdIntFrq.SelectAll;
+    EdIntFrq.SetFocus;
+   end;
+  f := GetValue(EdIntFrq.Text);
+  if f < 0 then exit
+ end;
 else exit
 end;
 if f <> Interrupt_Freq then
@@ -229,6 +267,19 @@ begin
 case ChFreq.ItemIndex of
 0:f := 1773400;
 1:f := 1750000;
+2:f := 2000000;
+3:f := 1000000;
+4:f := 3500000;
+5:
+ begin
+  if not EdChipFrq.Focused and EdChipFrq.CanFocus then
+   begin
+    EdChipFrq.SelectAll;
+    EdChipFrq.SetFocus;
+   end; 
+  f := GetValue(EdChipFrq.Text);
+  if f < 0 then exit
+ end;
 else exit
 end;
 if f <> AY_Freq then
@@ -295,6 +346,69 @@ if PriorGrp.ItemIndex = 0 then
  MainForm.SetPriority(NORMAL_PRIORITY_CLASS)
 else
  MainForm.SetPriority(HIGH_PRIORITY_CLASS)
+end;
+
+procedure TForm1.EdChipFrqExit(Sender: TObject);
+begin
+if ChFreq.ItemIndex <> 5 then
+ ChFreq.ItemIndex := 5
+else
+ ChFreqClick(Sender)
+end;
+
+procedure TForm1.EdIntFrqExit(Sender: TObject);
+begin
+if IntSel.ItemIndex <> 5 then
+ IntSel.ItemIndex := 5
+else
+ IntSelClick(Sender)
+end;
+
+procedure TForm1.ChangeTrColor;
+begin
+if Bk then
+ ColorDialog1.Color := Lb1.Color
+else
+ ColorDialog1.Color := Lb1.Font.Color;
+if ColorDialog1.Execute then
+ if Bk then
+  begin
+   Lb1.Color := ColorDialog1.Color;
+   if Lb2 <> nil then
+    Lb2.Color := ColorDialog1.Color;
+  end
+ else
+  begin
+   Lb1.Font.Color := ColorDialog1.Color;
+   if Lb2 <> nil then
+    Lb2.Font.Color := ColorDialog1.Color;
+  end;
+end;
+
+procedure TForm1.Label8Click(Sender: TObject);
+begin
+ChangeTrColor(Label8,Label11,True)
+end;
+
+procedure TForm1.Label12Click(Sender: TObject);
+begin
+ChangeTrColor(Label12,Label13,True)
+end;
+
+procedure TForm1.Label14Click(Sender: TObject);
+begin
+ChangeTrColor(Label14,nil,True)
+end;
+
+procedure TForm1.Label11Click(Sender: TObject);
+begin
+ChangeTrColor(Label8,Label11,False);
+Label14.Font.Color := Label8.Font.Color;
+end;
+
+procedure TForm1.Label13Click(Sender: TObject);
+begin
+ChangeTrColor(Label12,Label13,False);
 end;
 
 end.

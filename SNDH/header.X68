@@ -4,9 +4,7 @@
 	bra	APL
 
 	DC.B	'SNDH'
-	DC.B	'TITL',0,'                               ',0,0
-	DC.B	'COMM',0,'                               ',0,0
-	DC.B	'CONVVortex Tracker II v1.0 beta 4',0
+	DC.B	'HDNS'
 
 INCW:
 	move.l	a6,-(sp)

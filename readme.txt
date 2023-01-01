@@ -1,5 +1,5 @@
-Vortex Tracker II v1.0 beta 12
-(c)2000-2005 S.V.Bulba
+Vortex Tracker II v1.0 beta 13
+(c)2000-2006 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/
@@ -30,11 +30,12 @@ Vortex Tracker II can import ZX Spectrum music files (modules) of next types:
  5) Fast Tracker (*.ftc);
  6) Global Tracker 1.x (*.gtr);
  7) Pro Sound Creator 1.xx (*.psc);
- 8) compiled ASC Sound Master modules (*.asc);
- 9) compiled Sound Tracker and Super Sonic modules (*.stc);
- 10) compiled Sound Tracker Pro modules (*.stp);
- 11) compiled SQ-Tracker modules (*.sqt);
- 12) Amadeus (Fuxoft AY Language) modules (*.fxm, *.ay).
+ 8) compiled  Pro Sound Maker modules (*.psm);
+ 9) compiled ASC Sound Master modules (*.asc);
+ 10) compiled Sound Tracker and Super Sonic modules (*.stc);
+ 11) compiled Sound Tracker Pro modules (*.stp);
+ 12) compiled SQ-Tracker modules (*.sqt);
+ 13) Amadeus (Fuxoft AY Language) modules (*.fxm, *.ay).
 
 
 VT II detects module type only by filename extension (mask), and no any
@@ -55,7 +56,7 @@ one chance to save your music, if PT3 saving is not available due size
 limitations (65536 bytes).
 
 In fact, Vortex Tracker II is Win32 version of ZX Spectrum Pro Tracker 3.xx.
-The most compatible version is Pro Tracker v3.695 of Alone Coder (a.k.a. Dima
+The most compatible version is Pro Tracker v3.69x of Alone Coder (a.k.a. Dima
 Bystrov). Vortex Tracker II is fully compatible with any Pro Tracker v3.5x in
 "ProTracker 3.5" mode.
 
@@ -74,25 +75,41 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-05/29/2005:
+10/02/2005:
 
-1. Fixed error in PT2 importer: memory before sample import was not clear.
+1. Fixed error in PSM import: loop position always was zero.
 
-06/14/2005:
+03/14/2006:
 
-2. Fixed horrible mistake: if you open save or some other dialogs during playing
-   in "Loop among all opened modules" and next window start playing before you
-   will finish, dialog will work with new active window. From this version
-   all dialogs work with window, which was active during calling dialog.
-   
-09/16/2005:
+2. In addition to 'Save As...' command added simple 'Save' (asks for file name
+   only for new modules).
+3. Added save requests before closing module windows or whole editor.
 
-3. Added import of PSC v1.00-1.03 modules.
+03/16/2006:
 
-09/30/2005:
+4. Added second sound chip emulation to play any two opened modules
+   simultaneously. 'Play' and 'Play from start' start playing module of current
+   window through the first chip and module selected in dropdown list of control
+   panel through the second chip. So, you can edit two standard PT3-modules, and
+   then play it simultaneously through some of known devices (Turbo-Sound or
+   Turbo-AY) on real ZX (see example in ZX-magazine InfoGuide #8).
 
-4. Added import of compiled PSM (Pro Sound Maker by Denis Dratov) modules. They
-   must be compiled by original (author's) compiler.
+03/18/2006:
+
+5. MC68000 PT3-player is updated (SNDH-export). Note and volume tables are
+   packed now via Ivan Roshin methods (player size is 1 KB smaller now).
+6. SNDH-export is improved: new SNDH v2 TAGs are supported and new file name
+   extension (SNDH) is used now.
+
+03/19/2006:
+
+7. 'Options' dialog allows you to input any AY-frequency in range 1-3.5 MHz, and
+   any player frequency in range 1-2000 Hz.
+8. Added track colors selection in 'Options' dialog.
+
+03/25/2006:
+
+9. Fixed tracks editor's cursor moving errors (PageUp/PageDown reaction).
 
 Known problems
 --------------
@@ -121,8 +138,7 @@ Next keys are used.
 So fortepiano keys are emulated with range more than two octaves.
 
 - If cursor in a note cell of track column, use numpad keys from 1 to 8 to
- (only when NumLock is on), key "A" for 
-(R--) and key "K"  (---).
+ (only when NumLock is on), key "A" for (R--) and key "K"  (---).
 
 1.2. Shift+NoteKeys - input note one octave higher.
 
@@ -402,6 +418,17 @@ which require old header style.
 This header means, that module must be played with old 3xxx command
 interpretation.
 
+Turbo-Sound mode
+----------------
+From the end of 90s some people tried to popularize standards of two sound chips
+connection to ZX Spectrum. Know schemes are Quadro-AY, Turbo-AY and Turbo-Sound.
+One of way to use it is to play two different modules simultaneously (each
+through own chip). Vortex Tracker II allows to play any two opened modules
+simultaneously. Active window module sounds through the first sound chip, and
+module selected in dropdown list of main window control panel through the second
+chip. By default, second chip is off. Examples of playing on ZX can be find in
+ZX-magazine InfoGuide #8.
+
 Files->Options... menu
 ----------------------
 
@@ -413,7 +440,9 @@ a Courier, Courier New and FixedSys, otherwise your tracks will be as trash.
 
 'Windows' tab sheet
 
-Visual channels allocation in patterns editor.
+'Channels allocation' allows to set visual channels allocation in patterns
+editor. 'Tracks colors' allows to select colors of any track editor elements.
+All 'Windows' tab sheet settings are applied to already opened windows.
 
 'Chip emulation' tab sheet
 
@@ -424,7 +453,7 @@ rightly emulated only in "for quality" mode. Some of them can be emulated
 rightly only with filter (checked by default). Of course, high quality requires
 more processor time. So, if your system can not produce solid sound, reduce
 emulation quality or decrease bitrate or samplerate at 'Wave out' tabsheet.
-
+In Turbo-Sound (Turbo-AY) mode used identical setting for both chips.
 
 'Compatibility' tab sheet
 
@@ -524,9 +553,10 @@ Menu Files->Exports->Save in SNDH (Atari ST)
 Saving in SNDH format for playing on Atari ST (or in SNDH-players and emulators
 of Atari ST). There is universal MC68000 player used in SNDH, it supports all
 note and volume tables (starting from PT 3.3), PT3 module version is analyzed
-during initialization. Player is based on Ay_Emul procedures. SNDHs are not
-packed by PACKICE in this version. Player size is about 10 Kb; start address is
-not fixed.
+during initialization. Player is based on Ay_Emul procedures, volume and note
+tables are packed by Ivan Roshin's method. SNDHs are not packed by PACKICE in
+this version. Player size is about 9 Kb; start address is not fixed. Before
+saving 'Year of creation' prompt are shown, you can ignore it if it not need.
 
 Menu Files->Exports->Save with ZX Spectrum player
 -------------------------------------------------
@@ -553,7 +583,6 @@ Thanks to
 - Black Groove (a.k.a. Key-Jee) for bug-reports, wishes and test modules.
 - Ilya Abrosimov (a.k.a. EA) for bug-reports and wishes.
 - Pavel A. Sukhodolsky for help and formats discussion.
-- Slava Kalinin for distribution VT II among AY-musicians.
 - Asi for bugreports and wishes.
 - Denis Seleznev for icon pictures.
 - Spectre for help in debugging and wishes about ZX PT3-player.
@@ -586,4 +615,4 @@ somewhere in your projects, where you include all or part of the sources and
 
 Sergey Bulba
 
-24 of August 2002 - 30 of September 2005
+24 of August 2002 - 25 of March 2006

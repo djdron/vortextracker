@@ -1,8 +1,8 @@
 object Form1: TForm1
   Left = 192
   Top = 107
-  Width = 402
-  Height = 369
+  Width = 393
+  Height = 376
   Caption = 'Options'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -17,9 +17,10 @@ object Form1: TForm1
   object OpsPages: TPageControl
     Left = 0
     Top = 0
-    Width = 393
+    Width = 385
     Height = 289
     ActivePage = TabSheet1
+    Align = alTop
     TabOrder = 0
     object TabSheet1: TTabSheet
       Caption = 'New window'
@@ -111,29 +112,87 @@ object Form1: TForm1
         TabOrder = 0
         OnClick = ChanVisAllocClick
       end
+      object GroupBox1: TGroupBox
+        Left = 120
+        Top = 8
+        Width = 153
+        Height = 65
+        Caption = 'Tracks colors'
+        TabOrder = 1
+        object Label8: TLabel
+          Left = 8
+          Top = 16
+          Width = 65
+          Height = 13
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Background'
+          OnClick = Label8Click
+        end
+        object Label11: TLabel
+          Left = 80
+          Top = 16
+          Width = 65
+          Height = 13
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Text'
+          OnClick = Label11Click
+        end
+        object Label12: TLabel
+          Left = 8
+          Top = 32
+          Width = 65
+          Height = 13
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Sel Backgr.'
+          OnClick = Label12Click
+        end
+        object Label13: TLabel
+          Left = 80
+          Top = 32
+          Width = 65
+          Height = 13
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Sel. Text'
+          OnClick = Label13Click
+        end
+        object Label14: TLabel
+          Left = 8
+          Top = 48
+          Width = 137
+          Height = 13
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Highlight Background'
+          OnClick = Label14Click
+        end
+      end
     end
     object AYEmu: TTabSheet
       Caption = 'Chip emulation'
       ImageIndex = 1
       object Label7: TLabel
-        Left = 152
-        Top = 242
+        Left = 150
+        Top = 243
         Width = 163
         Height = 13
         Caption = 'Some changes will be heared after'
         Visible = False
       end
       object LBChg: TLabel
-        Left = 319
-        Top = 242
+        Left = 317
+        Top = 243
         Width = 40
         Height = 13
         Caption = '2178 ms'
         Visible = False
       end
       object ChipSel: TRadioGroup
-        Left = 8
-        Top = 8
+        Left = 6
+        Top = 72
         Width = 105
         Height = 57
         Caption = 'Sound chip'
@@ -145,10 +204,10 @@ object Form1: TForm1
         OnClick = ChipSelClick
       end
       object ChanSel: TRadioGroup
-        Left = 8
-        Top = 72
+        Left = 6
+        Top = 128
         Width = 105
-        Height = 121
+        Height = 129
         Caption = 'Channels allocation'
         ItemIndex = 1
         Items.Strings = (
@@ -163,23 +222,27 @@ object Form1: TForm1
         OnClick = ChanSelClick
       end
       object IntSel: TRadioGroup
-        Left = 120
-        Top = 72
-        Width = 161
-        Height = 57
+        Left = 202
+        Top = 120
+        Width = 169
+        Height = 121
         Caption = 'Interrupt frequency'
         ItemIndex = 0
         Items.Strings = (
-          'ZX Spectrum 50 Hz'
-          'Pentagon 128K 48.828 Hz')
+          '50 Hz (ZX Spectrum)'
+          '48.828 Hz (Pentagon 128K)'
+          '60 Hz (Atari ST)'
+          '100 Hz (Twice per INT)'
+          '200 Hz (Atari ST)'
+          'Manual (mHz)')
         TabOrder = 2
         OnClick = IntSelClick
       end
       object Opt: TRadioGroup
-        Left = 8
-        Top = 200
+        Left = 6
+        Top = 8
         Width = 105
-        Height = 57
+        Height = 65
         Caption = 'Optimization'
         ItemIndex = 0
         Items.Strings = (
@@ -189,52 +252,49 @@ object Form1: TForm1
         OnClick = OptClick
       end
       object ChFreq: TRadioGroup
-        Left = 120
+        Left = 202
         Top = 8
-        Width = 161
-        Height = 57
+        Width = 169
+        Height = 113
         Caption = 'Chip frequency'
         ItemIndex = 0
         Items.Strings = (
-          'ZX Spectrum 1.7734 MHz'
-          'Pentagon 128K 1.75 MHz')
+          '1.7734 MHz (ZX Spectrum)'
+          '1.75 MHz (Pentagon 128K)'
+          '2 MHz (Atari ST)'
+          '1 MHz (Amstard CPC)'
+          '3.5 MHz'
+          'Manual (Hz)')
         TabOrder = 4
         OnClick = ChFreqClick
       end
       object FiltersGroup: TGroupBox
-        Left = 120
-        Top = 136
-        Width = 161
-        Height = 105
+        Left = 116
+        Top = 8
+        Width = 81
+        Height = 65
         Caption = 'Downsampling'
         TabOrder = 5
-        object Label8: TLabel
-          Left = 64
-          Top = 40
-          Width = 35
-          Height = 13
-          Caption = 'Quality:'
-        end
         object Label9: TLabel
           Left = 8
-          Top = 88
-          Width = 20
+          Top = 48
+          Width = 12
           Height = 13
-          Caption = 'Low'
+          Caption = 'Lo'
         end
         object Label10: TLabel
-          Left = 128
-          Top = 88
-          Width = 22
+          Left = 64
+          Top = 48
+          Width = 10
           Height = 13
-          Caption = 'High'
+          Caption = 'Hi'
         end
         object FiltChk: TCheckBox
           Left = 8
           Top = 16
-          Width = 89
+          Width = 65
           Height = 17
-          Caption = 'Use FIR-filter'
+          Caption = 'FIR-filter'
           Checked = True
           State = cbChecked
           TabOrder = 0
@@ -242,16 +302,35 @@ object Form1: TForm1
         end
         object FiltNK: TTrackBar
           Left = 8
-          Top = 56
-          Width = 145
-          Height = 33
+          Top = 32
+          Width = 65
+          Height = 17
           Max = 9
           Min = 4
           PageSize = 1
           Position = 5
           TabOrder = 1
+          ThumbLength = 10
           OnChange = FiltNKChange
         end
+      end
+      object EdChipFrq: TEdit
+        Left = 288
+        Top = 98
+        Width = 73
+        Height = 17
+        AutoSize = False
+        TabOrder = 6
+        OnChange = EdChipFrqExit
+      end
+      object EdIntFrq: TEdit
+        Left = 296
+        Top = 218
+        Width = 65
+        Height = 17
+        AutoSize = False
+        TabOrder = 7
+        OnChange = EdIntFrqExit
       end
     end
     object OpMod: TTabSheet
@@ -472,7 +551,7 @@ object Form1: TForm1
           Width = 177
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 2
           Visible = False
           OnChange = ComboBox1Change
@@ -526,5 +605,9 @@ object Form1: TForm1
     Options = [fdEffects, fdForceFontExist]
     Left = 16
     Top = 304
+  end
+  object ColorDialog1: TColorDialog
+    Left = 332
+    Top = 240
   end
 end

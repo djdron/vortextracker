@@ -1,8 +1,8 @@
 object MainForm: TMainForm
-  Left = 105
-  Top = 106
-  Width = 608
-  Height = 383
+  Left = 95
+  Top = 98
+  Width = 612
+  Height = 397
   Caption = 'Vortex Tracker II'
   Color = clAppWorkSpace
   Font.Charset = DEFAULT_CHARSET
@@ -23,8 +23,8 @@ object MainForm: TMainForm
   TextHeight = 13
   object StatusBar: TStatusBar
     Left = 0
-    Top = 309
-    Width = 600
+    Top = 323
+    Width = 604
     Height = 20
     AutoHint = True
     Panels = <>
@@ -33,8 +33,9 @@ object MainForm: TMainForm
   object ToolBar2: TToolBar
     Left = 0
     Top = 0
-    Width = 600
-    Height = 30
+    Width = 604
+    Height = 57
+    AutoSize = True
     BorderWidth = 1
     Color = clBtnFace
     Images = ImageList1
@@ -43,7 +44,6 @@ object MainForm: TMainForm
     ParentShowHint = False
     ShowHint = True
     TabOrder = 1
-    Wrapable = False
     object ToolButton9: TToolButton
       Left = 5
       Top = 2
@@ -173,16 +173,17 @@ object MainForm: TMainForm
       Style = tbsCheck
     end
     object ToolButton16: TToolButton
-      Left = 451
+      Left = 5
       Top = 2
       Width = 8
       Caption = 'ToolButton16'
       ImageIndex = 38
+      Wrap = True
       Style = tbsDivider
     end
     object SpeedButton1: TSpeedButton
-      Left = 459
-      Top = 2
+      Left = 5
+      Top = 29
       Width = 23
       Height = 22
       Action = ToggleChip
@@ -194,8 +195,8 @@ object MainForm: TMainForm
       ParentFont = False
     end
     object SpeedButton2: TSpeedButton
-      Left = 482
-      Top = 2
+      Left = 28
+      Top = 29
       Width = 33
       Height = 22
       Action = ToggleChanAlloc
@@ -207,16 +208,16 @@ object MainForm: TMainForm
       ParentFont = False
     end
     object ToolButton19: TToolButton
-      Left = 515
-      Top = 2
+      Left = 61
+      Top = 29
       Width = 8
       Caption = 'ToolButton19'
       ImageIndex = 39
       Style = tbsDivider
     end
     object TrackBar1: TTrackBar
-      Left = 523
-      Top = 2
+      Left = 69
+      Top = 29
       Width = 75
       Height = 22
       Hint = 'Volume control'
@@ -228,6 +229,28 @@ object MainForm: TMainForm
       TabStop = False
       ThumbLength = 15
       OnChange = TrackBar1Change
+    end
+    object ToolButton25: TToolButton
+      Left = 144
+      Top = 29
+      Width = 8
+      Caption = 'ToolButton25'
+      ImageIndex = 40
+      Style = tbsDivider
+    end
+    object ComboBox1: TComboBox
+      Left = 152
+      Top = 29
+      Width = 185
+      Height = 21
+      Hint = '2nd module for Turbo-AY|Select module for Turbo-AY'
+      Style = csDropDownList
+      ItemHeight = 13
+      ItemIndex = 0
+      TabOrder = 1
+      Text = '2nd soundchip is disabled'
+      Items.Strings = (
+        '2nd soundchip is disabled')
     end
   end
   object MainMenu1: TMainMenu
@@ -1768,9 +1791,8 @@ object MainForm: TMainForm
     end
   end
   object SaveDialogSNDH: TSaveDialog
-    DefaultExt = 'snd'
-    Filter = 'Atari ST'#39's SNDH files (SND)|*.snd|Any file|*.*'
-    Options = [ofOverwritePrompt, ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Filter = 'Atari ST'#39's SNDH files (SND, SNDH)|*.snd;*.sndh|Any file|*.*'
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
     Left = 200
     Top = 200
   end
@@ -1779,7 +1801,7 @@ object MainForm: TMainForm
       'Hobeta with player ($c)|*.$c|Hobeta without player ($m)|*.$m|.AY' +
       '-files (AY)|*.ay|SCL-files (SCL)|*.scl|ZX tape files (TAP)|*.tap' +
       '|Any file|*.*'
-    Options = [ofOverwritePrompt, ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
     OnTypeChange = SaveDialogZXAYTypeChange
     Left = 232
     Top = 200

@@ -1,6 +1,6 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2005 S.V.Bulba
+(c)2000-2006 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/

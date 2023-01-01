@@ -3,9 +3,9 @@ ZX Spectrum Pro Tracker 3.0x - 3.6x modules player
 Designed to compile for Atari ST with MC68000 processor
 Used in Vortex Tracker II in PT3 to SNDH converter
 To work on other MC68K based systems simply replace 'ROut' procedure
-Based on Ay_Emul sources
+Based on Ay_Emul sources, tables packed via Ivan Roshin's algorithms
 
-(c)2003 S.V.Bulba
+(c)2003-2006 S.V.Bulba
 
 http://bulba.at.kz is
  - Micro ST (Win32 SNDH player)
@@ -24,7 +24,7 @@ type
  TModTypes = packed record
  case Integer of
  0: (Index:array[0..65535] of byte);
- 6: (PT3_MusicName:array[0..$62]of char;
+ 1: (PT3_MusicName:array[0..$62]of char;
      PT3_TonTableId:byte;
      PT3_Delay:byte;
      PT3_NumberOfPositions:byte;
@@ -84,9 +84,9 @@ type
 
  PT3_Parameters = record
   PT3_Version:integer;
-  Env_Base:word;
   Cur_Env_Slide,
   Env_Slide_Add:integer;
+  PatPtr:word;
   Cur_Env_Delay,
   Env_Delay:shortint;
   Noise_Base,
@@ -94,140 +94,136 @@ type
   AddToNoise,
   DelayCounter,
   CurrentPosition:byte;
-  PatPtr:word;
+  Dump:byte;
  end;
 
  PT3ToneTable = array[0..95] of word;
  PT3VolTable = array[0..15,0..15] of byte;
 
- TTbls = record
-  T1,T2,T3,T4,T5,T6,T7:PT3ToneTable;
-  V1,V2:PT3VolTable;
- end;
-
  TPlVars = record
-  Tb:TTbls;
-  RegAY:TRegisterAY;
+  T_PACK:array[0..53] of byte;
+  TC:array[0..65] of byte;
+  NT_DATA:array[0..7,0..1]of byte;
+  VT_:record
+   case integer of
+   0:(VT:PT3VolTable); //Created Volume Table
+   1:(R:TRegisterAY;
+      Env_Base:word;
+      TT:array[0..49-1]of word); //Tone tables data temporary depacked here
+   2:(V:array[0..255]of byte);
+  end;
+  NT_:PT3ToneTable; //Created Note Table
   PT3:PT3_Parameters;PT3_A,PT3_B,PT3_C:PT3_Channel_Parameters;
   RAM:TModTypes;
  end;
 
-const 
-
+const
+//9 tables total are:
 {Table #0 of Pro Tracker 3.3x - 3.4r}
- T033:PT3ToneTable = (
-  $0C21,$0B73,$0ACE,$0A33,$09A0,$0916,$0893,$0818,$07A4,$0736,$06CE,$066D,
-  $0610,$05B9,$0567,$0519,$04D0,$048B,$0449,$040C,$03D2,$039B,$0367,$0336,
-  $0308,$02DC,$02B3,$028C,$0268,$0245,$0224,$0206,$01E9,$01CD,$01B3,$019B,
-  $0184,$016E,$0159,$0146,$0134,$0122,$0112,$0103,$00F4,$00E6,$00D9,$00CD,
-  $00C2,$00B7,$00AC,$00A3,$009A,$0091,$0089,$0081,$007A,$0073,$006C,$0066,
-  $0061,$005B,$0056,$0051,$004D,$0048,$0044,$0040,$003D,$0039,$0036,$0033,
-  $0030,$002D,$002B,$0028,$0026,$0024,$0022,$0020,$001E,$001C,$001B,$0019,
-  $0018,$0016,$0015,$0014,$0013,$0012,$0011,$0010,$000F,$000E,$000D,$000C);
-
 {Table #0 of Pro Tracker 3.4x - 3.5x}
- T035:PT3ToneTable = (
-  $0C22,$0B73,$0ACF,$0A33,$09A1,$0917,$0894,$0819,$07A4,$0737,$06CF,$066D,
-  $0611,$05BA,$0567,$051A,$04D0,$048B,$044A,$040C,$03D2,$039B,$0367,$0337,
-  $0308,$02DD,$02B4,$028D,$0268,$0246,$0225,$0206,$01E9,$01CE,$01B4,$019B,
-  $0184,$016E,$015A,$0146,$0134,$0123,$0112,$0103,$00F5,$00E7,$00DA,$00CE,
-  $00C2,$00B7,$00AD,$00A3,$009A,$0091,$0089,$0082,$007A,$0073,$006D,$0067,
-  $0061,$005C,$0056,$0052,$004D,$0049,$0045,$0041,$003D,$003A,$0036,$0033,
-  $0031,$002E,$002B,$0029,$0027,$0024,$0022,$0020,$001F,$001D,$001B,$001A,
-  $0018,$0017,$0016,$0014,$0013,$0012,$0011,$0010,$000F,$000E,$000D,$000C);
-
 {Table #1 of Pro Tracker 3.3x - 3.5x)}
- T1ST:PT3ToneTable = (
-  $0EF8,$0E10,$0D60,$0C80,$0BD8,$0B28,$0A88,$09F0,$0960,$08E0,$0858,$07E0,
-  $077C,$0708,$06B0,$0640,$05EC,$0594,$0544,$04F8,$04B0,$0470,$042C,$03FD,
-  $03BE,$0384,$0358,$0320,$02F6,$02CA,$02A2,$027C,$0258,$0238,$0216,$01F8,
-  $01DF,$01C2,$01AC,$0190,$017B,$0165,$0151,$013E,$012C,$011C,$010A,$00FC,
-  $00EF,$00E1,$00D6,$00C8,$00BD,$00B2,$00A8,$009F,$0096,$008E,$0085,$007E,
-  $0077,$0070,$006B,$0064,$005E,$0059,$0054,$004F,$004B,$0047,$0042,$003F,
-  $003B,$0038,$0035,$0032,$002F,$002C,$002A,$0027,$0025,$0023,$0021,$001F,
-  $001D,$001C,$001A,$0019,$0017,$0016,$0015,$0013,$0012,$0011,$0010,$000F);
-
 {Table #2 of Pro Tracker 3.4r}
- T233:PT3ToneTable = (
-  $0D3E,$0C80,$0BCC,$0B22,$0A82,$09EC,$095C,$08D6,$0858,$07E0,$076E,$0704,
-  $069F,$0640,$05E6,$0591,$0541,$04F6,$04AE,$046B,$042C,$03F0,$03B7,$0382,
-  $034F,$0320,$02F3,$02C8,$02A1,$027B,$0257,$0236,$0216,$01F8,$01DC,$01C1,
-  $01A8,$0190,$0179,$0164,$0150,$013D,$012C,$011B,$010B,$00FC,$00EE,$00E0,
-  $00D4,$00C8,$00BD,$00B2,$00A8,$009F,$0096,$008D,$0085,$007E,$0077,$0070,
-  $006A,$0064,$005E,$0059,$0054,$0050,$004B,$0047,$0043,$003F,$003C,$0038,
-  $0035,$0032,$002F,$002D,$002A,$0028,$0026,$0024,$0022,$0020,$001E,$001D,
-  $001B,$001A,$0019,$0018,$0015,$0014,$0013,$0012,$0011,$0010,$000F,$000E);
-
 {Table #2 of Pro Tracker 3.4x - 3.5x}
- T235:PT3ToneTable = (
-  $0D10,$0C55,$0BA4,$0AFC,$0A5F,$09CA,$093D,$08B8,$083B,$07C5,$0755,$06EC,
-  $0688,$062A,$05D2,$057E,$052F,$04E5,$049E,$045C,$041D,$03E2,$03AB,$0376,
-  $0344,$0315,$02E9,$02BF,$0298,$0272,$024F,$022E,$020F,$01F1,$01D5,$01BB,
-  $01A2,$018B,$0174,$0160,$014C,$0139,$0128,$0117,$0107,$00F9,$00EB,$00DD,
-  $00D1,$00C5,$00BA,$00B0,$00A6,$009D,$0094,$008C,$0084,$007C,$0075,$006F,
-  $0069,$0063,$005D,$0058,$0053,$004E,$004A,$0046,$0042,$003E,$003B,$0037,
-  $0034,$0031,$002F,$002C,$0029,$0027,$0025,$0023,$0021,$001F,$001D,$001C,
-  $001A,$0019,$0017,$0016,$0015,$0014,$0012,$0011,$0010,$000F,$000E,$000D);
-
 {Table #3 of Pro Tracker 3.4r}
- T333:PT3ToneTable = (
-  $0CDA,$0C22,$0B73,$0ACF,$0A33,$09A1,$0917,$0894,$0819,$07A4,$0737,$06CF,
-  $066D,$0611,$05BA,$0567,$051A,$04D0,$048B,$044A,$040C,$03D2,$039B,$0367,
-  $0337,$0308,$02DD,$02B4,$028D,$0268,$0246,$0225,$0206,$01E9,$01CE,$01B4,
-  $019B,$0184,$016E,$015A,$0146,$0134,$0123,$0113,$0103,$00F5,$00E7,$00DA,
-  $00CE,$00C2,$00B7,$00AD,$00A3,$009A,$0091,$0089,$0082,$007A,$0073,$006D,
-  $0067,$0061,$005C,$0056,$0052,$004D,$0049,$0045,$0041,$003D,$003A,$0036,
-  $0033,$0031,$002E,$002B,$0029,$0027,$0024,$0022,$0020,$001F,$001D,$001B,
-  $001A,$0018,$0017,$0016,$0014,$0013,$0012,$0011,$0010,$000F,$000E,$000D);
-
 {Table #3 of Pro Tracker 3.4x - 3.5x}
- T335:PT3ToneTable = (
-  $0CDA,$0C22,$0B73,$0ACF,$0A33,$09A1,$0917,$0894,$0819,$07A4,$0737,$06CF,
-  $066D,$0611,$05BA,$0567,$051A,$04D0,$048B,$044A,$040C,$03D2,$039B,$0367,
-  $0337,$0308,$02DD,$02B4,$028D,$0268,$0246,$0225,$0206,$01E9,$01CE,$01B4,
-  $019B,$0184,$016E,$015A,$0146,$0134,$0123,$0112,$0103,$00F5,$00E7,$00DA,
-  $00CE,$00C2,$00B7,$00AD,$00A3,$009A,$0091,$0089,$0082,$007A,$0073,$006D,
-  $0067,$0061,$005C,$0056,$0052,$004D,$0049,$0045,$0041,$003D,$003A,$0036,
-  $0033,$0031,$002E,$002B,$0029,$0027,$0024,$0022,$0020,$001F,$001D,$001B,
-  $001A,$0018,$0017,$0016,$0014,$0013,$0012,$0011,$0010,$000F,$000E,$000D);
-
 {Volume table of Pro Tracker 3.3x - 3.4x}
- V34:PT3VolTable = (
-  ($00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00),
-  ($00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01,$01,$01,$01,$01,$01),
-  ($00,$00,$00,$00,$00,$00,$01,$01,$01,$01,$01,$02,$02,$02,$02,$02),
-  ($00,$00,$00,$00,$01,$01,$01,$01,$02,$02,$02,$02,$03,$03,$03,$03),
-  ($00,$00,$00,$00,$01,$01,$01,$02,$02,$02,$03,$03,$03,$04,$04,$04),
-  ($00,$00,$00,$01,$01,$01,$02,$02,$03,$03,$03,$04,$04,$04,$05,$05),
-  ($00,$00,$00,$01,$01,$02,$02,$03,$03,$03,$04,$04,$05,$05,$06,$06),
-  ($00,$00,$01,$01,$02,$02,$03,$03,$04,$04,$05,$05,$06,$06,$07,$07),
-  ($00,$00,$01,$01,$02,$02,$03,$03,$04,$05,$05,$06,$06,$07,$07,$08),
-  ($00,$00,$01,$01,$02,$03,$03,$04,$05,$05,$06,$06,$07,$08,$08,$09),
-  ($00,$00,$01,$02,$02,$03,$04,$04,$05,$06,$06,$07,$08,$08,$09,$0A),
-  ($00,$00,$01,$02,$03,$03,$04,$05,$06,$06,$07,$08,$09,$09,$0A,$0B),
-  ($00,$00,$01,$02,$03,$04,$04,$05,$06,$07,$08,$08,$09,$0A,$0B,$0C),
-  ($00,$00,$01,$02,$03,$04,$05,$06,$07,$07,$08,$09,$0A,$0B,$0C,$0D),
-  ($00,$00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0A,$0B,$0C,$0D,$0E),
-  ($00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0A,$0B,$0C,$0D,$0E,$0F));
-
 {Volume table of Pro Tracker 3.5x}
- V35:PT3VolTable = (
-  ($00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00),
-  ($00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01,$01,$01,$01,$01,$01),
-  ($00,$00,$00,$00,$01,$01,$01,$01,$01,$01,$01,$01,$02,$02,$02,$02),
-  ($00,$00,$00,$01,$01,$01,$01,$01,$02,$02,$02,$02,$02,$03,$03,$03),
-  ($00,$00,$01,$01,$01,$01,$02,$02,$02,$02,$03,$03,$03,$03,$04,$04),
-  ($00,$00,$01,$01,$01,$02,$02,$02,$03,$03,$03,$04,$04,$04,$05,$05),
-  ($00,$00,$01,$01,$02,$02,$02,$03,$03,$04,$04,$04,$05,$05,$06,$06),
-  ($00,$00,$01,$01,$02,$02,$03,$03,$04,$04,$05,$05,$06,$06,$07,$07),
-  ($00,$01,$01,$02,$02,$03,$03,$04,$04,$05,$05,$06,$06,$07,$07,$08),
-  ($00,$01,$01,$02,$02,$03,$04,$04,$05,$05,$06,$07,$07,$08,$08,$09),
-  ($00,$01,$01,$02,$03,$03,$04,$05,$05,$06,$07,$07,$08,$09,$09,$0A),
-  ($00,$01,$01,$02,$03,$04,$04,$05,$06,$07,$07,$08,$09,$0A,$0A,$0B),
-  ($00,$01,$02,$02,$03,$04,$05,$06,$06,$07,$08,$09,$0A,$0A,$0B,$0C),
-  ($00,$01,$02,$03,$03,$04,$05,$06,$07,$08,$09,$0A,$0A,$0B,$0C,$0D),
-  ($00,$01,$02,$03,$04,$05,$06,$07,$07,$08,$09,$0A,$0B,$0C,$0D,$0E),
-  ($00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0A,$0B,$0C,$0D,$0E,$0F));
+
+ //first 12 values of tone tables (packed)
+ T_PACK1:array[0..53] of byte =
+ ($06EC*2 div 256,$06EC*2 mod 256,
+  $0755-$06EC,
+  $07C5-$0755,
+  $083B-$07C5,
+  $08B8-$083B,
+  $093D-$08B8,
+  $09CA-$093D,
+  $0A5F-$09CA,
+  $0AFC-$0A5F,
+  $0BA4-$0AFC,
+  $0C55-$0BA4,
+  $0D10-$0C55,
+  $066D*2 div 256,$066D*2 mod 256,
+  $06CF-$066D,
+  $0737-$06CF,
+  $07A4-$0737,
+  $0819-$07A4,
+  $0894-$0819,
+  $0917-$0894,
+  $09A1-$0917,
+  $0A33-$09A1,
+  $0ACF-$0A33,
+  $0B73-$0ACF,
+  $0C22-$0B73,
+  $0CDA-$0C22,
+  $0704*2 div 256,$0704*2 mod 256,
+  $076E-$0704,
+  $07E0-$076E,
+  $0858-$07E0,
+  $08D6-$0858,
+  $095C-$08D6,
+  $09EC-$095C,
+  $0A82-$09EC,
+  $0B22-$0A82,
+  $0BCC-$0B22,
+  $0C80-$0BCC,
+  $0D3E-$0C80,
+  $07E0*2 div 256,$07E0*2 mod 256,
+  $0858-$07E0,
+  $08E0-$0858,
+  $0960-$08E0,
+  $09F0-$0960,
+  $0A88-$09F0,
+  $0B28-$0A88,
+  $0BD8-$0B28,
+  $0C80-$0BD8,
+  $0D60-$0C80,
+  $0E10-$0D60,
+  $0EF8-$0E10,
+  0{Dummy});
+
+ //tone tables corrections
+ TCOLD_0 = 0;
+ TCOLD_1 = 12;
+ TCOLD_2 = 14;
+ TCOLD_3 = 33;
+ TCNEW_0 = 42;
+ TCNEW_1 = TCOLD_1;
+ TCNEW_2 = 53;
+ TCNEW_3 = 32;
+ TC1:array[0..65] of byte =
+ ($00+1,$04+1,$08+1,$0A+1,$0C+1,$0E+1,$12+1,$14+1,
+  $18+1,$24+1,$3C+1,0,
+  $5C+1,0,
+  $30+1,$36+1,$4C+1,$52+1,$5E+1,$70+1,$82,$8C,$9C,
+  $9E,$A0,$A6,$A8,$AA,$AC,$AE,$AE,0,
+  $56+1,
+  $1E+1,$22+1,$24+1,$28+1,$2C+1,$2E+1,$32+1,$BE+1,0,
+  $1C+1,$20+1,$22+1,$26+1,$2A+1,$2C+1,$30+1,$54+1,
+  $BC+1,$BE+1,0,
+  $1A+1,$20+1,$24+1,$28+1,$2A+1,$3A+1,$4C+1,$5E+1,
+  $BA+1,$BC+1,$BE+1,0,
+  0{Dummy});
+
+ //first 12 values of tone tables (depacked structure)
+ T_OLD_1 = 0;
+ T_OLD_2 = T_OLD_1+24;
+ T_OLD_3 = T_OLD_2+24;
+ T_OLD_0 = T_OLD_3+2;
+ T_NEW_0 = T_OLD_0;
+ T_NEW_1 = T_OLD_1;
+ T_NEW_2 = T_NEW_0+24;
+ T_NEW_3 = T_OLD_3;
+
+ NT_DATA1:array[0..7,0..1]of byte =
+ ((T_NEW_0,TCNEW_0),
+  (T_OLD_0+1,TCOLD_0),
+  (T_NEW_1+1,TCNEW_1),
+  (T_OLD_1+1,TCOLD_1),
+  (T_NEW_2,TCNEW_2),
+  (T_OLD_2,TCOLD_2),
+  (T_NEW_3,TCNEW_3),
+  (T_OLD_3,TCOLD_3));
 
 var
  PVars:^TPlVars;
@@ -241,12 +237,12 @@ with PVars^ do
   for i := 0 to 12 do
    begin
     BytePtr($FF8800)^ := i;
-    BytePtr($FF8802)^ := RegAY.Index[i]
+    BytePtr($FF8802)^ := VT_.R.Index[i]
    end;
-  if shortint(RegAY.EnvType) <> -1 then
+  if shortint(VT_.R.EnvType) <> -1 then
    begin
     BytePtr($FF8800)^ := 13;
-    BytePtr($FF8802)^ := RegAY.EnvType
+    BytePtr($FF8802)^ := VT_.R.EnvType
    end
  end
 end;
@@ -263,27 +259,104 @@ end;
 
 procedure PT3Init;
 var
- i:integer;
- wp:word;
+ i,j,k,l,m:integer;
+ a:byte;
+ w:word;
+ fl:boolean;
 begin
 with PVars^ do
  begin
-   with PT3,RAM do
+
+  for i := 0 to sizeof(VT_) + sizeof(NT_) + sizeof(PT3) + sizeof(PT3_A)*3 - 1 do
+   VT_.V[i] := 0;
+     (*256{vt} + 192{nt} + 16{pt3} + 48*3{pt3_a+pt3_b+pt3_c}*)
+
+  //note table data depacker
+  i := 0; j := 49-1;
+  repeat
+  a := T_PACK[i]; inc(i);
+  if a < 15*2 then
+   begin
+    w := word(a) shl 8 + T_PACK[i]; inc(i);
+   end
+  else
+   inc(w,a + a);
+  VT_.TT[j] := w; dec(j);
+  until j < 0;
+
+  with PT3,RAM do
     begin
      PT3_Version := 6;
      if (Index[13] >= $30) and (Index[13] <= $39) then
       PT3_Version := Index[13] - $30;
+
+     //NoteTableCreator (c) Ivan Roshin
+     //A - NoteTableNumber*2+VersionForNoteTable
+     //(xx1b - 3.xx..3.4r, xx0b - 3.4x..3.6x..VTII1.0)
+     a := (PT3_TonTableId shl 1) and 7;
+     if PT3_Version < 4 then inc(a);
+
+     j := NT_DATA[a,0];
+     fl := (j and 1) <> 0;
+     j := j shr 1;
+     for i := 0 to 11 do
+      begin
+       w := VT_.TT[j]; inc(j);
+       l := i;
+       for k := 0 to 7 do
+        begin
+         m := Ord(not fl and ((w and 1) <> 0));
+         w := w shr 1;
+         NT_[l] := w + m;
+         inc(l,12);
+        end;
+      end;
+
+     j := NT_DATA[a,1];
+     if j = TCOLD_1 then NT_[23] := $3FD;
+     repeat
+     i := TC[j]; if i = 0 then break;
+     if i and 1 <> 0 then
+      dec(NT_[i shr 1])
+     else
+      inc(NT_[i shr 1]);
+     inc(j);
+     until False;
+
+     //VolTableCreator (c) Ivan Roshin
+     //VersionForVolumeTable (0..4 - 3.xx..3.4x; 5.. - 3.5x..3.6x..VTII1.0)
+
+     w := 0;
+     i := $11;
+     fl := PT3_Version >= 5;
+     if not fl then
+      begin
+       w := $10;
+       i := $10;
+      end;
+
+     j := 16;
+     repeat
+      inc(w,i);
+      l := 0;
+      repeat
+       k := l shr 8;
+       if fl and ((l and 128) <> 0) then inc(k);
+       VT_.V[j] := k;
+       inc(l,w);
+       inc(j)
+      until (j and 15) = 0;
+      if (w and 255) = $77 then inc(w);
+     until j = 256;
+
+
      DelayCounter := 1;
      Delay := PT3_Delay;
-     CurrentPosition := 0;
-     Noise_Base := 0;
-     AddToNoise := 0;
-     Env_Base := 0;
      PatPtr := MW(Index[103],Index[104]);
-     wp := PatPtr + PT3_PositionList[0] * 2;
-     PT3_A.Address_In_Pattern := MW(Index[wp + 0],Index[wp + 1]);
-     PT3_B.Address_In_Pattern := MW(Index[wp + 2],Index[wp + 3]);
-     PT3_C.Address_In_Pattern := MW(Index[wp + 4],Index[wp + 5])
+     w := PatPtr + PT3_PositionList[0] * 2;
+     PT3_A.Address_In_Pattern := MW(Index[w + 0],Index[w + 1]);
+     PT3_B.Address_In_Pattern := MW(Index[w + 2],Index[w + 3]);
+     PT3_C.Address_In_Pattern := MW(Index[w + 4],Index[w + 5])
     end;
 
    with PT3_A,RAM do
@@ -299,12 +372,7 @@ with PVars^ do
      Sample_Length := Index[SamplePointer];
      inc(SamplePointer);
      Volume := 15;
-     Current_Ton_Sliding := 0;
      Note_Skip_Counter := 1;
-     Enabled := False;
-     Envelope_Enabled := False;
-     Note := 0;
-     Ton := 0
     end;
 
    with PT3_B do
@@ -316,12 +384,7 @@ with PVars^ do
      Loop_Sample_Position := PT3_A.Loop_Sample_Position;
      Sample_Length := PT3_A.Sample_Length;
      Volume := 15;
-     Current_Ton_Sliding := 0;
      Note_Skip_Counter := 1;
-     Enabled := False;
-     Envelope_Enabled := False;
-     Note := 0;
-     Ton := 0
     end;
 
    with PT3_C do
@@ -333,15 +396,8 @@ with PVars^ do
      Loop_Sample_Position := PT3_A.Loop_Sample_Position;
      Sample_Length := PT3_A.Sample_Length;
      Volume := 15;
-     Current_Ton_Sliding := 0;
      Note_Skip_Counter := 1;
-     Enabled := False;
-     Envelope_Enabled := False;
-     Note := 0;
-     Ton := 0
     end;
-
-   for i := 0 to 13 do RegAY.Index[i] := 0
 
  end;
 
@@ -350,26 +406,6 @@ ROut
 end;
 
 procedure Pl;
-
- function Nt(j:integer):integer;
- begin
-  with PVars^ do
-   case RAM.PT3_TonTableId of
-   0:if PT3.PT3_Version <= 3 then
-      Result := Tb.T1[j]
-     else
-      Result := Tb.T2[j];
-   1:Result := Tb.T3[j];
-   2:if PT3.PT3_Version <= 3 then
-      Result := Tb.T4[j]
-     else
-      Result := Tb.T5[j];
-   else if PT3.PT3_Version <= 3 then
-         Result := Tb.T6[j]
-        else
-         Result := Tb.T7[j]
-   end
- end;
 
  procedure P(var Chan:PT3_Channel_Parameters);
  var
@@ -439,12 +475,12 @@ procedure Pl;
      $b2..$bf:
        begin
         Envelope_Enabled := True;
-        RegAY.EnvType := Index[Address_In_Pattern] - $b1;
+        VT_.R.EnvType := Index[Address_In_Pattern] - $b1;
         Inc(Address_In_Pattern);
         with PT3 do
          begin
           {not big-endian}
-          Env_Base := MW(Index[Address_In_Pattern + 1],Index[Address_In_Pattern]);
+          VT_.Env_Base := MW(Index[Address_In_Pattern + 1],Index[Address_In_Pattern]);
           Inc(Address_In_Pattern);
           Position_In_Ornament := 0;
           Cur_Env_Slide := 0;
@@ -494,12 +530,12 @@ procedure Pl;
          Envelope_Enabled := False
         else
          begin
-          RegAY.EnvType := Index[Address_In_Pattern] - $10;
+          VT_.R.EnvType := Index[Address_In_Pattern] - $10;
           Inc(Address_In_Pattern);
           with PT3 do
            begin
             {not big-endian}
-            Env_Base := MW(Index[Address_In_Pattern + 1],Index[Address_In_Pattern]);
+            VT_.Env_Base := MW(Index[Address_In_Pattern + 1],Index[Address_In_Pattern]);
             Inc(Address_In_Pattern);
             Envelope_Enabled := True;
             Cur_Env_Slide := 0;
@@ -574,7 +610,7 @@ procedure Pl;
         Inc(Address_In_Pattern,3);
         Ton_Slide_Step := Abs(integer(MW(Index[Address_In_Pattern],Index[Address_In_Pattern + 1])));
         Inc(Address_In_Pattern,2);
-        Ton_Delta := Nt(Note) - Nt(PrNote);
+        Ton_Delta := NT_[Note] - NT_[PrNote];
         Slide_To_Note := Note;
         Note := PrNote;
         if PT3.PT3_Version >= 6 then
@@ -648,7 +684,7 @@ var
       j := Note + Index[OrnamentPointer + Position_In_Ornament];
       if shortint(j) < 0 then j := 0
       else if j > 95 then j := 95;
-      w := Nt(j);
+      w := NT_[j];
       Ton := (Ton + Current_Ton_Sliding + w) and $fff;
       if Ton_Slide_Count > 0 then
        begin
@@ -679,10 +715,7 @@ var
       inc(Amplitude,Current_Amplitude_Sliding);
       if shortint(Amplitude) < 0 then Amplitude := 0
       else if Amplitude > 15 then Amplitude := 15;
-      if PT3.PT3_Version <= 4 then
-       Amplitude := Tb.V1[Volume,Amplitude]
-      else
-       Amplitude := Tb.V2[Volume,Amplitude];
+      Amplitude := VT_.VT[Volume,Amplitude];
       if (b0 and 1 = 0) and Envelope_Enabled then
        Amplitude := Amplitude or 16;
       if b1 and $80 <> 0 then
@@ -731,7 +764,7 @@ begin
 with PVars^ do
 begin
 
-shortint(RegAY.EnvType) := -1;
+shortint(VT_.R.EnvType) := -1;
 with PT3 do
  begin
   Dec(DelayCounter);
@@ -778,21 +811,21 @@ with PT3 do
   C(PT3_B);
   C(PT3_C);
 
-  RegAY.Mixer := TempMixer;
+  VT_.R.Mixer := TempMixer;
 
-  RegAY.TonA := IW(PT3_A.Ton);
-  RegAY.TonB := IW(PT3_B.Ton);
-  RegAY.TonC := IW(PT3_C.Ton);
+  VT_.R.TonA := IW(PT3_A.Ton);
+  VT_.R.TonB := IW(PT3_B.Ton);
+  VT_.R.TonC := IW(PT3_C.Ton);
 
-  RegAY.AmplitudeA := PT3_A.Amplitude;
-  RegAY.AmplitudeB := PT3_B.Amplitude;
-  RegAY.AmplitudeC := PT3_C.Amplitude;
+  VT_.R.AmplitudeA := PT3_A.Amplitude;
+  VT_.R.AmplitudeB := PT3_B.Amplitude;
+  VT_.R.AmplitudeC := PT3_C.Amplitude;
 
-  RegAY.Noise := (Noise_Base + AddToNoise) and 31;
+  VT_.R.Noise := (Noise_Base + AddToNoise) and 31;
 
-  wp := Env_Base + AddToEnv + Cur_Env_Slide;
-  RegAY.EnvelopeL := wp;
-  RegAY.EnvelopeH := wp shr 8;
+  wp := VT_.Env_Base + AddToEnv + Cur_Env_Slide;
+  VT_.R.EnvelopeL := wp;
+  VT_.R.EnvelopeH := wp shr 8;
 
   if Cur_Env_Delay > 0 then
    begin

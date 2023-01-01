@@ -1,6 +1,6 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2005 S.V.Bulba
+(c)2000-2006 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/
@@ -18,7 +18,7 @@ type
 
 const
  NumberOfBuffersDef = 3;
- BufLen_msDef = 726;
+ BufLen_msDef = 100;//726;
  WODevice:DWORD = WAVE_MAPPER;
 
 var
@@ -44,7 +44,7 @@ procedure StartWOThread;
 procedure WOThreadFinalization;
 procedure StopPlaying;
 procedure WOCheck(Res:MMRESULT);
-procedure ResetAYChipEmulation;
+procedure ResetAYChipEmulation(chip:integer);
 function WOThreadActive:boolean;
 procedure ResetPlaying;
 procedure UnresetPlaying;
@@ -189,7 +189,7 @@ try
 repeat
  WaitForSingleObject(ResetMutex,INFINITE);
  mut := True;
- if not Real_End then
+ if not Real_End_All then
   begin
    for i := 0 to NumberOfBuffers - 1 do
     with waveOutBuffers[i] do
@@ -219,7 +219,7 @@ repeat
        end
      end
   end;
- if Real_End and not Reseted and AllBuffersDone then break;
+ if Real_End_All and not Reseted and AllBuffersDone then break;
  mut := False;
  ReleaseMutex(ResetMutex);
  if not IsPlaying then break;
@@ -317,46 +317,59 @@ end;
 
 procedure ResetAYChipEmulation;
 begin
-FillChar(AYRegisters,14,0);
-SetEnvelopeRegister(0);
-First_Period := False;
-Ampl := 0;
-SetMixerRegister(0);
-SetAmplA(0);
-SetAmplB(0);
-SetAmplC(0);
-IntFlag := False;
-Number_Of_Tiks.Re := 0;
-Current_Tik := 0;
-Envelope_Counter.Re := 0;
-Ton_Counter_A.Re := 0;
-Ton_Counter_B.Re := 0;
-Ton_Counter_C.Re := 0;
-Noise_Counter.Re := 0;
-Ton_A := 0;
-Ton_B := 0;
-Ton_C := 0;
-Left_Chan := 0; Right_Chan := 0; Tick_Counter := 0;
-Tik.Re := Delay_In_Tiks;
-Noise.Seed := $ffff;
-Noise.Val := 0
+ with SoundChip[chip] do
+  begin
+    FillChar(AYRegisters,14,0);
+    SetEnvelopeRegister(0);
+    First_Period := False;
+    Ampl := 0;
+    SetMixerRegister(0);
+    SetAmplA(0);
+    SetAmplB(0);
+    SetAmplC(0);
+    IntFlag := False;
+    Number_Of_Tiks.Re := 0;
+    Current_Tik := 0;
+    Envelope_Counter.Re := 0;
+    Ton_Counter_A.Re := 0;
+    Ton_Counter_B.Re := 0;
+    Ton_Counter_C.Re := 0;
+    Noise_Counter.Re := 0;
+    Ton_A := 0;
+    Ton_B := 0;
+    Ton_C := 0;
+    Left_Chan := 0; Right_Chan := 0; Tick_Counter := 0;
+    Tik.Re := Delay_In_Tiks;
+    Noise.Seed := $ffff;
+    Noise.Val := 0
+  end
 end;
 
 procedure InitForAllTypes;
+var
+ i:integer;
 begin
 LineReady := False;
 MkVisPos := 0;
 VisPoint := 0;
 NOfTicks := 0;
-ResetAYChipEmulation;
-Real_End := False;
+for i := 1 to NumberOfSoundChips do
+ begin
+  ResetAYChipEmulation(i);
+  Real_End[i] := False
+ end; 
+Real_End_All := False;
 if Optimization_For_Quality and IsFilt then
  begin
   FillChar(Filt_XL[0],(Filt_M + 1) * 4,0);
   FillChar(Filt_XR[0],(Filt_M + 1) * 4,0);
   Filt_I := 0
  end;
-InitTrackerParameters(All)
+for i := NumberOfSoundChips downto 1 do
+ begin
+  Module_SetPointer(PlayingWindow[i].VTMP,i);
+  InitTrackerParameters(All)
+ end;
 end;
 
 function WOThreadActive;
