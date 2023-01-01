@@ -3495,7 +3495,7 @@ var
   STCFile:
    STC2VTM(@ZXP,i,VTMP);
   ST1File:
-   ST12VTM(@ZXP,i,VTMP);
+   ST12VTM(@ZXP,i,SongN,AuthN,VTMP);
   ST3File:
    ST32VTM(@ZXP,i,VTMP);
   STPFile:
@@ -4291,6 +4291,8 @@ procedure TMDIChild.UpDown3ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
 AllowChange := NewValue in [1..255];
 if AllowChange then
  SetInitDelay(NewValue);
@@ -4300,6 +4302,8 @@ procedure TMDIChild.UpDown4ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
 AllowChange := NewValue in [0..3];
 if AllowChange and (VTMP^.Ton_Table <> NewValue) then
  begin
@@ -4334,6 +4338,8 @@ procedure TMDIChild.UpDown5ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
 AllowChange := (NewValue > 0) and (NewValue <= MaxPatLen);
 if AllowChange then
  ChangePatternLength(NewValue);
@@ -4537,6 +4543,8 @@ procedure TMDIChild.UpDown6ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
 AllowChange := NewValue in [1..31];
 if AllowChange then
  ChangeSample(NewValue);
@@ -4552,6 +4560,8 @@ procedure TMDIChild.UpDown7ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
 AllowChange := NewValue in [1..MaxSamLen];
 if AllowChange then
  ChangeSampleLength(NewValue);
@@ -4792,6 +4802,8 @@ procedure TMDIChild.UpDown8ChangingEx(Sender: TObject;
 var
  l:integer;
 begin
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
 if VTMP^.Samples[SamNum] = nil then
  l := 1
 else
@@ -4915,6 +4927,8 @@ procedure TMDIChild.UpDown9ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
 AllowChange := NewValue in [1..15];
 if AllowChange then
  ChangeOrnament(NewValue);
@@ -4937,6 +4951,8 @@ procedure TMDIChild.UpDown10ChangingEx(Sender: TObject;
 var
  l:integer;
 begin
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
 if VTMP^.Ornaments[OrnNum] = nil then
  l := 1
 else
@@ -4956,6 +4972,8 @@ procedure TMDIChild.UpDown11ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
 AllowChange := NewValue in [1..MaxOrnLen];
 if AllowChange then ChangeOrnamentLength(NewValue);
 end;
@@ -5243,7 +5261,7 @@ end;
 procedure TMDIChild.ToggleAutoStep;
 begin
 AutoStep := not AutoStep;
-SpeedButton22.Down := AutoStep
+SpeedButton22.Down := AutoStep;
 end;
 
 procedure TMDIChild.SpeedButton22Click(Sender: TObject);
@@ -5255,7 +5273,9 @@ procedure TMDIChild.UpDown13ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
-AllowChange := NewValue in [1..15]
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
+AllowChange := NewValue in [1..15];
 end;
 
 procedure TMDIChild.Edit15Exit(Sender: TObject);
@@ -5296,7 +5316,9 @@ procedure TMDIChild.UpDown14ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
-AllowChange := NewValue in [1..31]
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
+AllowChange := NewValue in [1..31];
 end;
 
 procedure TMDIChild.CopySamButClick(Sender: TObject);
@@ -5800,6 +5822,8 @@ procedure TMDIChild.UpDown15ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
+//called only if user clicked arrows or pressed up/down keys
+//and not called if set programmically
 AllowChange := (NewValue >= 0) and (NewValue <= MaxPatLen);
 if AllowChange then ChangeHLStep(NewValue);
 end;
@@ -5824,7 +5848,10 @@ else if PLen mod 3 = 0 then
 else
  NS := 4;
 if NS <> Tracks.HLStep then
- UpDown15.Position := NS;
+ begin
+  ChangeHLStep(NS);
+  UpDown15.Position := NS;
+ end;
 end;
 
 procedure TMDIChild.Edit17Exit(Sender: TObject);

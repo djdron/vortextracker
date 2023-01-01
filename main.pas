@@ -37,7 +37,7 @@ const
 //Version related constants
  VersionString = '1.0';
  IsBeta = ' beta';
- BetaNumber = ' 20';
+ BetaNumber = ' 21';
 
  FullVersString:string = 'Vortex Tracker II v' + VersionString + IsBeta + BetaNumber;
  HalfVersString:string = 'Version ' + VersionString + IsBeta + BetaNumber;
@@ -485,9 +485,23 @@ begin
    begin
     OpenDialog.InitialDir := ExtractFilePath(OpenDialog.FileName);
     i := OpenDialog.Files.Count - 1;
+    //better to limit number per one open, this is just editor, not player with playlist
+    //and too much resources are alocated for each window
     if i > 16 then i := 16;
-    for i := i downto 0 do CreateMDIChild(OpenDialog.Files.Strings[i])
-   end
+    //reverse order?
+//    for i := i downto 0 do CreateMDIChild(OpenDialog.Files.Strings[i]);
+    //maybe better reorder after creation (not work in LCL for the moment)
+{    k := 0;
+    for i := 0 to i do
+     begin
+      j := MDIChildCount;
+      CreateMDIChild(OpenDialog.Files.Strings[i]);
+      Inc(k,MDIChildCount-j);
+     end;
+    for i := 1 to k-1 do
+     Previous;}
+    for i := 0 to i do CreateMDIChild(OpenDialog.Files.Strings[i]);
+   end;
 end;
 
 procedure TMainForm.FormClose(Sender: TObject; var CloseAction: TCloseAction);

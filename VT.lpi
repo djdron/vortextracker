@@ -22,9 +22,9 @@
       <UseVersionInfo Value="True"/>
       <AutoIncrementBuild Value="True"/>
       <MajorVersionNr Value="1"/>
-      <RevisionNr Value="20"/>
-      <BuildNr Value="314"/>
-      <StringTable CompanyName="Sergey Bulba" FileDescription="ZX Spectrum YM2149F/AY-3-8910/12 Music Editor" InternalName="VT" LegalCopyright="(c)2000-2022 S.V.Bulba" OriginalFilename="VT.exe" ProductName="Vortex Tracker II" ProductVersion="1.0 beta 20"/>
+      <RevisionNr Value="21"/>
+      <BuildNr Value="35"/>
+      <StringTable CompanyName="Sergey Bulba" FileDescription="ZX Spectrum YM2149F/AY-3-8910/12 Music Editor" InternalName="VT" LegalCopyright="(c)2000-2022 S.V.Bulba" OriginalFilename="VT.exe" ProductName="Vortex Tracker II" ProductVersion="1.0 beta 21"/>
     </VersionInfo>
     <BuildModes>
       <Item Name="Debug" Default="True"/>
@@ -45,6 +45,7 @@
           <Linking>
             <Debugging>
               <GenerateDebugInfo Value="False"/>
+              <DebugInfoType Value="dsDwarf2Set"/>
             </Debugging>
             <LinkSmart Value="True"/>
             <Options>
@@ -193,7 +194,7 @@
     </SearchPaths>
     <Linking>
       <Debugging>
-        <DebugInfoType Value="dsDwarf3"/>
+        <DebugInfoType Value="dsDwarf2"/>
       </Debugging>
       <Options>
         <Win32>

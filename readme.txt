@@ -1,4 +1,4 @@
-Vortex Tracker II v1.0 beta 20
+Vortex Tracker II v1.0 beta 21
 (c)2000-2022 S.V.Bulba
 Author Sergey Bulba
 E-mail: svbulba@gmail.com
@@ -33,7 +33,7 @@ Vortex Tracker II can import ZX Spectrum music files (modules) of next types:
  8) compiled  Pro Sound Maker modules (*.psm);
  9) compiled ASC Sound Master 0.xx modules (*.as0);
  10) compiled ASC Sound Master 1.xx modules (*.asc);
- 11) uncompiled Sound Tracker modules (*.st1);
+ 11) uncompiled Sound Tracker modules (*.st1, *.ay);
  12) compiled Sound Tracker and Super Sonic modules (*.stc);
  13) compiled Sound Tracker 3 (*.st3);
  14) uncompiled Sound Tracker Pro modules (*.stf);
@@ -91,29 +91,37 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-06/17/2022:
+06/21/2022:
 
-1.Text module loader slightly extended to load Ivan Pirog's vt2, vtp, vts and vto.
+1. Fixed old error in FTC import: sample length could exceed maximum for PT3,
+   but was no checking (see "Joe of DR\Binary Love 1.ftc" module).
 
-06/16/2022:
+06/22/2022:
 
-1. Windows 9x is not supported now.
-2. Bug fix: right length in hobeta header for non-TS module without player (was
-   16 bytes bigger).
-3. Digital sound engine changed to Ay_Emul 2.9 beta 31's.
-4. More perfect AY emulation engine from Ay_Emul 2.9 beta 31.
-5. Options are stored in VT.cfg now (like Ay_Emul in home folder of current
-   user, or in VT executable folder, if you move it or create empty yourself).
-6. STC loader can extract author' strings from 'KSA SOFTWARE COMPILATION OF '
-   and 'SOUND TRACKER COMPILATION OF ', insterted in Ay_Emul methodic.
-7. Added import of uncompiled Sound Tracker 1.xx (ST1 file extension).
-8. Added import of compiled Sound Tracker 3 (ST3 file extension).
-9. Added import of uncompiled Sound Tracker Pro (STF file extension).
-10.Added import of compiled ASC Sound Master 0 (AS0 file extension).
-11.TS-module's windows are aligned after opening even if other modules was
-   loaded bedore.
-12.In windows loop play mode added checking if TS-pair to skip replaying twice.
-13.If TS-window playing starts, linked TS-window brings to foreground now.
+2. Fixed old error in FTC import: musician could point noise in special command
+   out of 5-bit range (00..1F), import takes low 5 bits now.
+
+06/23/2022:
+
+3. Atari ST (export to SNDH) player can play PT 3.7 modules with special
+   commands 1.xx and 2.xx now.
+4. Added Fast Tracker 1.07 and 1.08 modules import (can be one of two note
+   tables (1 or 2) now, and also for 1.08+ Retrig special command is imported
+   as R11R12R13 doublicates in corresponding channel.
+5. FTC ornament set import is improved: all single ornaments are not prefixed
+   by Envelope Off command now, excepting zero (empty) one.
+
+06/24/2022:
+
+6. Reverse loading order is removed if opening several modules at once.
+7. Tn, Ns and En buttons in module window was renamed to T, N and E
+   correspondingly.
+
+07/02/2022:
+
+8. Added .AY type ZXAYST11 (ST1 analog) import.
+9. Delphi->Lazarus fix: in beta 20 tracks redrawer ignores highlight step
+   changing in "Auto" mode.
 
 Known problems
 --------------
@@ -677,4 +685,4 @@ somewhere in your projects, where you include all or part of the sources and
 
 Sergey Bulba
 
-24 of August 2002 - 19 of June 2022
+24 of August 2002 - 2 of July 2022

@@ -25,8 +25,8 @@ uses
   TglSams {ToglSams},
   Config, WinVersion, Languages, digsound, digsoundcode, AY;
 
-{$R SNDH\SNDH.RES}
-{$R ZXAYHOBETA\ZX.RES}
+{$R SNDH\SNDH.RC}
+{$R ZXAYHOBETA\ZX.RC}
 {$R *.res}
 
 begin

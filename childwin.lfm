@@ -143,7 +143,7 @@ object MDIChild: TMDIChild
           Top = 18
           Width = 17
           AllowAllUp = True
-          Caption = 'En'
+          Caption = 'E'
           Down = True
           GroupIndex = 3
           OnClick = SpeedButton4Click
@@ -155,7 +155,7 @@ object MDIChild: TMDIChild
           Top = 18
           Width = 17
           AllowAllUp = True
-          Caption = 'En'
+          Caption = 'E'
           Down = True
           GroupIndex = 6
           OnClick = SpeedButton8Click
@@ -167,7 +167,7 @@ object MDIChild: TMDIChild
           Top = 18
           Width = 17
           AllowAllUp = True
-          Caption = 'En'
+          Caption = 'E'
           Down = True
           GroupIndex = 9
           OnClick = SpeedButton12Click
@@ -179,7 +179,7 @@ object MDIChild: TMDIChild
           Top = 18
           Width = 17
           AllowAllUp = True
-          Caption = 'Ns'
+          Caption = 'N'
           Down = True
           GroupIndex = 5
           OnClick = SpeedButton7Click
@@ -191,7 +191,7 @@ object MDIChild: TMDIChild
           Top = 18
           Width = 17
           AllowAllUp = True
-          Caption = 'Tn'
+          Caption = 'T'
           Down = True
           GroupIndex = 4
           OnClick = SpeedButton6Click
@@ -203,7 +203,7 @@ object MDIChild: TMDIChild
           Top = 18
           Width = 17
           AllowAllUp = True
-          Caption = 'Ns'
+          Caption = 'N'
           Down = True
           GroupIndex = 8
           OnClick = SpeedButton11Click
@@ -215,7 +215,7 @@ object MDIChild: TMDIChild
           Top = 18
           Width = 17
           AllowAllUp = True
-          Caption = 'Tn'
+          Caption = 'T'
           Down = True
           GroupIndex = 7
           OnClick = SpeedButton10Click
@@ -227,7 +227,7 @@ object MDIChild: TMDIChild
           Top = 18
           Width = 17
           AllowAllUp = True
-          Caption = 'Ns'
+          Caption = 'N'
           Down = True
           GroupIndex = 2
           OnClick = SpeedButton3Click
@@ -239,7 +239,7 @@ object MDIChild: TMDIChild
           Top = 18
           Width = 17
           AllowAllUp = True
-          Caption = 'Tn'
+          Caption = 'T'
           Down = True
           GroupIndex = 1
           OnClick = SpeedButton2Click

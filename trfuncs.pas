@@ -446,7 +446,8 @@ function LoadModuleFromText(FN:string;VTM1:PModule;var VTM2:PModule):integer;
 function PT22VTM(PT2:PSpeccyModule;VTM:PModule):boolean;
 function PT12VTM(PT1:PSpeccyModule;VTM:PModule):boolean;
 function STC2VTM(STC:PSpeccyModule;FSize:integer;VTM:PModule):boolean;
-function ST12VTM(ST1:PSpeccyModule;FSize:integer;VTM:PModule):boolean;
+function ST12VTM(ST1:PSpeccyModule;FSize:integer;
+                   const SongN,AuthN:string;VTM:PModule):boolean;
 function ST32VTM(ST3:PSpeccyModule;FSize:integer;VTM:PModule):boolean;
 function STP2VTM(STP:PSpeccyModule;VTM:PModule):boolean;
 function STF2VTM(STF:PSpeccyModule;FSize:integer;VTM:PModule):boolean;
@@ -458,7 +459,7 @@ function FLS2VTM(FLS:PSpeccyModule;VTM:PModule):boolean;
 function GTR2VTM(GTR:PSpeccyModule;VTM:PModule):boolean;
 function FTC2VTM(FTC:PSpeccyModule;VTM:PModule):boolean;
 function FXM2VTM(FXM:PSpeccyModule;ZXAddr,Tm,amad_andsix:integer;
-                  SongN,AuthN:string;VTM:PModule):boolean;
+                  const SongN,AuthN:string;VTM:PModule):boolean;
 function PSM2VTM(PSM:PSpeccyModule;VTM:PModule):boolean;
 
 function IntsToTime(i:integer):string;
@@ -1254,7 +1255,7 @@ for i := 1 to Length(s) do
  begin
   case s[i] of
   '.':
-   res := res*16;
+   res := res*DigW;
   '0'..'9':
     res := res*DigW + Ord(s[i]) - Ord('0');
   'A'..'V':
@@ -3662,11 +3663,14 @@ Move(mc,m,n);
 Result := True;
 end;
 
-function ST12VTM(ST1:PSpeccyModule;FSize:integer;VTM:PModule):boolean;
+function ST12VTM(ST1:PSpeccyModule;FSize:integer;
+                   const SongN,AuthN:string;VTM:PModule):boolean;
 begin
 if not ST12STC(ST1^,FSize) then
  Exit(False);
 Result := STC2VTM(ST1,FSize,VTM);
+VTM^.Title := SongN;
+VTM^.Author := AuthN;
 end;
 
 function ST32STC(var m:TSpeccyModule; msize:integer):boolean;
@@ -6584,6 +6588,7 @@ else if s = '.pt3' then
  Result := PT3File
 else
  Exit;
+SongName := ''; AuthorName := '';
 FillChar(ZXP^,65536,0);
 AssignFile(f,FileName);
 Reset(f,1);
@@ -6610,7 +6615,6 @@ else
   begin
    Tm := 0;
    Andsix := 31;
-   SongName := ''; AuthorName := '';
    Seek(f,4);
    BlockRead(f,ZXAddr,2,i);
    if i <> 2 then
@@ -6622,9 +6626,8 @@ else
    Result := Unknown;
    BlockRead(f,AYFileHeader,SizeOf(AYFileHeader));
    if AYFileHeader.FileID <> $5941585A then exit;
-   if AYFileHeader.TypeID <> $44414D41 then exit;
+   if (AYFileHeader.TypeID <> $44414D41) and (AYFileHeader.TypeID <> $31315453) then exit;
    Seek(f,SmallInt(SwapW(AYFileHeader.PAuthor)) + 12);
-   AuthorName := '';
    repeat
     BlockRead(f,Ch,1);
     if Ch <> #0 then AuthorName := AuthorName + Ch;
@@ -6637,24 +6640,40 @@ else
      BlockRead(f,SongStructure,4);
      CurPos := FilePos(f);
      Seek(f,SmallInt(SwapW(SongStructure.PSongName)) + CurPos - 4);
-     SongName := '';
      repeat
       BlockRead(f,Ch,1);
       if Ch <> #0 then SongName := SongName + Ch;
      until Ch = #0;
      SongName := Trim(SongName);
      if System.Length(SongName) > 32 then SetLength(SongName,32);
-     Offset := SmallInt(SwapW(SongStructure.PSongData)) + CurPos - 2;
-     Seek(f,Offset);
-     BlockRead(f,ZXAddr,2);
-     ZXAddr := SwapW(ZXAddr);
-     BlockRead(f,Andsix,1);
-     BlockRead(f,Byt,1);
-     BlockRead(f,Wrd,2);
-     Tm := Byt * SwapW(Wrd);
-     Seek(f,Offset + 14);
-     BlockRead(f,ZXP^.Index[ZXAddr],65536 - ZXAddr,Length);
-     Result := FXMFile
+     if AYFileHeader.TypeID = $44414D41 then
+      begin
+       Offset := SmallInt(SwapW(SongStructure.PSongData)) + CurPos - 2;
+       Seek(f,Offset);
+       BlockRead(f,ZXAddr,2);
+       ZXAddr := SwapW(ZXAddr);
+       BlockRead(f,Andsix,1);
+       BlockRead(f,Byt,1);
+       BlockRead(f,Wrd,2);
+       Tm := Byt * SwapW(Wrd);
+       Seek(f,Offset + 14);
+       BlockRead(f,ZXP^.Index[ZXAddr],65536 - ZXAddr,Length);
+       Result := FXMFile;
+      end
+     else
+      begin
+       Offset := SmallInt(SwapW(SongStructure.PSongData)) + CurPos - 2 + 8;
+       Length := FileSize(f) - Offset; //todo вычисление длины (т.к. может быть более одного ST11 в файле)
+       //длина всех паттернов должна быть кратна размеру паттерна (megamix1.ay - 1 лишний байт)
+       if Length < 3009 + 576 then
+        exit;
+       Length := 3009 + (Length - 3009) div 576 * 576;
+       if Length > 65536 then
+        exit;
+       Seek(f,Offset);
+       BlockRead(f,ZXP^.Index[0],Length);
+       Result := ST1File;
+      end;
   end
 finally
  CloseFile(f);
@@ -7307,11 +7326,12 @@ type
  end;
 var
  ChPtr:packed array[0..2] of word;
- SkipCounter,PrevOrn,TSStep:array[0..2] of shortint;
+ SkipCounter,PrevOrn,TSStep,PrevEnvT:array[0..2] of shortint;
  sams:array [0..31] of integer;
  orns:array [0..32] of integer;
- NOrns,NSams,Ns:integer;
+ NOrns,NSams,Ns,Version,Retrig:Integer;
  CPat:TFTCPat;
+ PrevEnvP:word;
 
  procedure PatternInterpreter(PatNum,LnNum,ChNum:integer);
  var
@@ -7336,7 +7356,7 @@ var
         sams[a] := i
        end;
      if i < 0 then i := 0;
-     VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Sample := i
+     VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Sample := i;
     end;
    $20..$2f:
     begin
@@ -7348,30 +7368,29 @@ var
     begin
      VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Note := -2;
      SkipCounter[ChNum] := 0;
-     quit := True
+     quit := True;
     end;
    $31..$3e:
     begin
-     VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Envelope :=
-                                        FTC^.Index[ChPtr[ChNum]] - $30;
-     VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Ornament :=
-                                        PrevOrn[ChNum];
+     PrevEnvT[ChNum] := FTC^.Index[ChPtr[ChNum]] - $30;
+     VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Envelope := PrevEnvT[ChNum];
+     VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Ornament := PrevOrn[ChNum];
      Inc(ChPtr[ChNum]);
-     VTM^.Patterns[PatNum]^.Items[LnNum].Envelope :=
-                                PWord(@FTC^.Index[ChPtr[ChNum]])^;
-     Inc(ChPtr[ChNum])
+     PrevEnvP:=PWord(@FTC^.Index[ChPtr[ChNum]])^;
+     VTM^.Patterns[PatNum]^.Items[LnNum].Envelope := PrevEnvP;
+     Inc(ChPtr[ChNum]);
     end;
    $3f:
     begin
+     PrevEnvT[ChNum] := 0;
      VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Envelope := 15;
-     VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Ornament :=
-                                        PrevOrn[ChNum];
+     VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Ornament := PrevOrn[ChNum];
     end;
    $40..$5f:
     begin
      SkipCounter[ChNum] := FTC^.Index[ChPtr[ChNum]] - $40;
      EXXAF := 1;
-     quit := True
+     quit := True;
     end;
    $60..$cb:
     begin
@@ -7379,7 +7398,7 @@ var
      if nt > $5f then nt := $5f;
      VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Note := nt;
      SkipCounter[ChNum] := 0;
-     quit := True
+     quit := True;
     end;
    $cc..$ec:
     begin
@@ -7393,10 +7412,9 @@ var
        orns[a] := i
       end;
      if i < 0 then i := 0;
+     Inc(i); //+1 to don't miss 0
      PrevOrn[ChNum] := i;
      VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Ornament := i;
-     if VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Envelope = 0 then
-      VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].Envelope := 15;
     end;
    $ed:
     begin
@@ -7430,7 +7448,11 @@ var
    $ef:
     begin
      Inc(ChPtr[ChNum]);
-     Ns := FTC^.Index[ChPtr[ChNum]];
+     if (Version > 7) and
+        (FTC^.Index[ChPtr[ChNum]] = $fe) then //full env+tone retrig
+      Retrig := ChNum + 1
+     else
+      Ns := FTC^.Index[ChPtr[ChNum]] and $1f;
     end
    else
     begin
@@ -7439,9 +7461,9 @@ var
      Inc(ChPtr[ChNum]);
      VTM^.Patterns[PatNum]^.Items[LnNum].Channel[ChNum].
                       Additional_Command.Parameter := FTC^.Index[ChPtr[ChNum]];
-    end
+    end;
    end;
-   Inc(ChPtr[ChNum])
+   Inc(ChPtr[ChNum]);
   until quit;
   if exxaf = 0 then
    begin
@@ -7460,6 +7482,10 @@ var
  Pats:array[0..MaxPatNum] of TFTCPat;
 begin
 Result := True;
+Version := 0;
+if (FTC^.FTC_MusicName[67] = '0') and
+   (FTC^.FTC_MusicName[68] in ['0'..'9']) then
+ Version := Ord(FTC^.FTC_MusicName[68]) - $30;
 SetLength(VTM^.Title,42);
 Move(FTC^.FTC_MusicName[8],VTM^.Title[1],42);
 VTM^.Title := Trim(VTM^.Title);
@@ -7470,7 +7496,10 @@ if Length(VTM^.Title) > 32 then
  end
 else
  VTM^.Author := '';
-VTM^.Ton_Table := 1;
+if (Version < 7) or (FTC^.FTC_MusicName[$32] <> #2) then
+ VTM^.Ton_Table := 1
+else
+ VTM^.Ton_Table := 2;
 VTM^.Initial_Delay := FTC^.FTC_Delay;
 VTM^.Positions.Loop := FTC^.FTC_Loop_Position;
 for i := 0 to 255 do
@@ -7490,6 +7519,7 @@ NOrns := 0;
 NSams := 0;
 PatMax := 0;
 Pos := 0;
+Retrig := 0;
 while (Pos < 256) and (FTC^.FTC_Positions[Pos].Pattern <> 255) do
  begin
   CPat.Numb := FTC^.FTC_Positions[Pos].Pattern;
@@ -7515,8 +7545,9 @@ while (Pos < 256) and (FTC^.FTC_Positions[Pos].Pattern <> 255) do
     for k := 0 to 2 do
      begin
       TSStep[k] := 0;
-      PrevOrn[k] := 0;
-      SkipCounter[k] := 0
+      PrevOrn[k] := 1; //+1 to don't miss 0
+      SkipCounter[k] := 0;
+      PrevEnvT[k] := 0;
      end;
     Move(FTC^.Index[FTC^.FTC_PatternsPointer + 6 * CPat.Numb],ChPtr,6);
     Ns := 0; i := 0; quit := False;
@@ -7537,6 +7568,13 @@ while (Pos < 256) and (FTC^.FTC_Positions[Pos].Pattern <> 255) do
          end
        end;
       VTM^.Patterns[j]^.Items[i].Noise := Ns;
+      if (Retrig <> 0) and (PrevEnvT[Retrig-1] <> 0) then
+       begin
+        VTM^.Patterns[j]^.Items[i].Channel[Retrig-1].Envelope:=PrevEnvT[Retrig-1];
+        VTM^.Patterns[j]^.Items[i].Channel[Retrig-1].Ornament:=PrevOrn[Retrig-1];
+        VTM^.Patterns[j]^.Items[i].Envelope:=PrevEnvP;
+       end;
+      Retrig := 0;
       Inc(i)
      end;
     VTM^.Patterns[j]^.Length := i
@@ -7599,9 +7637,10 @@ if zo = 0 then
      if VTM^.Patterns[i] <> nil then
       for j := 0 to VTM^.Patterns[i]^.Length - 1 do
        for k := 0 to 2 do
-        if VTM^.Patterns[i]^.Items[j].Channel[k].Ornament = 16 then
-         VTM^.Patterns[i]^.Items[j].Channel[k].Ornament := 0
-   end
+        //ornaments in tracks all +1
+        if VTM^.Patterns[i]^.Items[j].Channel[k].Ornament = 16+1 then
+         VTM^.Patterns[i]^.Items[j].Channel[k].Ornament := 0+1;
+   end;
  end
 else
  begin
@@ -7612,11 +7651,26 @@ else
    if VTM^.Patterns[i] <> nil then
     for j := 0 to VTM^.Patterns[i]^.Length - 1 do
      for k := 0 to 2 do
-      if VTM^.Patterns[i]^.Items[j].Channel[k].Ornament > zo then
+      //ornaments in tracks all +1
+      if VTM^.Patterns[i]^.Items[j].Channel[k].Ornament > zo+1 then
        Dec(VTM^.Patterns[i]^.Items[j].Channel[k].Ornament)
-      else if VTM^.Patterns[i]^.Items[j].Channel[k].Ornament = zo then
-       VTM^.Patterns[i]^.Items[j].Channel[k].Ornament := 0
+      else if VTM^.Patterns[i]^.Items[j].Channel[k].Ornament = zo+1 then
+       //принимаем этот орнамент за нулевой
+       begin
+        VTM^.Patterns[i]^.Items[j].Channel[k].Ornament := 0+1;
+        //в PatternInterpreter не менялся Channel[k].Envelope при установке орнамента, проверим:
+        if VTM^.Patterns[i]^.Items[j].Channel[k].Envelope = 0 then
+         VTM^.Patterns[i]^.Items[j].Channel[k].Envelope := 15;
+       end;
  end;
+
+//do ornaments numbers back -1
+for i := 0 to MaxPatNum do
+ if VTM^.Patterns[i] <> nil then
+  for j := 0 to VTM^.Patterns[i]^.Length - 1 do
+   for k := 0 to 2 do
+    if VTM^.Patterns[i]^.Items[j].Channel[k].Ornament > 0 then
+     Dec(VTM^.Patterns[i]^.Items[j].Channel[k].Ornament);
 
 for i := 0 to 32 do
  begin
@@ -7666,6 +7720,10 @@ for i := 0 to 31 do
     j := FTC^.FTC_SamplesPointers[i] + 3;
     VTM^.Samples[l]^.Loop := FTC^.Index[j - 2];
     VTM^.Samples[l]^.Length := FTC^.Index[j - 1] + 1;
+    if VTM^.Samples[l]^.Length > MaxSamLen then
+     VTM^.Samples[l]^.Length := MaxSamLen;
+    if VTM^.Samples[l]^.Loop > VTM^.Samples[l]^.Length - 1 then
+     VTM^.Samples[l]^.Loop := VTM^.Samples[l]^.Length - 1;
     for k := 0 to VTM^.Samples[l]^.Length - 1 do
      begin
       VTM^.Samples[l]^.Items[k] := EmptySampleTick;
@@ -7711,7 +7769,7 @@ for i := 0 to 31 do
 end;
 
 function FXM2VTM(FXM:PSpeccyModule;ZXAddr,Tm,amad_andsix:integer;
-                  SongN,AuthN:string;VTM:PModule):boolean;
+                  const SongN,AuthN:string;VTM:PModule):boolean;
 type
  FXM_Stek = packed array of word;
 var

@@ -1,0 +1,363 @@
+Vortex Tracker II v1.0 beta 10
+
+12/19/2004:
+
+1. New Vortex Tracker II v1.0 PT3 player for ZX Spectrum Release 6 is supported.
+
+01/02/2005:
+
+2. Max length of pattern is 100 lines now. It is compatible with all players
+   (on ZX, PC and ST). Don't recompile such modules in original ZX Spectrum
+   PT3 editors (there are 64 lines max).
+
+01/03/2005:
+
+3. Undesired area selection during autostep was removed.
+4. Highligt step for tracks' lines can be adjusted now. If Auto is on, step is
+   autoselected from 3,4 and 5 depending of pattern length (specially for
+   Key-Jee).
+
+01/04/2005:
+
+5. Added checking of module size during saving (compiling) PT3 format. If size
+   is greater than 65536, error message will appear. If it is, save module in
+   text format and than try to solve the problem. Alone Coder proposes to split
+   it to several small modules and then play it one by other. So, you can load
+   module in several windows, remove some data and save them with different
+   names.
+6. Added checking of block size during export to ZX-formats.
+
+Vortex Tracker II v1.0 beta 11
+
+04/23/2005:
+
+1. Added Amadeus (Fuxoft AY Language) modules import. Both FXM and ZXAYAMAD are
+   supported. The most modules require manual editing, but sounds good and
+   without it.
+
+04/24/2005:
+
+2. Memory for patterns/samples/ornaments are static now, i.e. you can decrease
+   and increase its length without losting last lines previous values.
+3. Fixed error: fault when trying to play empty (default) pattern by F7/F8.
+4. Patterns/samples/ornaments length can be changed during playing now.
+
+04/26/2005:
+
+5. Maximal length of pattern is 256 lines now. To keep 2 columns line numeration
+   it is hexadecimal now.
+
+05/01/2005:
+
+6. Undo/Redo functions are added. Try to test and send me bugreports or wishes.
+
+05/04/2005:
+
+7. Due HalfElf's request, added ability to load modules into editor from command
+   line. Several files must be divided by spaces, and filenames with spaces must
+   be placed to doublequotes.
+
+Vortex Tracker II v1.0 beta 12
+
+05/29/2005:
+
+1. Fixed error in PT2 importer: memory before sample import was not clear.
+
+06/14/2005:
+
+2. Fixed horrible mistake: if you open save or some other dialogs during playing
+   in "Loop among all opened modules" and next window start playing before you
+   will finish, dialog will work with new active window. From this version
+   all dialogs work with window, which was active during calling dialog.
+   
+09/16/2005:
+
+3. Added import of PSC v1.00-1.03 modules.
+
+09/30/2005:
+
+4. Added import of compiled PSM (Pro Sound Maker by Denis Dratov) modules. They
+   must be compiled by original (author's) compiler.
+
+Vortex Tracker II v1.0 beta 13
+
+10/02/2005:
+
+1. Fixed error in PSM import: loop position always was zero.
+
+03/14/2006:
+
+2. In addition to 'Save As...' command added simple 'Save' (asks for file name
+   only for new modules).
+3. Added save requests before closing module windows or whole editor.
+
+03/16/2006:
+
+4. Added second sound chip emulation to play any two opened modules
+   simultaneously. 'Play' and 'Play from start' start playing module of current
+   window through the first chip and module selected in dropdown list of control
+   panel through the second chip. So, you can edit two standard PT3-modules, and
+   then play it simultaneously through some of known devices (Turbo-Sound or
+   Turbo-AY) on real ZX (see example in ZX-magazine InfoGuide #8).
+
+03/18/2006:
+
+5. MC68000 PT3-player is updated (SNDH-export). Note and volume tables are
+   packed now via Ivan Roshin methods (player size is 1 KB smaller now).
+6. SNDH-export is improved: new SNDH v2 TAGs are supported and new file name
+   extension (SNDH) is used now.
+
+03/19/2006:
+
+7. 'Options' dialog allows you to input any AY-frequency in range 1-3.5 MHz, and
+   any player frequency in range 1-2000 Hz.
+8. Added track colors selection in 'Options' dialog.
+
+03/25/2006:
+
+9. Fixed tracks editor's cursor moving errors (PageUp/PageDown reaction).
+
+Vortex Tracker II v1.0 beta 14
+
+10/01/2006:
+
+1. Window for 2nd chip is autoselected during changing module window. No need to
+   select it manually now (if you are editing only two modules in TS mode, of
+   course).
+2. During playing in TS mode tracks moving of both windows are sinchronized now.
+3. During editing in TS mode tracks and cursors of both windows are sinchronized
+   too.
+4. In TS mode cursor moving to the maximum right or left position of tracks
+   editor will activate window of 2nd chip in same position of tracks editor.
+5. "Play from position" function (F5) works from current cursor position now.
+
+10/03/2006:
+
+6. Fixed bug: envelope period changed in AutoEnv mode was not added to the undo
+   list (thanks to Karbofos for bug-report).
+
+Vortex Tracker II v1.0 beta 15
+
+03/04/2007:
+
+1. Module window is redesigned for more comfortable editing in TS mode (thanks
+   to Znahar for ideas and help).
+2. No need to close Tracks Manager window now, it stays on top and works with
+   current module, which name is duplicated in main window title (specially for
+   (Znahar).
+
+03/08/2007:
+
+3. Selected track area can be transposed by calling pop-up menu or from keyboard
+   (Num +, Num -, Ctrl+Num +, Ctrl+Num - (+-semiton/+-octave). New function
+   works with notes and envelope track.
+4. Fixed error: after using AutoStep current time was not updated.
+5. AutoStep works after pasting from clipboard now (specially for TAD).
+6. Fixed error: trying to start playing of just created (empty) module in TS
+   mode rised error message (thanks to Znahar for bug-report).
+7. AutoStep can be used with insert/delete/clear track/pattern line. Can be
+   useful for increasing/decreasing pattern size twice (thanks to TAD for idea).
+8. Fixed error: the most Undo/Redo operations not updated module duration info.
+9. Fixed error: after insert/delete/clear track/pattern line module duration and
+   current time info was not updated.
+
+03/10/2007:
+
+10. Some Znahar's ideas was added: Global Transposition window can be always
+    opened; the most buttons of tools panel can be removed via pop-up menu; size
+    and position of main window is saved during closing.
+11. Fixed error: if envelopes in channel is disabled in Editor Controls, you can
+    hear tone and noise if they enabled in sample now (thanks to TAD for bug-
+    report and test module).
+12. You can input -96 and +96 numbers in ornament editor (works like 95, but -96
+    is used in many PT3-modules from ZX Spectrum). Thanks to TAD for info.
+
+Vortex Tracker II v1.0 beta 16
+
+04/30/2007:
+
+1. New Release 7 of ZX player is used for exporting. New version allows right
+   work of 1.xx and 2.xx special commands for PT 3.7 modules.
+2. Added import of PT 3.7 modules are saved in TS-mode (module automatically
+   converted to two single PT3-modules).
+
+05/01/2007:
+
+3. Fixed bug: during playing module VT didn't alow to change position value in
+   other module windows.
+4. Fixed loading modules bug: not used lines of pattern was not cleared, and
+   after increasing pattern length random trash can be shown in last lines.
+5. Some PT 3.6 structure analizer was added to prompt user about loading PT 3.6
+   modules as Turbo Sound.
+6. Added PT 3.7 editor mode, which allows to use special commands 1.xx and 2.xx
+   to single change tone frequency by xx value down or up.
+7. 3xxx interpretation type option changed to Features level selection:
+   ProTracker 3.5, Vortex Tracker II (PT 3.6) and ProTracker 3.7. Each mode
+   marked in module by own header.
+8. Some redesign of pattern editor window (specially for ch41ns4w).
+9. Highlight step can be 0 now (same as 256 and same as 'no highlight' option,
+   specially for TAD).
+
+Vortex Tracker II v1.0 beta 17
+
+05/13/2007:
+
+1. TS-mode is turning on after loading TS-module. If only two windows are opened
+   they are tiling horizontally also.
+2. Added new TS-format loader (used in Ay_Emul 2.9 beta 2).
+3. Changed 2nd module pointing method for TS-mode. Now you can point one window
+   two another individually.
+4. Again redesign of pattern editor window (specially for Ch41ns4w).
+
+05/18/2007:
+
+5. During saving one of module in TS-mode, 2nd module is added to result file
+   too. In text format modules fallow one for another, so you can merge two
+   single modules without editor in command line:
+
+     copy Module1.txt+Module2.txt Module.txt.
+
+   During saving PT3 16 bytes identifer is added at the end of result file. More
+   simplier to save it from editor, but you still do same in command line:
+
+     copy/b Module1.pt3+Module2.pt3+ID Module.pt3
+
+   where ID is next structure file:
+    +0 Str4 'PT3!'
+    +4 Word Module1.pt3 file size
+    +6 Str4 'PT3!'
+    +A Word Module2.pt3 file size
+    +C Str4 '02TS'
+6. AutoStep range is expanded to +-256.
+7. Fixed error: in no loop mode more short module of TS-pair plays first tick of
+   loop position before stopping.
+8. Fixed error: color text on some buttons was set to black instead of system
+   window text color (thanks to Roman Kuraev for bug-report)..
+
+05/19/2007:
+
+9. Added new TS-player for ZX exporting of TS-modules. Don't forget to load in
+   DE register address of second module.
+10.Max size of ornament is upped to 255 (old 64 lines limitations was only in
+   ZX Spectrum editor, not in players). New size limit allows to import long 
+   ornaments from ASC and PSC modules.
+11.PSC-files import is improved (see guitar.psc by Mast).
+
+Vortex Tracker II v1.0 beta 18
+
+11/20/2008:
+
+1. Tracks redrawing moved from additional to main thread via windows messages
+   for more safe and stable work (but without measured moving warranty).
+2. Specially for TAD new tool "Toggle samples" (Ctrl+M) was made (seek at Play
+   menu or on tool panel). Tool allows to mute sound of any samples to hear/mute
+   standalone parties of composition (drum, main theme, echo, etc).
+3. Due many requests channel numbers in Track Manager are literal now (A, B and
+   C). In type field can be input numbers from 0 to 2 as usually.
+
+11/22/2008:
+
+4. Specially for TAD added Shift+Backspace shortcut to do step backward if
+   AutoStep is on.
+5. Serious bug was found: if new typed value is equal to existing one, change
+   is not added to Undo, but numbers of line and channel stored somewhere (if
+   first change than can be access violation, if not first - in previous action,
+   that's not good too). Fixed.
+
+11/24/2008:
+
+6. Especially for TAD after changing pattern number or activating module window
+   its number is copied to Tracks Manager and Global Transposition windows.
+7. In input pattern size field you can press PageUp and PageDown to increase/
+   decrease pattern size with highlight step value (for TAD).
+8. You can select position in OrderList of 2nd window during playing in Turbo
+   Sound mode to restart playing from.
+9. Pop-up menu or keys / and * on numpad allows to compress/expand pattern size
+   by 2 times (specially for TAD). Just set new speed to keep tempo after
+   operation if you need.
+
+11/25/2008:
+
+10.Due Roman Kuraev request added new function Merge (Ctrl+Alt+V or pop-up menu)
+   to Paste from clipboard without erasing existing pattern data with empty
+   values. Can be useful for making echo or inserting 2nd party between notes of
+   main party.
+11.Copy of Tracks Manager is added to Undo, but all previous Undo actions is
+   cleared. Fixed.
+12.Due TAD request, all operations of Tracks Manager can exceed patterns size up
+   to maximum pattern length (256) if work lines number allows. This feature
+   allows you to increase pattern size after operation.
+13.Fixed old error in ZX player export: bad player relocation for some address
+   (for example, B1DD for TS-player) due carry ignoring when low byte of address
+   is bigger than some value.
+
+11/26/2008:
+
+14.For TAD editing 1st module in TS-mode makes available Save button (and query
+   for saving before closing) after switching to 2nd module even if it is not
+   edited yet.
+
+Vortex Tracker II v1.0 beta 19
+
+02/08/2009:
+
+1. TAD has pointed, that initally unused or loaded samples can be muted (after
+   appearing version with Toggle Samples tool). Fixed.
+
+Vortex Tracker II v1.0 beta 20
+
+06/16/2022:
+
+1. Windows 9x is not supported now.
+2. Bug fix: right length in hobeta header for non-TS module without player (was
+   16 bytes bigger).
+3. Digital sound engine changed to Ay_Emul 2.9 beta 31's.
+4. More perfect AY emulation engine from Ay_Emul 2.9 beta 31.
+5. Options are stored in VT.cfg now (like Ay_Emul in home folder of current
+   user, or in VT executable folder, if you move it or create empty yourself).
+6. STC loader can extract author' strings from 'KSA SOFTWARE COMPILATION OF '
+   and 'SOUND TRACKER COMPILATION OF ', insterted in Ay_Emul methodic.
+7. Added import of uncompiled Sound Tracker 1.xx (ST1 file extension).
+8. Added import of compiled Sound Tracker 3 (ST3 file extension).
+9. Added import of uncompiled Sound Tracker Pro (STF file extension).
+10.Added import of compiled ASC Sound Master 0 (AS0 file extension).
+11.TS-module's windows are aligned after opening even if other modules was
+   loaded bedore.
+12.In windows loop play mode added checking if TS-pair to skip replaying twice.
+13.If TS-window playing starts, linked TS-window brings to foreground now.
+
+06/17/2022:
+
+14.Text module loader slightly extended to load Ivan Pirog's vt2, vtp, vts and vto.
+
+Vortex Tracker II v1.0 beta 21
+
+06/21/2022:
+
+1. Fixed old error in FTC import: sample length could exceed maximum for PT3,
+   but was no checking (see "Joe of DR\Binary Love 1.ftc" module).
+
+06/22/2022:
+
+2. Fixed old error in FTC import: musician could point noise in special command
+   out of 5-bit range (00..1F), import takes low 5 bits now.
+
+06/23/2022:
+
+3. Atari ST (export to SNDH) player can play PT 3.7 modules with special
+   commands 1.xx and 2.xx now.
+4. Added Fast Tracker 1.07 and 1.08 modules import (can be one of two note
+   tables (1 or 2) now, and also for 1.08+ Retrig special command is imported
+   as R11R12R13 doublicates in corresponding channel.
+5. FTC ornament set import is improved: all single ornaments are not prefixed
+   by Envelope Off command now, excepting zero (empty) one.
+
+06/24/2022:
+
+6. Reverse loading order is removed if opening several modules at once.
+7. Tn, Ns and En buttons in module window was renamed to T, N and E
+   correspondingly.
+
+07/02/2022:
+
+8. Added .AY type ZXAYST11 (ST1 analog) import.

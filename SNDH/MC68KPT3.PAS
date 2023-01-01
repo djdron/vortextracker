@@ -1,19 +1,19 @@
 {
-ZX Spectrum Pro Tracker 3.0x - 3.6x modules player
+ZX Spectrum Pro Tracker 3.0x - 3.7x modules player
 Designed to compile for Atari ST with MC68000 processor
 Used in Vortex Tracker II in PT3 to SNDH converter
 To work on other MC68K based systems simply replace 'ROut' procedure
 Based on Ay_Emul sources, tables packed via Ivan Roshin's algorithms
 
-(c)2003-2006 S.V.Bulba
+(c)2003-2022 S.V.Bulba
 
-http://bulba.at.kz is
+http://bulba.untergrund.net is
  - Micro ST (Win32 SNDH player)
  - AY Emulator (Win32 AY-3-8910/12 and YM2149F emulator/player/converter/ripper
  - Vortex Tracker II (Win32 AY/YM music editor)
  - and many other AY/YM soundchips related
 
-Author Sergey Bulba <vorobey@mail.khstu.ru>
+Author Sergey Bulba <svbulba@mail.ru>
 }
 program MC68KPT3;
 
@@ -599,7 +599,9 @@ procedure Pl;
         Ton_Slide_Step := MW(Index[Address_In_Pattern],Index[Address_In_Pattern + 1]);
         Inc(Address_In_Pattern,2);
         SimpleGliss := True;
-        Current_OnOff := 0
+        Current_OnOff := 0;
+        if (Ton_Slide_Count = 0) and (PT3.PT3_Version >= 7) then
+         Inc(Ton_Slide_Count);
        end
       else if (counter = Flag2) then
        begin

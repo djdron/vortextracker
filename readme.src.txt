@@ -1,6 +1,6 @@
 Vortex Tracker II source code
 
-Version v1.0 beta 20 for Windows
+Version v1.0 beta 21 for Windows
 Author is Sergey Vladimirovich Bulba
 (c)2000-2022 S.V.Bulba
 
