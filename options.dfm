@@ -338,28 +338,29 @@ object Form1: TForm1
       ImageIndex = 3
       object RadioGroup1: TRadioGroup
         Left = 8
-        Top = 8
-        Width = 113
-        Height = 73
-        Caption = '3xxx command style'
-        ItemIndex = 2
+        Top = 88
+        Width = 257
+        Height = 97
+        Caption = 'Features Level'
+        ItemIndex = 3
         Items.Strings = (
-          'Vortex Tracker II'
           'Pro Tracker 3.5'
+          'Vortex Tracker II (PT 3.6)'
+          'Pro Tracker 3.7'
           'Try detect')
         TabOrder = 0
         OnClick = RadioGroup1Click
       end
       object SaveHead: TRadioGroup
-        Left = 128
+        Left = 8
         Top = 8
-        Width = 177
+        Width = 257
         Height = 73
         Caption = 'Save with '#1085'eader'
         ItemIndex = 2
         Items.Strings = (
-          'Vortex Tracker II 1.0 module: '
-          'ProTracker 3.x compilation of '
+          '"Vortex Tracker II 1.0 module: " where possible'
+          '"ProTracker 3.x compilation of " always'
           'Try detect')
         TabOrder = 1
         OnClick = SaveHeadClick
@@ -551,7 +552,7 @@ object Form1: TForm1
           Width = 177
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 2
           Visible = False
           OnChange = ComboBox1Change

@@ -1,4 +1,4 @@
-Cmp 647
+Cmp 651
 @if errorlevel 1 goto fail
 BRCC32 ZX.rc
 @goto ex

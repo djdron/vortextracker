@@ -96,7 +96,7 @@ type
    CAChangeSampleSize, CAChangeSampleLoop, CAChangeOrnamentSize,
    CAChangeOrnamentLoop, CAChangeOrnamentValue, CAChangeSampleValue,
    CAInsertPosition, CADeletePosition, CAChangePositionListLoop, CAChangePositionValue,
-   CAChangeToneTable, CAChange3xxx, CAChangeHeader, CAChangeAuthor, CAChangeTitle,
+   CAChangeToneTable, CAChangeFeatures, CAChangeHeader, CAChangeAuthor, CAChangeTitle,
    CAPatternInsertLine,CAPatternDeleteLine,CAPatternClearLine,CAPatternClearSelection,
    CATransposePattern,CATracksManagerCopy);
 
@@ -120,7 +120,7 @@ type
    CAChangeSampleLoop,CAChangeOrnamentLoop,CAChangePositionListLoop:(Loop:integer);
    CAChangeOrnamentValue,CAChangePositionValue:(Value:integer);
    CAChangeToneTable:(Table:integer);
-   CAChange3xxx:(New3xxx:integer);
+   CAChangeFeatures:(NewFeatures:integer);
    CAChangeHeader:(NewHeader:integer);
   end;
 
@@ -185,7 +185,7 @@ type
     SpeedButton11: TSpeedButton;
     SpeedButton12: TSpeedButton;
     OptTab: TTabSheet;
-    Vtm3xxxGrp: TRadioGroup;
+    VtmFeaturesGrp: TRadioGroup;
     SaveHead: TRadioGroup;
     Label8: TLabel;
     Edit5: TEdit;
@@ -253,12 +253,15 @@ type
     SpeedButton24: TSpeedButton;
     SpeedButton25: TSpeedButton;
     SpeedButton23: TSpeedButton;
+    Label6: TLabel;
+    GroupBox3: TGroupBox;
     SpeedButton26: TSpeedButton;
     SpeedButton27: TSpeedButton;
+    GroupBox7: TGroupBox;
     AutoHLCheck: TCheckBox;
     Edit17: TEdit;
     UpDown15: TUpDown;
-    Label41: TLabel;
+    GroupBox8: TGroupBox;
     Label25: TLabel;
     Label22: TLabel;
     Label20: TLabel;
@@ -281,7 +284,7 @@ type
     procedure OrnamentsMouseDown(Sender: TObject; Button: TMouseButton;
      Shift: TShiftState; X, Y: Integer);
     procedure FormDestroy(Sender: TObject);
-    function LoadTrackerModule(Name:string):boolean;
+    function LoadTrackerModule(Name:string;var VTMP2:PModule):boolean;
     procedure TracksMouseWheelDown(Sender: TObject; Shift: TShiftState;
       MousePos: TPoint; var Handled: Boolean);
     procedure TracksMouseWheelUp(Sender: TObject; Shift: TShiftState;
@@ -337,7 +340,7 @@ type
     procedure RerollToLine;
     procedure RerollToPatternLine;
     procedure ResetChanAlloc;
-    procedure Vtm3xxxGrpClick(Sender: TObject);
+    procedure VtmFeaturesGrpClick(Sender: TObject);
     procedure SaveHeadClick(Sender: TObject);
     procedure RerollToPos(Pos:integer);
     procedure RerollToInt(Int_:integer);
@@ -572,8 +575,8 @@ begin
    VTMP.IsChans[i].Ornament := 0;
    VTMP.IsChans[i].Volume := 15
   end;
- VTMP.New3xxxInterpretation := Correct3xxxInterpretation;
- Vtm3xxxGrp.ItemIndex := Ord(not Correct3xxxInterpretation);
+ VTMP.FeaturesLevel := FeaturesLevel;
+ VtmFeaturesGrp.ItemIndex := FeaturesLevel;
  VTMP.VortexModule_Header := VortexModuleHeader;
  SaveHead.ItemIndex := Ord(not VortexModuleHeader);
  for i := 0 to 255 do
@@ -605,14 +608,22 @@ begin
  SpeedButton14.Left := i + SpeedButton13.Width;
  SpeedButton23.Left := SpeedButton14.Left + SpeedButton14.Width;
 
- i := Edit4.Width + Edit4.Left + Edit3.Left;
+ i := Edit4.Width + Edit4.Left + Tracks.Left;
  j := Tracks.Width + Tracks.Left * 2;
  if i < j then i := j;
+ j := StringGrid1.GridLineWidth + StringGrid1.DefaultColWidth;
+ StringGrid1.ClientWidth := (i - Tracks.Left) div j * j;
  PageControl1.ClientWidth := i + PatternsSheet.Left * 2;
+ GroupBox1.Left := i - GroupBox1.Width - Tracks.Left;
+ GroupBox8.Left := i - GroupBox8.Width - Tracks.Left;
+ Edit3.Width := (i - Label6.Width - 2 - Tracks.Left) div 2;
+ Label6.Left := Edit3.Left + Edit3.Width + 1;
+ Edit4.Width := Edit3.Width;
+ Edit4.Left := i - Edit4.Width - Tracks.Left;
  i := Tracks.Top + Tracks.Height;
  j := Ornaments.Top + Ornaments.Height;
  if i < j then i := j;
- PageControl1.ClientHeight := i + Tracks.Left + PatternsSheet.Top + 4;
+ PageControl1.ClientHeight := i + Tracks.Left + PatternsSheet.Top + PatternsSheet.Left;
 
  ListBox1.Top := i - ListBox1.Height;
  SpeedButton13.Top := ListBox1.Top;
@@ -735,7 +746,7 @@ begin
  SelectObject(DC,p);
  ReleaseDC(Tracks.Handle,DC);
  Tracks.Left := StringGrid1.Left;
- Tracks.Top := SpeedButton26.Top + SpeedButton26.Height + 4;
+ Tracks.Top := GroupBox3.Top + GroupBox3.Height + 4;
  Tracks.ClientWidth := Tracks.CelW * 52;
  Tracks.ClientHeight := Tracks.CelH * Tracks.NOfLines;
  Tracks.OnKeyDown := TracksKeyDown;
@@ -3493,7 +3504,7 @@ for i := 1 to MainForm.ComboBox1.Items.Count - 1 do
   end;
 end;
 
-function TMDIChild.LoadTrackerModule(Name:string):boolean;
+function TMDIChild.LoadTrackerModule(Name:string;var VTMP2:PModule):boolean;
 const
  ers:array[1..6] of string =
   ('Module not found',
@@ -3514,54 +3525,63 @@ Result := True;
 UndoWorking := True;
 SavedAsText := True;
 try
-FileType := LoadAndDetect(@ZXP,Name,i,ZXAddr,Tm,Andsix,AuthN,SongN);
-case FileType of
-Unknown:
+if VTMP2 = nil then
  begin
-  i := LoadModuleFromText(Name,VTMP);
-  if i <> 0 then
+  FileType := LoadAndDetect(@ZXP,Name,i,ZXAddr,Tm,Andsix,AuthN,SongN);
+  case FileType of
+  Unknown:
    begin
-    Result := False;
-    Close;
-    MessageBox(MainForm.Handle,PChar(ers[i] + ' (line: ' + IntToStr(TxtLine) + ')'),
-               'Text module loader error',MB_ICONEXCLAMATION);
-    exit
+    i := LoadModuleFromText(Name,VTMP);
+    if i <> 0 then
+     begin
+      Result := False;
+      Close;
+      MessageBox(MainForm.Handle,PChar(ers[i] + ' (line: ' + IntToStr(TxtLine) + ')'),
+                 'Text module loader error',MB_ICONEXCLAMATION);
+      exit
+     end;
+  //  FileType := PT3File
    end;
-//  FileType := PT3File
- end;
-PT2File:
- PT22VTM(@ZXP,VTMP);
-PT1File:
- PT12VTM(@ZXP,VTMP);
-STCFile:
- STC2VTM(@ZXP,i,VTMP);
-STPFile:
- STP2VTM(@ZXP,VTMP);
-SQTFile:
- SQT2VTM(@ZXP,VTMP);
-ASCFile:
- ASC2VTM(@ZXP,VTMP);
-PSCFile:
- PSC2VTM(@ZXP,VTMP);
-FLSFile:
- FLS2VTM(@ZXP,VTMP);
-GTRFile:
- GTR2VTM(@ZXP,VTMP);
-FTCFile:
- FTC2VTM(@ZXP,VTMP);
-FXMFile:
- FXM2VTM(@ZXP,ZXAddr,Tm,Andsix,SongN,AuthN,VTMP);
-PSMFile:
- PSM2VTM(@ZXP,VTMP);
-PT3File:
+  PT2File:
+   PT22VTM(@ZXP,VTMP);
+  PT1File:
+   PT12VTM(@ZXP,VTMP);
+  STCFile:
+   STC2VTM(@ZXP,i,VTMP);
+  STPFile:
+   STP2VTM(@ZXP,VTMP);
+  SQTFile:
+   SQT2VTM(@ZXP,VTMP);
+  ASCFile:
+   ASC2VTM(@ZXP,VTMP);
+  PSCFile:
+   PSC2VTM(@ZXP,VTMP);
+  FLSFile:
+   FLS2VTM(@ZXP,VTMP);
+  GTRFile:
+   GTR2VTM(@ZXP,VTMP);
+  FTCFile:
+   FTC2VTM(@ZXP,VTMP);
+  FXMFile:
+   FXM2VTM(@ZXP,ZXAddr,Tm,Andsix,SongN,AuthN,VTMP);
+  PSMFile:
+   PSM2VTM(@ZXP,VTMP);
+  PT3File:
+   begin
+    PT32VTM(@ZXP,i,VTMP,VTMP2);
+    SavedAsText := False
+   end;
+  end;
+ end
+else
  begin
-  PT32VTM(@ZXP,VTMP);
-  SavedAsText := False
+  Dispose(VTMP.Patterns[-1]);
+  Dispose(VTMP);
+  VTMP := VTMP2;
  end;
-end;
 SetFileName(Name);
 //if FileType = Unknown then exit;
-Vtm3xxxGrp.ItemIndex := Ord(not VTMP.New3xxxInterpretation);
+VtmFeaturesGrp.ItemIndex := VTMP.FeaturesLevel;
 SaveHead.ItemIndex :=  Ord(not VTMP.VortexModule_Header);
 MainForm.AddFileName(Name);
 if VTMP.Positions.Length > 0 then
@@ -4089,7 +4109,9 @@ procedure TMDIChild.StringGrid1KeyPress(Sender: TObject; var Key: Char);
 begin
 case Key of
 '0'..'9':
- if not (IsPlaying and (PlayMode = PMPlayModule)) and
+ if not (IsPlaying and (PlayMode = PMPlayModule) and
+         ((PlayingWindow[1] = Self) or
+          ((NumberOfSoundChips = 2) and (PlayingWindow[2] = Self)))) and
     (StringGrid1.Selection.Left <= VTMP.Positions.Length) then
   begin
    InputPNumber := InputPNumber * 10 + Ord(Key) - Ord('0');
@@ -4099,12 +4121,12 @@ case Key of
    exit
   end
 end;
-InputPNumber := 0
+InputPNumber := 0;
 end;
 
 procedure TMDIChild.Edit2Exit(Sender: TObject);
 begin
-Edit2.Text := IntToStr(UpDown1.Position)
+Edit2.Text := IntToStr(UpDown1.Position);
 end;
 
 procedure TMDIChild.StringGrid1MouseDown(Sender: TObject;
@@ -4421,11 +4443,11 @@ VTMP.IsChans[2].Global_Envelope := SpeedButton12.Down;
 StopAndRestart
 end;
 
-procedure TMDIChild.Vtm3xxxGrpClick(Sender: TObject);
+procedure TMDIChild.VtmFeaturesGrpClick(Sender: TObject);
 begin
 SongChanged := True;
-AddUndo(CAChange3xxx,integer(not VTMP.New3xxxInterpretation),Vtm3xxxGrp.ItemIndex);
-VTMP.New3xxxInterpretation := not Boolean(Vtm3xxxGrp.ItemIndex)
+AddUndo(CAChangeFeatures,VTMP.FeaturesLevel,VtmFeaturesGrp.ItemIndex);
+VTMP.FeaturesLevel := VtmFeaturesGrp.ItemIndex;
 end;
 
 procedure TMDIChild.SaveHeadClick(Sender: TObject);
@@ -5746,7 +5768,7 @@ procedure TMDIChild.UpDown15ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
-AllowChange := (NewValue > 0) and (NewValue <= MaxPatLen);
+AllowChange := (NewValue >= 0) and (NewValue <= MaxPatLen);
 if AllowChange then ChangeHLStep(NewValue)
 end;
 
@@ -5783,6 +5805,7 @@ end;
 
 procedure TMDIChild.ChangeHLStep(NewStep:integer);
 begin
+if NewStep = 0 then NewStep := 256;
 if Tracks.HLStep <> NewStep then
  begin
   Tracks.HLStep := NewStep;
@@ -5820,7 +5843,7 @@ with ChangeList[ChangeCount - 1] do
  begin
   Action := CA;
   case CA of
-  CAChangeSpeed,CAChangeToneTable,CAChangePositionListLoop,CAChange3xxx,
+  CAChangeSpeed,CAChangeToneTable,CAChangePositionListLoop,CAChangeFeatures,
   CAChangeHeader:
    begin
     OldParams.prm.Value := par1;
@@ -6132,10 +6155,10 @@ for i := Steps downto 1 do
     Edit13.SelectAll;
     SetF(2,Edit13)
    end;
-  CAChange3xxx:
+  CAChangeFeatures:
    begin
-    Vtm3xxxGrp.ItemIndex := Pars.prm.New3xxx;
-    SetF(3,Vtm3xxxGrp.Buttons[Vtm3xxxGrp.ItemIndex])
+    VtmFeaturesGrp.ItemIndex := Pars.prm.NewFeatures;
+    SetF(3,VtmFeaturesGrp.Buttons[VtmFeaturesGrp.ItemIndex])
    end;
   CAChangeHeader:
    begin

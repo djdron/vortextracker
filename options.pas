@@ -189,8 +189,9 @@ end;
 
 procedure TForm1.RadioGroup1Click(Sender: TObject);
 begin
-Correct3xxxInterpretation := RadioGroup1.ItemIndex <> 1;
-Detect3xxxInterpretation := RadioGroup1.ItemIndex = 2
+FeaturesLevel := RadioGroup1.ItemIndex;
+DetectFeaturesLevel := FeaturesLevel > 2;
+if DetectFeaturesLevel then FeaturesLevel := 1;
 end;
 
 procedure TForm1.TrackBar1Change(Sender: TObject);

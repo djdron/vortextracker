@@ -28,7 +28,7 @@ const
 //Version related constants
  VersionString = '1.0';
  IsBeta = ' beta';
- BetaNumber = ' 15';
+ BetaNumber = ' 16';
 
  FullVersString:string = 'Vortex Tracker II v' + VersionString + IsBeta + BetaNumber;
  HalfVersString:string = 'Version ' + VersionString + IsBeta + BetaNumber;
@@ -330,17 +330,24 @@ procedure TMainForm.CreateMDIChild(const Name: string);
 var
   Child: TMDIChild;
   Ok:boolean;
+  VTMP2:PModule;
+  i:integer;
 begin
-  Inc(WinCount);
-  { create a new MDI child window }
-  Child := TMDIChild.Create(Application);
-  Child.WinNumber := WinCount;
-  Child.Caption := IntToStr(WinCount) + ': new module';
-  ComboBox1.AddItem(Child.Caption,Child);
-  Ok := True;
-  if (Name <> '') and FileExists(Name) then
-   Ok := Child.LoadTrackerModule(Name);
-  if Ok then Caption := Child.Caption + ' - Vortex Tracker II';
+  VTMP2 := nil;
+  for i := 0 to 1 do
+  begin
+   Inc(WinCount);
+   { create a new MDI child window }
+   Child := TMDIChild.Create(Application);
+   Child.WinNumber := WinCount;
+   Child.Caption := IntToStr(WinCount) + ': new module';
+   ComboBox1.AddItem(Child.Caption,Child);
+   Ok := True;
+   if (Name <> '') and FileExists(Name) then
+    Ok := Child.LoadTrackerModule(Name,VTMP2);
+   if Ok then Caption := Child.Caption + ' - Vortex Tracker II';
+   if VTMP2 = nil then break;
+  end;
 end;
 
 procedure TMainForm.FileNew1Execute(Sender: TObject);
@@ -507,9 +514,9 @@ var
  Saved_NumberOfBuffers,
  Saved_WODevice:integer;
  Saved_ChipType:ChTypes;
- Saved_Optimization,
- Saved_Correct3xxxInterpretation,
- Saved_Detect3xxxInterpretation,
+ Saved_Optimization:boolean;
+ Saved_FeaturesLevel:integer;
+ Saved_DetectFeaturesLevel,
  Saved_VortexModuleHeader,
  Saved_DetectModuleHeader:boolean;
  Saved_IsFilt:boolean;
@@ -564,14 +571,12 @@ else
 end;
 Form1.Opt.ItemIndex := Ord(not Optimization_For_Quality);
 Saved_Optimization := Optimization_For_Quality;
-if Detect3xxxInterpretation then
- Form1.RadioGroup1.ItemIndex := 2
-else if Correct3xxxInterpretation then
- Form1.RadioGroup1.ItemIndex := 0
+if DetectFeaturesLevel then
+ Form1.RadioGroup1.ItemIndex := 3
 else
- Form1.RadioGroup1.ItemIndex := 1;
-Saved_Correct3xxxInterpretation := Correct3xxxInterpretation;
-Saved_Detect3xxxInterpretation := Detect3xxxInterpretation;
+ Form1.RadioGroup1.ItemIndex := FeaturesLevel;
+Saved_FeaturesLevel := FeaturesLevel;
+Saved_DetectFeaturesLevel := DetectFeaturesLevel;
 if DetectModuleHeader then
  Form1.SaveHead.ItemIndex := 2
 else if VortexModuleHeader then
@@ -634,8 +639,8 @@ else
   if Saved_Interrupt_Freq <> Interrupt_Freq then
    SetIntFreqEx(Saved_Interrupt_Freq);
   Set_Optimization(Saved_Optimization);
-  Correct3xxxInterpretation := Saved_Correct3xxxInterpretation;
-  Detect3xxxInterpretation := Saved_Detect3xxxInterpretation;
+  FeaturesLevel := Saved_FeaturesLevel;
+  DetectFeaturesLevel := Saved_DetectFeaturesLevel;
   VortexModuleHeader := Saved_VortexModuleHeader;
   DetectModuleHeader := Saved_DetectModuleHeader;
   if not WOThreadActive then
@@ -1342,8 +1347,8 @@ try
  SaveDW('WODevice',WODevice);
  SaveDW('ChipType',Ord(Emulating_Chip));
  SaveDW('Optimization',Ord(Optimization_For_Quality));
- SaveDW('Correct3xxxInterpretation',Ord(Correct3xxxInterpretation));
- SaveDW('Detect3xxxInterpretation',Ord(Detect3xxxInterpretation));
+ SaveDW('FeaturesLevel',FeaturesLevel);
+ SaveDW('DetectFeaturesLevel',Ord(DetectFeaturesLevel));
  SaveDW('VortexModuleHeader',Ord(VortexModuleHeader));
  SaveDW('DetectModuleHeader',Ord(DetectModuleHeader));
  for i := 0 to 5 do
@@ -1443,10 +1448,10 @@ if RegOpenKeyEx(HKEY_LOCAL_MACHINE,PChar(MyRegPath),0,
     SetEmulatingChip(ChTypes(v));
   if GetDW('Optimization',v) then
    Set_Optimization(v <> 0);
-  if GetDW('Correct3xxxInterpretation',v) then
-   Correct3xxxInterpretation := v <> 0;
-  if GetDW('Detect3xxxInterpretation',v) then
-   Detect3xxxInterpretation := v <> 0;
+  if GetDW('FeaturesLevel',v) then
+   FeaturesLevel := v;
+  if GetDW('DetectFeaturesLevel',v) then
+   DetectFeaturesLevel := v <> 0;
   if GetDW('VortexModuleHeader',v) then
    VortexModuleHeader := v <> 0;
   if GetDW('DetectModuleHeader',v) then

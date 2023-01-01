@@ -1,8 +1,8 @@
-Vortex Tracker II v1.0 beta 15
+Vortex Tracker II v1.0 beta 16
 (c)2000-2007 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
-Support page: http://bulba.at.kz/
+Support page: http://bulba.untergrund.net/ (http://bulba.at.kz/)
 
 History
 -------
@@ -41,6 +41,10 @@ VT II detects module type only by filename extension (mask), and no any
 additional checks are performed. These extensions are used in well-known player
 called Ay_Emul. Any other extensions are analized as text files.
 
+PT v3.7+ modules saved in TS-mode can be imported in VT II too, they are
+converted to two single PT3 in two windows. Previous not documented PT v3.6 TS-
+modules are imported after user prompt.
+
 Vortex Tracker II saves result only in one format is Pro Tracker 3.xx (*.pt3).
 You can play these files in different players-emulators (the most known is
 Win32 emulator Ay_Emul), on real ZX Spectrum in many players (Pusher, Quick
@@ -55,9 +59,9 @@ one chance to save your music, if PT3 saving is not available due size
 limitations (65536 bytes).
 
 In fact, Vortex Tracker II is Win32 version of ZX Spectrum Pro Tracker 3.xx.
-The most compatible version is Pro Tracker v3.69x of Alone Coder (a.k.a. Dima
-Bystrov). Vortex Tracker II is fully compatible with any Pro Tracker v3.5x in
-"ProTracker 3.5" mode.
+The most compatible version is Pro Tracker v3.6x-3.7x of Alone Coder (a.k.a.
+Dima Bystrov). Vortex Tracker II is fully compatible with any Pro Tracker v3.5x
+in "ProTracker 3.5" mode.
 
 All supported formats are converted to Pro Tracker 3 compatible format,
 therefore some information can be lost, because of ZX music formats are very
@@ -74,39 +78,29 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-03/04/2007:
+04/30/2007:
 
-1. Module window is redesigned for more comfortable editing in TS mode (thanks
-   to Znahar for ideas and help).
-2. No need to close Tracks Manager window now, it stays on top and works with
-   current module, which name is duplicated in main window title (specially for
-   (Znahar).
+1. New Release 7 of ZX player is used for exporting. New version allows right
+   work of 1.xx and 2.xx special commands for PT 3.7 modules.
+2. Added import of PT 3.7 modules are saved in TS-mode (module automatically
+   converted to two single PT3-modules).
 
-03/08/2007:
+05/01/2007:
 
-3. Selected track area can be transposed by calling pop-up menu or from keyboard
-   (Num +, Num -, Ctrl+Num +, Ctrl+Num - (+-semiton/+-octave). New function
-   works with notes and envelope track.
-4. Fixed error: after using AutoStep current time was not updated.
-5. AutoStep works after pasting from clipboard now (specially for TAD).
-6. Fixed error: trying to start playing of just created (empty) module in TS
-   mode rised error message (thanks to Znahar for bug-report).
-7. AutoStep can be used with insert/delete/clear track/pattern line. Can be
-   useful for increasing/decreasing pattern size twice (thanks to TAD for idea).
-8. Fixed error: the most Undo/Redo operations not updated module duration info.
-9. Fixed error: after insert/delete/clear track/pattern line module duration and
-   current time info was not updated.
-
-03/10/2007:
-
-10. Some Znahar's ideas was added: Global Transposition window can be always
-    opened; the most buttons of tools panel can be removed via pop-up menu; size
-    and position of main window is saved during closing.
-11. Fixed error: if envelopes in channel is disabled in Editor Controls, you can
-    hear tone and noise if they enabled in sample now (thanks to TAD for bug-
-    report and test module).
-12. You can input -96 and +96 numbers in ornament editor (works like 95, but -96
-    is used in many PT3-modules from ZX Spectrum). Thanks to TAD for info.
+3. Fixed bug: during playing module VT didn't alow to change position value in
+   other module windows.
+4. Fixed loading modules bug: not used lines of pattern was not cleared, and
+   after increasing pattern length random trash can be shown in last lines.
+5. Some PT 3.6 structure analizer was added to prompt user about loading PT 3.6
+   modules as Turbo Sound.
+6. Added PT 3.7 editor mode, which allows to use special commands 1.xx and 2.xx
+   to single change tone frequency by xx value down or up.
+7. 3xxx interpretation type option changed to Features level selection:
+   ProTracker 3.5, Vortex Tracker II (PT 3.6) and ProTracker 3.7. Each mode
+   marked in module by own header.
+8. Some redesign of pattern editor window (specially for ch41ns4w).
+9. Highlight step can be 0 now (same as 256 and same as 'no highlight' option,
+   specially for TAD).
 
 Known problems
 --------------
@@ -390,7 +384,7 @@ Maximum length of title and author strings is 32 chars.
 Highligt step for pattern lines can be adjusted in pattern window. If Auto is
 on, step is autoselected from 3,4 and 5 depending of pattern length.
 
-You can load VT II modules into ZX Spectrum Pro Tracker 3.69x. It can load
+You can load VT II modules into ZX Spectrum Pro Tracker 3.69x-3.7x. It can load
 modules with VT II header and with *.pt3 file extension.
 
 For playing module by standard ZX Spectrum playing routine don't select song
@@ -417,10 +411,28 @@ any problems in most cases.
 This header means same abilities, as previous one. It need for some players,
 which require old header style.
 
-3) 'ProTracker 3.5 compilation of '
+3) 'ProTracker 3.7 compilation of '
+
+In addition to PT 3.6 abilities, module can contain glissando commands 1.xx and
+2.xx (timedelta=0). In this case glissando not works as usually, instead single
+tone frequency changing by xx down or up is performed.
+
+4) 'ProTracker 3.5 compilation of '
 
 This header means, that module must be played with old 3xxx command
-interpretation.
+interpretation and 1.xx and 2.xx special commands must be ignored.
+
+AutoStep using
+--------------
+During editing tracks step of autoscrolling can be set. It works after the most
+typical operations: typing note, sample, numbers, inserting/deleting/clearing
+lines and so on. Tracks can be autoscrolled up (positive step) and down
+(negative step). To fast swith autostep option use Space or Ctrl+R.
+
+You can use this feature for unusual tasks, like inserting same data from
+clipboard with given step, or fast changing patterns size in 2 times (both
+increasing and decreasing). In last case just set step to 2 or 1 and use Ctrl+I
+or Ctrl+BackSpace several times.
 
 Turbo-Sound mode
 ----------------
@@ -470,14 +482,16 @@ In Turbo-Sound (Turbo-AY) mode used identical setting for both chips.
 These are global compatibility options. If you need to adjust only current
 module, see corresponding tab sheet on its window.
 
- 3xxx command style
+ Features level
 
- - Vortex Tracker II - new 3xxx command interpretation. It affects to playing
-                       and ASC modules import.
  - Pro Tracker 3.5 - old behavior of 3xxx command. Also ASC modules will be
-                     imported for playing with old PT3 players.
+       imported for playing with old PT3 players.
+ - Vortex Tracker II (PT 3.6) - new 3xxx command interpretation. It affects to
+       playing and ASC modules import.
+ - Pro Tracker 3.7 - allows using of 1.xx and 2.xx special commands.
  - Try detect - allow VT to detect it. For PT3 are used header analyzing (see
-                rules above). For PT2 is used old style. For all other - new.
+       rules above). For PT2 is used 'Pro Tracker 3.5'. For all other - 'Vortex
+       Tracker II (PT 3.6)'.
 
  Save with header
 
@@ -598,7 +612,7 @@ Thanks to
 - Jecktor for addapting PT3-player sources to XAS.
 - HalfElf for using in xLook Far Manager plug-in.
 - Karbofos for testing, suggestions and test modules.
-- Ch41ns4w for wishes about TS-mode.
+- Ch41ns4w for wishes about TS-mode and about design.
 - Znahar for another branch of VT II with good ideas.
 - TAD for sugestions, bug-reports and test modules.
 
@@ -618,6 +632,8 @@ Ryurik
 Gibson
 TAD
 Znahar
+Nik-O
+Orson
 and you ;)
 
 Distribution
@@ -631,4 +647,4 @@ somewhere in your projects, where you include all or part of the sources and
 
 Sergey Bulba
 
-24 of August 2002 - 10 of March 2007
+24 of August 2002 - 1 of May 2007

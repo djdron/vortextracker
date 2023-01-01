@@ -10,7 +10,7 @@ unit trfuncs;
 
 interface
 
-uses SysUtils;
+uses SysUtils, Controls, Dialogs;
 
 type
   TChansArray = array [0..2] of integer;
@@ -22,7 +22,7 @@ const
 
   DefPatLen = 64;
 
-  MaxPatNum = 84; //Alone Coder had made Pro Tracker 3.6x with 46 patterns
+  MaxPatNum = 84; //Alone Coder had made Pro Tracker 3.6x+ with 48 patterns
                   //and with player, which supports up to 85 patterns
   MaxNumOfPats = MaxPatNum + 1;
 
@@ -30,14 +30,19 @@ const
 
   MaxSamLen = 64; //not bigger than 64 (players limitation)
 
-  Correct3xxxInterpretation:boolean = True; //Allows Vortex Tracker II
+  FeaturesLevel:integer = 1;
+  //0 for PT 3.5 and older
+  //1 for VT II and PT3.6 (Correct3xxxInterpretation - Allows Vortex Tracker II
         //rightly do the situation like
         //                    A-4 .... 11.1
         //                    --- .... ....
         //                    A-4 .... 31.1
-        //An ASC modules conversion also depends of this switch
+        //An ASC modules conversion also depends of this switch)
+  //2 for PT 3.7 (New1xxx2xxxInterpretation - PT 3.7 1.xx and 2.xx allows sinlge
+                        //tone offset without glissando)
 
-  Detect3xxxInterpretation:boolean = True;
+  DetectFeaturesLevel:boolean = True;
+
   VortexModuleHeader:boolean = True;
   DetectModuleHeader:boolean = True;
   MaxNumberOfSoundChips = 2;
@@ -124,7 +129,8 @@ type
    Samples:array[1..31] of PSample;
    Ornaments:array[0..15] of POrnament;
    Patterns:array[-1..MaxPatNum] of PPattern;
-   VortexModule_Header,New3xxxInterpretation:boolean;
+   FeaturesLevel:integer;
+   VortexModule_Header:boolean;
    IsChans:array [0..2] of record
      Global_Ton,Global_Noise,Global_Envelope,EnvelopeEnabled:boolean;
      Ornament,Sample,Volume:byte;
@@ -346,7 +352,7 @@ procedure Pattern_PlayOnlyCurrentLine;
 {возвращает значения регистров AY для текущей строки паттерна, переход
  на следующую строку не производится.}
 
-function PT32VTM(PT3:PSpeccyModule;VTM:PModule):boolean;
+function PT32VTM(PT3:PSpeccyModule;FSize:integer;VTM1:PModule;var VTM2:PModule):boolean;
 {конвертер из PT3 в VTM.
  PT3 - указатель на предварительно загруженный PT3}
 
@@ -740,7 +746,7 @@ function Pattern_PlayCurrentLine:integer;
 
  procedure PatternInterpreter(ChNum:integer);
  var
-  TS,PrNote,Ch:integer;
+  TS,PrNote,Ch,Gls:integer;
  begin
   Ch := ChNum;
   if PlVars[CurChip].CurrentPattern = -1 then Ch := MidChan;
@@ -802,22 +808,26 @@ function Pattern_PlayCurrentLine:integer;
     case Additional_Command.Number of
     1:
      begin
-      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := Additional_Command.Delay;
-      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay;
+      Gls := Additional_Command.Delay;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := Gls;
+      if (Gls = 0) and (VTM.FeaturesLevel >= 2) then Inc(Gls);
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := Gls;
       PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step := Additional_Command.Parameter;
       PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Type := 0;
-      PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff := 0
+      PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff := 0;
      end;
     2:
      begin
-      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := Additional_Command.Delay;
-      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay;
+      Gls := Additional_Command.Delay;
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := Gls;
+      if (Gls = 0) and (VTM.FeaturesLevel >= 2) then Inc(Gls);
+      PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := Gls;
       PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step := -Additional_Command.Parameter;
       PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Type := 0;
-      PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff := 0
+      PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff := 0;
      end;
     3:
-     if (Note >= 0) or ((Note <> -2) and VTM.New3xxxInterpretation) then
+     if (Note >= 0) or ((Note <> -2) and (VTM.FeaturesLevel >= 1)) then
       begin
        PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := Additional_Command.Delay;
        PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay;
@@ -827,7 +837,7 @@ function Pattern_PlayCurrentLine:integer;
             GetNoteFreq(VTM.Ton_Table,PrNote);
        PlVars[CurChip].ParamsOfChan[Ch].Slide_To_Note := PlVars[CurChip].ParamsOfChan[Ch].Note;
        PlVars[CurChip].ParamsOfChan[Ch].Note := PrNote;
-       if VTM.New3xxxInterpretation then
+       if VTM.FeaturesLevel >= 1 then
         PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding := TS;
        if PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delta -
                 PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding < 0 then
@@ -1105,23 +1115,27 @@ begin
   end
 end;
 
-procedure ValidatePattern;
+procedure NewPattern(var Pat:PPattern);
 var
  i:integer;
 begin
+New(Pat);
+for i := 0 to MaxPatLen - 1 do
+ with Pat.Items[i] do
+  begin
+   Envelope := 0;
+   Noise := 0;
+   Channel[0] := EmptyChannelLine;
+   Channel[1] := EmptyChannelLine;
+   Channel[2] := EmptyChannelLine;
+  end;
+Pat.Length := DefPatLen;
+end;
+
+procedure ValidatePattern;
+begin
 if VTM.Patterns[pat] = nil then
- begin
-  New(VTM.Patterns[pat]);
-  VTM.Patterns[pat].Length := DefPatLen;
-  for i := 0 to MaxPatLen - 1 do
-   begin
-    VTM.Patterns[pat].Items[i].Noise := 0;
-    VTM.Patterns[pat].Items[i].Envelope := 0;
-    VTM.Patterns[pat].Items[i].Channel[0] := EmptyChannelLine;
-    VTM.Patterns[pat].Items[i].Channel[1] := EmptyChannelLine;
-    VTM.Patterns[pat].Items[i].Channel[2] := EmptyChannelLine;
-   end
- end
+ NewPattern(VTM.Patterns[pat]);
 end;
 
  function SGetNumber(s:string;max:integer;var res:integer):boolean;
@@ -1298,7 +1312,12 @@ try
        Result := 2;
        exit
       end;
-     VTM.New3xxxInterpretation := s1 = '3.6'
+     if s1 = '3.5' then
+      VTM.FeaturesLevel := 0
+     else if s1 = '3.7' then
+      VTM.FeaturesLevel := 2
+     else
+      VTM.FeaturesLevel := 1;
     end
    else if s1 = 'TITLE' then
     begin
@@ -1518,8 +1537,9 @@ var
  SkipCounter:array[0..2] of byte;
  PrevOrn:array[0..2] of byte;
  NsBase:integer;
+ TS:integer;
 
- procedure PatternInterpreter(PatNum,LnNum,ChNum:integer);
+ procedure PatternInterpreter(VTM:PModule;PatNum,LnNum,ChNum:integer);
  var
   quit:boolean;
   tmp:smallint;
@@ -1660,115 +1680,24 @@ var
  SkipCounter[ChNum]:=Skip[ChNum]
  end;
 
-var
- i,j,k,Pos:Integer;
- quit:boolean;
-begin
-Result := True;
-if Detect3xxxInterpretation then
+ procedure DecodePattern(VTM:PModule;j,jj:integer);
+ var
+  i,k:integer;
+  quit:boolean;
  begin
-  if StrLComp(@PT3.PT3_Name,'ProTracker 3.',13) = 0 then
-   VTM.New3xxxInterpretation := Ord(PT3.PT3_Name[13]) >= $36
-  else
-   VTM.New3xxxInterpretation :=
-                        StrLComp(@PT3.PT3_Name,'Vortex Tracker II',17) = 0
- end;
-if DetectModuleHeader then
- VTM.VortexModule_Header := StrLComp(@PT3.PT3_Name,'ProTracker 3.',13) <> 0;
-SetLength(VTM.Title,32);
-Move(PT3.PT3_Name[$1e],VTM.Title[1],32);
-VTM.Title := TrimRight(VTM.Title);
-SetLength(VTM.Author,32);
-Move(PT3.PT3_Name[$42],VTM.Author[1],32);
-VTM.Author := TrimRight(VTM.Author);
-VTM.Ton_Table := PT3.PT3_Table;
-VTM.Initial_Delay := PT3.PT3_Delay;
-VTM.Positions.Loop := PT3.PT3_LoopPosition;
-for i := 0 to 255 do
- VTM.Positions.Value[i] := 0;
-VTM.Ornaments[0] := nil;
-for i := 1 to 15 do
- begin
- if PT3.PT3_OrnamentPointers[i] = 0 then
-  VTM.Ornaments[i] := nil
- else
-  begin
-   New(VTM.Ornaments[i]);
-   VTM.Ornaments[i].Loop := PT3.Index[PT3.PT3_OrnamentPointers[i]];
-   VTM.Ornaments[i].Length := PT3.Index[PT3.PT3_OrnamentPointers[i] + 1];
-   for j := 0 to VTM.Ornaments[i].Length - 1 do
-    VTM.Ornaments[i].Items[j] := PT3.Index[PT3.PT3_OrnamentPointers[i] + 2 + j];
-  end;
- end;
-
-for i := 1 to 31 do
- begin
-  if PT3.PT3_SamplePointers[i]=0 then
-   VTM.Samples[i] := nil
-  else
-   begin
-    New(VTM.Samples[i]);
-    VTM.Samples[i].Loop := PT3.Index[PT3.PT3_SamplePointers[i]];
-    VTM.Samples[i].Length := PT3.Index[PT3.PT3_SamplePointers[i] + 1];
-    for j := 0 to VTM.Samples[i].Length - 1 do
-     begin
-      VTM.Samples[i].Items[j].Add_to_Ton :=
-                WordPtr(@PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 4])^;
-      VTM.Samples[i].Items[j].Ton_Accumulation :=
-                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 3] and $40 <> 0;
-      VTM.Samples[i].Items[j].Amplitude :=
-                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 3] and $f;
-      VTM.Samples[i].Items[j].Amplitude_Sliding :=
-                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 2] and $80 <> 0;
-      VTM.Samples[i].Items[j].Amplitude_Slide_Up :=
-                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 2] and $40 <> 0;
-      VTM.Samples[i].Items[j].Envelope_Enabled :=
-                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 2] and 1 = 0;
-      VTM.Samples[i].Items[j].Envelope_or_Noise_Accumulation :=
-                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 3] and $20 <> 0;
-      VTM.Samples[i].Items[j].Add_to_Envelope_or_Noise :=
-                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 2] shr 1;
-      if VTM.Samples[i].Items[j].Add_to_Envelope_or_Noise and $10 <> 0 then
-       VTM.Samples[i].Items[j].Add_to_Envelope_or_Noise :=
-         VTM.Samples[i].Items[j].Add_to_Envelope_or_Noise or shortint($f0)
-      else
-       VTM.Samples[i].Items[j].Add_to_Envelope_or_Noise :=
-         VTM.Samples[i].Items[j].Add_to_Envelope_or_Noise and 15;
-       VTM.Samples[i].Items[j].Mixer_Ton :=
-         PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 3] and $10 = 0;
-       VTM.Samples[i].Items[j].Mixer_Noise :=
-         PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 3] and $80 = 0
-     end
-   end
- end;
-
-for i := 0 to MaxPatNum do
- VTM.Patterns[i] := nil;
-
-Pos := 0;
-while (Pos < 256) and (PT3.Index[Pos + $c9] <> 255) do
- begin
-  j := PT3.Index[Pos + $c9] div 3;
-  VTM.Positions.Value[Pos] := j;
-  Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
+    NewPattern(VTM.Patterns[j]);
     for k := 0 to 2 do
      begin
       PrevOrn[k] := 0;
       SkipCounter[k] := 1;
       Skip[k] := 1
      end;
-    move(PT3.Index[PT3.PT3_PatternsPointer + j*6],ChPtr,6);
-    NsBase := 0;
+    move(PT3.Index[PT3.PT3_PatternsPointer + jj*6],ChPtr,6);
+    NsBase := 0; i := 0; quit := False;
     while (i < MaxPatLen) and not quit do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       for k := 0 to 2 do
        begin
         dec(SkipCounter[k]);
@@ -1780,16 +1709,204 @@ while (Pos < 256) and (PT3.Index[Pos + $c9] <> 255) do
             quit := True;
             break
            end;
-          PatternInterpreter(j,i,k)
+          PatternInterpreter(VTM,j,i,k)
          end
         end;
       VTM.Patterns[j].Items[i].Noise := NsBase;
       inc(i);
      end;
-    VTM.Patterns[j].Length := i
+    VTM.Patterns[j].Length := i;
+   end;
+ end;
+
+ function FoundPT36TS:boolean;
+ var
+  j1,j2,k,Pos:Integer;
+ begin
+ Result := False;
+ if PT3.PT3_Name[13] <> '6' then exit;
+ Pos := 0;
+ while (Pos < 256) and (PT3.Index[Pos + $c9] <> 255) do
+  begin
+   j1 := PT3.Index[Pos + $c9] div 3;
+   if j1 < $30/2 then exit;
+   j2 := $30 - j1 - 1;
+   move(PT3.Index[PT3.PT3_PatternsPointer + j2*6],ChPtr,6);
+   for k := 0 to 2 do
+    if (ChPtr[k] < 100) or (ChPtr[k] >= FSize - 4) then exit;
+   Inc(Pos);
+  end;
+ if MessageDlg('This PT 3.6 module can contain Turbo Sound data. Try to import?',
+    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then exit;
+ TS := $30;
+ Result := True;
+ end;
+
+var
+ i,j,k,kk,Pos:Integer;
+ tset:boolean;
+begin
+Result := True;
+if DetectFeaturesLevel then
+ begin
+  if StrLComp(@PT3.PT3_Name,'ProTracker 3.',13) = 0 then
+   case Ord(PT3.PT3_Name[13]) of
+   $30..$35: VTM1.FeaturesLevel :=  0;
+   $37..$39: VTM1.FeaturesLevel :=  2;
+   else VTM1.FeaturesLevel :=  1;
+   end
+  else if StrLComp(@PT3.PT3_Name,'Vortex Tracker II',17) = 0 then
+   VTM1.FeaturesLevel :=  1
+  else
+   VTM1.FeaturesLevel :=  0;
+ end;
+if DetectModuleHeader then
+ VTM1.VortexModule_Header := StrLComp(@PT3.PT3_Name,'ProTracker 3.',13) <> 0;
+SetLength(VTM1.Title,32);
+Move(PT3.PT3_Name[$1e],VTM1.Title[1],32);
+VTM1.Title := TrimRight(VTM1.Title);
+SetLength(VTM1.Author,32);
+Move(PT3.PT3_Name[$42],VTM1.Author[1],32);
+VTM1.Author := TrimRight(VTM1.Author);
+VTM1.Ton_Table := PT3.PT3_Table;
+VTM1.Initial_Delay := PT3.PT3_Delay;
+VTM1.Positions.Loop := PT3.PT3_LoopPosition;
+for i := 0 to 255 do
+ VTM1.Positions.Value[i] := 0;
+VTM1.Ornaments[0] := nil;
+for i := 1 to 15 do
+ begin
+ if PT3.PT3_OrnamentPointers[i] = 0 then
+  VTM1.Ornaments[i] := nil
+ else
+  begin
+   New(VTM1.Ornaments[i]);
+   VTM1.Ornaments[i].Loop := PT3.Index[PT3.PT3_OrnamentPointers[i]];
+   VTM1.Ornaments[i].Length := PT3.Index[PT3.PT3_OrnamentPointers[i] + 1];
+   for j := 0 to VTM1.Ornaments[i].Length - 1 do
+    VTM1.Ornaments[i].Items[j] := PT3.Index[PT3.PT3_OrnamentPointers[i] + 2 + j];
+  end;
+ end;
+
+for i := 1 to 31 do
+ begin
+  if PT3.PT3_SamplePointers[i]=0 then
+   VTM1.Samples[i] := nil
+  else
+   begin
+    New(VTM1.Samples[i]);
+    VTM1.Samples[i].Loop := PT3.Index[PT3.PT3_SamplePointers[i]];
+    VTM1.Samples[i].Length := PT3.Index[PT3.PT3_SamplePointers[i] + 1];
+    for j := 0 to VTM1.Samples[i].Length - 1 do
+     begin
+      VTM1.Samples[i].Items[j].Add_to_Ton :=
+                WordPtr(@PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 4])^;
+      VTM1.Samples[i].Items[j].Ton_Accumulation :=
+                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 3] and $40 <> 0;
+      VTM1.Samples[i].Items[j].Amplitude :=
+                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 3] and $f;
+      VTM1.Samples[i].Items[j].Amplitude_Sliding :=
+                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 2] and $80 <> 0;
+      VTM1.Samples[i].Items[j].Amplitude_Slide_Up :=
+                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 2] and $40 <> 0;
+      VTM1.Samples[i].Items[j].Envelope_Enabled :=
+                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 2] and 1 = 0;
+      VTM1.Samples[i].Items[j].Envelope_or_Noise_Accumulation :=
+                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 3] and $20 <> 0;
+      VTM1.Samples[i].Items[j].Add_to_Envelope_or_Noise :=
+                PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 2] shr 1;
+      if VTM1.Samples[i].Items[j].Add_to_Envelope_or_Noise and $10 <> 0 then
+       VTM1.Samples[i].Items[j].Add_to_Envelope_or_Noise :=
+         VTM1.Samples[i].Items[j].Add_to_Envelope_or_Noise or shortint($f0)
+      else
+       VTM1.Samples[i].Items[j].Add_to_Envelope_or_Noise :=
+         VTM1.Samples[i].Items[j].Add_to_Envelope_or_Noise and 15;
+       VTM1.Samples[i].Items[j].Mixer_Ton :=
+         PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 3] and $10 = 0;
+       VTM1.Samples[i].Items[j].Mixer_Noise :=
+         PT3.Index[PT3.PT3_SamplePointers[i] + j*4 + 3] and $80 = 0
+     end
    end
  end;
-VTM.Positions.Length := Pos
+
+for i := 0 to MaxPatNum do
+ VTM1.Patterns[i] := nil;
+
+VTM2 := nil; TS := Byte(PT3.PT3_Name[98]);
+if ((TS <> $20) and (PT3.PT3_Name[13] in ['7'..'9'])) or FoundPT36TS then
+ begin
+  New(VTM2);
+  VTM2^ := VTM1^;
+  New(VTM2.Patterns[-1]);
+  VTM2.Patterns[-1]^ := VTM1.Patterns[-1]^;
+  for i := 1 to 15 do
+   if VTM1.Ornaments[i] <> nil then
+    begin
+     New(VTM2.Ornaments[i]);
+     VTM2.Ornaments[i]^ := VTM1.Ornaments[i]^;
+    end;
+  for i := 1 to 31 do
+   if VTM1.Samples[i] <> nil then
+    begin
+     New(VTM2.Samples[i]);
+     VTM2.Samples[i]^ := VTM1.Samples[i]^;
+    end;
+ end;
+
+Pos := 0;
+while (Pos < 256) and (PT3.Index[Pos + $c9] <> 255) do
+ begin
+  j := PT3.Index[Pos + $c9] div 3;
+  if VTM2 <> nil then
+   begin
+    j := TS - j - 1;
+    VTM2.Positions.Value[Pos] := j;
+   end;
+  VTM1.Positions.Value[Pos] := j;
+
+  Inc(Pos);
+
+  if VTM2 <> nil then
+   begin
+    DecodePattern(VTM2,j,j);
+    DecodePattern(VTM1,j,TS - j - 1);
+    for i := 0 to MaxPatLen - 1 do
+     begin
+      tset := False;
+      for k := 2 downto 0 do
+       if VTM2.Patterns[j].Items[i].Channel[k].Additional_Command.Number = 11 then
+        begin
+         for kk := 2 downto 0 do
+          if VTM1.Patterns[j].Items[i].Channel[kk].Additional_Command.Number in [0,11] then
+           begin
+            VTM1.Patterns[j].Items[i].Channel[kk].Additional_Command :=
+             VTM2.Patterns[j].Items[i].Channel[k].Additional_Command;
+            break;
+           end;
+         tset := True;
+         break;
+        end;
+      if not tset then
+       for k := 2 downto 0 do
+        if VTM1.Patterns[j].Items[i].Channel[k].Additional_Command.Number = 11 then
+         begin
+          for kk := 2 downto 0 do
+           if VTM2.Patterns[j].Items[i].Channel[kk].Additional_Command.Number = 0 then
+            begin
+             VTM2.Patterns[j].Items[i].Channel[kk].Additional_Command :=
+              VTM1.Patterns[j].Items[i].Channel[k].Additional_Command;
+             break;
+            end;
+          break;
+         end;
+     end;
+   end
+  else
+   DecodePattern(VTM1,j,j);
+ end;
+VTM1.Positions.Length := Pos;
+if VTM2 <> nil then
+ VTM2.Positions.Length := Pos;
 end;
 
 function GetSampleString;
@@ -2003,10 +2120,7 @@ if VTM.VortexModule_Header then
  Writeln(TxtFile,'VortexTrackerII=1')
 else
  Writeln(TxtFile,'VortexTrackerII=0');
-if not VTM.New3xxxInterpretation then
- Writeln(TxtFile,'Version=3.5')
-else
- Writeln(TxtFile,'Version=3.6');
+Writeln(TxtFile,'Version=3.' + IntToStr(5 + VTM.FeaturesLevel));
 Writeln(TxtFile,'Title=' + VTM.Title);
 Writeln(TxtFile,'Author=' + VTM.Author);
 Writeln(TxtFile,'NoteTable=' + IntToStr(VTM.Ton_Table));
@@ -2082,8 +2196,8 @@ var
 begin
 Result := False;
 
-Move(Pt3Id[VTM.VortexModule_Header and VTM.New3xxxInterpretation,0],PT3.PT3_Name,30);
-if not VTM.New3xxxInterpretation then PT3.PT3_Name[13] := '5';
+Move(Pt3Id[VTM.VortexModule_Header and (VTM.FeaturesLevel = 1),0],PT3.PT3_Name,30);
+if VTM.FeaturesLevel <> 1 then PT3.PT3_Name[13] := Char($35 + VTM.FeaturesLevel);
 
 i := 32; if i > Length(VTM.Title) then i := Length(VTM.Title);
 Move(VTM.Title[1],PT3.PT3_Name[30],i);
@@ -2275,7 +2389,7 @@ for i1 := 0 to PT3.PT3_NumberOfPositions - 1 do
          3:
           if (VTM.Patterns[i].Items[j].Channel[k].Note >= 0) or
              ((VTM.Patterns[i].Items[j].Channel[k].Note <> - 2) and
-              VTM.New3xxxInterpretation) then
+              (VTM.FeaturesLevel >= 1)) then
            begin
             PatStrs[StrNum] := PatStrs[StrNum] + #2;
             TnDl[k] := -VTM.Patterns[i].Items[j].Channel[k].Additional_Command.Delay;
@@ -2384,7 +2498,7 @@ for i1 := 0 to PT3.PT3_NumberOfPositions - 1 do
          3:
           if (VTM.Patterns[i].Items[d].Channel[k].Note >= 0) or
              ((VTM.Patterns[i].Items[d].Channel[k].Note <> - 2) and
-              VTM.New3xxxInterpretation) then
+              (VTM.FeaturesLevel >= 1)) then
            begin
             if Dl >= 0 then
              PatStrs[StrNum] := PatStrs[StrNum] + char(
@@ -2692,8 +2806,8 @@ var
  quit:boolean;
 begin
 Result := True;
-if Detect3xxxInterpretation then
- VTM.New3xxxInterpretation := False;
+if DetectFeaturesLevel then
+ VTM.FeaturesLevel := 0;
 if DetectModuleHeader then
  VTM.VortexModule_Header := False;
 SetLength(VTM.Title,30);
@@ -2774,9 +2888,7 @@ while (Pos < 256) and (PT2.PT2_PositionList[Pos] < 128) do
   Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
+    NewPattern(VTM.Patterns[j]);
     for k := 0 to 2 do
      begin
       PrevOrn[k] := 0;
@@ -2784,12 +2896,9 @@ while (Pos < 256) and (PT2.PT2_PositionList[Pos] < 128) do
       Skip[k] := 0
      end;
     Move(PT2.Index[PT2.PT2_PatternsPointer + j*6],ChPtr,6);
-    NsBase := 0;
+    NsBase := 0; i := 0; quit := False;
     while (i < MaxPatLen) and not quit do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       for k := 0 to 2 do
        begin
         Dec(SkipCounter[k]);
@@ -2902,6 +3011,7 @@ if (VTM.Title = 'SONG BY ST COMPILE') or
    (VTM.Title = 'SONG BY ST-COMPILE') or
    (VTM.Title = 'SOUND TRACKER v1.1') or
    (VTM.Title = 'S.T.FULL EDITION  ') or
+   (VTM.Title = 'S.T.FULL EDITION '#127) or
    (VTM.Title = 'SOUND TRACKER v1.3') then
  VTM.Title := ''
 else
@@ -2961,9 +3071,7 @@ while Pos <= STC.Index[STC.ST_PositionsPointer] do
   Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
+    NewPattern(VTM.Patterns[j]);
     for k := 0 to 2 do
      begin
       SkipCounter[k] := 0;
@@ -2973,12 +3081,9 @@ while Pos <= STC.Index[STC.ST_PositionsPointer] do
     n := Pats[j].Numb;
     while STC.Index[STC.ST_PatternsPointer + k*7] <> n do inc(k);
     Move(STC.Index[STC.ST_PatternsPointer + k*7 + 1],ChPtr,6);
+    i := 0; quit := False;
     while (i < MaxPatLen) and not quit do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      VTM.Patterns[j].Items[i].Noise := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       for k := 0 to 2 do
        begin
         Dec(SkipCounter[k]);
@@ -3310,21 +3415,16 @@ while Pos < STP.Index[STP.STP_PositionsPointer] do
   Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
+    NewPattern(VTM.Patterns[j]);
     for k := 0 to 2 do
      begin
       SkipCounter[k] := 0;
       Skip[k] := 0
      end;
     Move(STP.Index[STP.STP_PatternsPointer + CPat.Numb*6],ChPtr,6);
+    i := 0; quit := False;
     while (i < MaxPatLen) and not quit do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      VTM.Patterns[j].Items[i].Noise := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       for k := 0 to 2 do
        begin
         Dec(SkipCounter[k]);
@@ -3815,9 +3915,8 @@ while (Pos < 256) and (SQT.Index[SQT.SQT_PositionsPointer + Pos*7] <> 0) do
   inc(Pos);
   if (j < MaxNumOfPats) and not IsPattern[j] then
    begin
-    i := 0;
     IsPattern[j] := True;
-    New(VTM.Patterns[j]);
+    NewPattern(VTM.Patterns[j]);
     move(SQT.Index[CPat.Chn[0].PatChanNumber*2 + SQT.SQT_PatternsPointer],ChPtr[0],2);
     move(SQT.Index[CPat.Chn[1].PatChanNumber*2 + SQT.SQT_PatternsPointer],ChPtr[1],2);
     move(SQT.Index[CPat.Chn[2].PatChanNumber*2 + SQT.SQT_PatternsPointer],ChPtr[2],2);
@@ -3844,22 +3943,9 @@ while (Pos < 256) and (SQT.Index[SQT.SQT_PositionsPointer + Pos*7] <> 0) do
     VTM.Patterns[j].Items[0].Channel[2].Volume := 15 - CVol[2];
     if VTM.Patterns[j].Items[0].Channel[2].Volume = 0 then
      Inc(VTM.Patterns[j].Items[0].Channel[2].Volume);
+    i := 0;
     while (i < c) do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      VTM.Patterns[j].Items[i].Noise := 0;
-      for k := 0 to 2 do
-       begin
-        VTM.Patterns[j].Items[i].Channel[k].Note := -1;
-        VTM.Patterns[j].Items[i].Channel[k].Sample := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
-        if i <> 0 then
-         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
-       end;
       for k := 2 downto 0 do
        PatternInterpreter(j,i,k);
       Inc(i)
@@ -4037,7 +4123,7 @@ var
                                 PT3NoteTable_ST[ASC.Index[ChPtr[ChNum] + 1]]) * 16
    else
     delta_ton := 0;
-   if Correct3xxxInterpretation then
+   if FeaturesLevel >= 1 then
     Inc(delta_ton,TS[ChNum]);
    TSAdd[ChNum] := delta_ton div ASC.Index[ChPtr[ChNum]];
    TS[ChNum] := delta_ton - delta_ton mod ASC.Index[ChPtr[ChNum]];
@@ -4317,10 +4403,7 @@ while Pos < ASC.ASC1_Number_Of_Positions do
   Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
-    Ns := 0;
+    NewPattern(VTM.Patterns[j]);
     for k := 0 to 2 do
      begin
       EnvEn[k] := False;
@@ -4333,11 +4416,9 @@ while Pos < ASC.ASC1_Number_Of_Positions do
     Inc(ChPtr[0],ASC.ASC1_PatternsPointers);
     Inc(ChPtr[1],ASC.ASC1_PatternsPointers);
     Inc(ChPtr[2],ASC.ASC1_PatternsPointers);
+    Ns := 0; i := 0; quit := False;
     while (i < MaxPatLen) and not quit do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       if CDelay = 0 then CDelay := 256;
       for k := 0 to 2 do
        if Volume_Counter[k] <> 0 then
@@ -4779,7 +4860,6 @@ var
 var
  i,j,k,Pos,n,l,jl,nb,tmp,zo,nl,PatMax:Integer;
  pp:word;
- quit:boolean;
  Pats:array[0..MaxPatNum] of TPatPtrs;
 begin
 Result := True;
@@ -4856,9 +4936,7 @@ while Pos < 256 do
   Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
+    NewPattern(VTM.Patterns[j]);
     NsC := 0;
     NsB := 0;
     for k := 0 to 2 do
@@ -4869,11 +4947,9 @@ while Pos < 256 do
       SkipCounter[k] := 1;
      end;
     VTM.Patterns[j].Length := nl;
+    i := 0;
     while i < nl do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       if CDelay = 0 then CDelay := 256;
       for k := 0 to 2 do
        if Volume_Counter[k] <> 0 then
@@ -5405,21 +5481,16 @@ while (Pos < 256) and (FLS.Index[Pos + FLS.FLS_PositionsPointer + 1] <> 0) do
   Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
+    NewPattern(VTM.Patterns[j]);
     for k := 0 to 2 do
      begin
       SkipCounter[k] := 0;
       Skip[k] := 0
      end;
     Move(FLS.FLS_PatternsPointers[j],ChPtr,6);
+    i := 0; quit := False;
     while (i < MaxPatLen) and not quit do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      VTM.Patterns[j].Items[i].Noise := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       for k := 0 to 2 do
        begin
         Dec(SkipCounter[k]);
@@ -5662,21 +5733,16 @@ while Pos < PT1.PT1_NumberOfPositions do
   Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
+    NewPattern(VTM.Patterns[j]);
     for k := 0 to 2 do
      begin
       SkipCounter[k] := 0;
       Skip[k] := 0
      end;
     Move(PT1.Index[PT1.PT1_PatternsPointer + j*6],ChPtr,6);
+    i := 0; quit := False;
     while (i < MaxPatLen) and not quit do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      VTM.Patterns[j].Items[i].Noise := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       for k := 0 to 2 do
        begin
         Dec(SkipCounter[k]);
@@ -5869,9 +5935,7 @@ while Pos < GTR.GTR_NumberOfPositions do
   Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
+    NewPattern(VTM.Patterns[j]);
     for k := 0 to 2 do
      begin
       COrn[k] := 0;
@@ -5880,12 +5944,9 @@ while Pos < GTR.GTR_NumberOfPositions do
       SkipCounter[k] := 0
      end;
     Move(GTR.GTR_PatternsPointers[j],ChPtr,6);
+    i := 0; quit := False;
     while (i < MaxPatLen) and not quit do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      VTM.Patterns[j].Items[i].Noise := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       for k := 0 to 2 do
        begin
         Dec(SkipCounter[k]);
@@ -6163,10 +6224,7 @@ while (Pos < 256) and (FTC.FTC_Positions[Pos].Pattern <> 255) do
   Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
-    Ns := 0;
+    NewPattern(VTM.Patterns[j]);
     for k := 0 to 2 do
      begin
       TSStep[k] := 0;
@@ -6174,11 +6232,9 @@ while (Pos < 256) and (FTC.FTC_Positions[Pos].Pattern <> 255) do
       SkipCounter[k] := 0
      end;
     Move(FTC.Index[FTC.FTC_PatternsPointer + 6 * CPat.Numb],ChPtr,6);
+    Ns := 0; i := 0; quit := False;
     while (i < MaxPatLen) and not quit do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       for k := 0 to 2 do
        begin
         Dec(SkipCounter[k]);
@@ -7084,18 +7140,9 @@ var
  end;
 
  procedure ClearPat;
- var
-  i,j:integer;
  begin
-  New(VTM.Patterns[Pat]);
+  NewPattern(VTM.Patterns[Pat]);
   VTM.Patterns[Pat].Length := PatSz;
-  for i := 0 to PatSz - 1 do
-   begin
-    VTM.Patterns[Pat].Items[i].Envelope := 0;
-    VTM.Patterns[Pat].Items[i].Noise := 0;
-    for j := 0 to 2 do
-     VTM.Patterns[Pat].Items[i].Channel[j] := EmptyChannelLine;
-   end
  end;
 
 begin
@@ -7929,9 +7976,7 @@ while Pos < 256 do
   Inc(Pos);
   if VTM.Patterns[j] = nil then
    begin
-    i := 0;
-    quit := False;
-    New(VTM.Patterns[j]);
+    NewPattern(VTM.Patterns[j]);
     for k := 0 to 2 do
      begin
       WasEn[k] := False;
@@ -7942,12 +7987,9 @@ while Pos < 256 do
      end;
     Move(PSM.Index[PSM.PSM_PatternsPointer + CPat.Numb * 7],Ch,7);
     if Pos = 1 then VTM.Initial_Delay := Ch.Dl;
+    i := 0; quit := False;
     while (i < MaxPatLen) and not quit do
      begin
-      VTM.Patterns[j].Items[i].Envelope := 0;
-      VTM.Patterns[j].Items[i].Noise := 0;
-      for k := 0 to 2 do
-       VTM.Patterns[j].Items[i].Channel[k] := EmptyChannelLine;
       for k := 2 downto 0 do
        begin
         Dec(SkipCounter[k]);

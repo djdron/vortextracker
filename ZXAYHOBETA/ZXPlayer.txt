@@ -1,6 +1,9 @@
-Vortex Tracker II v1.0 PT3 player for ZX Spectrum Release 6
-(c)2004 S.V.Bulba <vorobey@mail.khstu.ru> http://bulba.at.kz
-Release date: 19 of December 2004
+Vortex Tracker II v1.0 PT3 player for ZX Spectrum Release 7
+(c)2004,2007 S.V.Bulba <vorobey@mail.khstu.ru>
+http://bulba.untergrund.net/ (http://bulba.at.kz/)
+Release date: 30 of April 2007
+Version for MSX: 9 of January 2005 (Release 6)
+Adaptation for XAS 9.06: 11 of January 2005 (Release 6)
 
 Common remarks
 --------------
@@ -10,22 +13,24 @@ version 3 by one player only. You no need now to play PT3.3 modules in one
 player, PT3.6 modules in another one and so on. Any module of any known version
 will be played correctly in this new universal PT3-player.
 
-Before this release project was compiled in assembler for Win32:
+Project was compiled in assembler for Win32:
 
-ZXASM, Z80 cross-platform assembler version 1.4.2
-(C) Copyright 1997-2002 by Ilya G. Aniskovets
-
-But current release cannot be compiled in it due its bug and limitations. So,
-use corrected sources for ZX Spectrum assemblers (Alasm and ZX Turbo Assembler
-3.10).
+SjASM Z80 Assembler v0.39f
+Copyright 2005 Sjoerd Mastijn
 
 Files
 -----
 
-VTII10bA.asm - source Z80 assembler code.
-VTII10bA.h - same text is prepared for Alasm.
-VTII10bA.txt - same text is prepared for ZX Asm 3.10.
-VTII10bA - assembled binary code block to load at #C000 address.
+VTII10bG.asm - source Z80 assembler code.
+ZX_Asms\VTII10bG.h - same text is prepared for Alasm.
+ZX_Asms\VTII10bG.txt - same text is prepared for ZX Asm 3.10.
+ZX_Asms\Jocker\PT3_VORT.!a - XAS 9.06 adaptation in Hobeta format by
+Jocker/OHG/CMS (old Release 6).
+VTII10bG - assembled binary code block to load at #C000 address.
+Files in MSX folder - player (old Release 6) adaptation for MSX computers by
+Alfonso D.C. a.k.a. Dioniso).
+Files in ROM folder - player adaptation to run in ROM (all self-modified code
+moved to variables area).
 
 Entry points
 ------------
@@ -119,6 +124,18 @@ LOOP	PUSH AF
 
 Read also all comments in source file.
 
+Thanks
+------
+
+Very big thanks to all who helped, and especcially to:
+
+Spectre for help in debugging and adaptation for ZX assemblers.
+Ivan Roshin for optimization, tables generators, articles.
+Alfonso D.C. aka Dioniso for adaptation to MSX computers.
+Alone Coder for help in optimization.
+Jocker/OHG/Critical Mass for adaptation for XAS 9.06.
+Himik's ZxZ for moral support.
+
 Sergey Bulba
 
-19 of September - 19 of December 2004
+19 of September - 30 of April 2007
