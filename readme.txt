@@ -1,4 +1,4 @@
-Vortex Tracker II v1.0 beta 16
+Vortex Tracker II v1.0 beta 17
 (c)2000-2007 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
@@ -45,18 +45,26 @@ PT v3.7+ modules saved in TS-mode can be imported in VT II too, they are
 converted to two single PT3 in two windows. Previous not documented PT v3.6 TS-
 modules are imported after user prompt.
 
+Any two tracker modules (except FXM) can be stored in one file with 16 bytes
+identifier at the end of file. For text format identifier is not need. After
+loading such pair VT II turns on Turbo-Sound mode and tiles both windows
+horizontally.
+
 Vortex Tracker II saves result only in one format is Pro Tracker 3.xx (*.pt3).
 You can play these files in different players-emulators (the most known is
-Win32 emulator Ay_Emul), on real ZX Spectrum in many players (Pusher, Quick
-Commander, BestView, ZXAmp and so on) or by built-in playing routine. Also you
-can include YM-sound into your PC-programs (see Ay_Emul sources, YM-Engine or
-SquareTone at http://bulba.at.kz/).
+Win32 emulator Ay_Emul), on real ZX Spectrum in many players (Little Viewer,
+Quick Commander, Real Commander, BestView, Pusher, ZXAmp and so on) or by
+built-in playing routines. Also you can include YM-sound into your PC-programs
+(see Ay_Emul sources, YM-Engine or SquareTone at http://bulba.at.kz/).
 
 During editing you can save work versions of module in text format. It allows
 to save all temporary not used ornaments, samples and patterns. Also, text
 format is easy editable in any text editor. Of course, text format is only
 one chance to save your music, if PT3 saving is not available due size
 limitations (65536 bytes).
+
+In Turbo-Sound mode during saving one of module second module is saving to the
+end of file too.
 
 In fact, Vortex Tracker II is Win32 version of ZX Spectrum Pro Tracker 3.xx.
 The most compatible version is Pro Tracker v3.6x-3.7x of Alone Coder (a.k.a.
@@ -78,29 +86,48 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-04/30/2007:
+05/13/2007:
 
-1. New Release 7 of ZX player is used for exporting. New version allows right
-   work of 1.xx and 2.xx special commands for PT 3.7 modules.
-2. Added import of PT 3.7 modules are saved in TS-mode (module automatically
-   converted to two single PT3-modules).
+1. TS-mode is turning on after loading TS-module. If only two windows are opened
+   they are tiling horizontally also.
+2. Added new TS-format loader (used in Ay_Emul 2.9 beta 2).
+3. Changed 2nd module pointing method for TS-mode. Now you can point one window
+   two another individually.
+4. Again redesign of pattern editor window (specially for Ch41ns4w).
 
-05/01/2007:
+05/18/2007:
 
-3. Fixed bug: during playing module VT didn't alow to change position value in
-   other module windows.
-4. Fixed loading modules bug: not used lines of pattern was not cleared, and
-   after increasing pattern length random trash can be shown in last lines.
-5. Some PT 3.6 structure analizer was added to prompt user about loading PT 3.6
-   modules as Turbo Sound.
-6. Added PT 3.7 editor mode, which allows to use special commands 1.xx and 2.xx
-   to single change tone frequency by xx value down or up.
-7. 3xxx interpretation type option changed to Features level selection:
-   ProTracker 3.5, Vortex Tracker II (PT 3.6) and ProTracker 3.7. Each mode
-   marked in module by own header.
-8. Some redesign of pattern editor window (specially for ch41ns4w).
-9. Highlight step can be 0 now (same as 256 and same as 'no highlight' option,
-   specially for TAD).
+5. During saving one of module in TS-mode, 2nd module is added to result file
+   too. In text format modules fallow one for another, so you can merge two
+   single modules without editor in command line:
+
+     copy Module1.txt+Module2.txt Module.txt.
+
+   During saving PT3 16 bytes identifer is added at the end of result file. More
+   simplier to save it from editor, but you still do same in command line:
+
+     copy/b Module1.pt3+Module2.pt3+ID Module.pt3
+
+   where ID is next structure file:
+    +0 Str4 'PT3!'
+    +4 Word Module1.pt3 file size
+    +6 Str4 'PT3!'
+    +A Word Module2.pt3 file size
+    +C Str4 '02TS'
+6. AutoStep range is expanded to +-256.
+7. Fixed error: in no loop mode more short module of TS-pair plays first tick of
+   loop position before stopping.
+8. Fixed error: color text on some buttons was set to black instead of system
+   window text color (thanks to Roman Kuraev for bug-report)..
+
+05/19/2007:
+
+9. Added new TS-player for ZX exporting of TS-modules. Don't forget to load in
+   DE register address of second module.
+10.Max size of ornament is upped to 255 (old 64 lines limitations was only in
+   ZX Spectrum editor, not in players). New size limit allows to import long 
+   ornaments from ASC and PSC modules.
+11.PSC-files import is improved (see guitar.psc by Mast).
 
 Known problems
 --------------
@@ -441,15 +468,20 @@ connection to ZX Spectrum. Known schemes are Quadro-AY, Turbo-AY and
 Turbo-Sound. One of way to use it is to play two different modules
 simultaneously (each through own chip). Vortex Tracker II allows to play any two
 opened modules simultaneously. Active window module sounds through the first
-sound chip, and module selected in dropdown list of main window control panel
-through the second chip. By default, second chip is off.
+sound chip, and module selected in list of opened modules through the second
+chip (call list by pushing corresponding button of module window). By default,
+second chip is off ("2nd soundchip is disabled" button label appears).
 
-For more usability VT II autoselects module for 2nd chip during choosing other
-window in TS mode, sinchronizes tracks of two modules in both play and edit
-tracks modes (including cursors position), activates 2nd window after reaching
-tracks editor cursor right or left position.
+For more usability VT II sinchronizes tracks of two modules in both play and
+edit tracks modes (including cursors position), activates 2nd window after
+reaching tracks editor cursor right or left position, during saving any of
+TS-pair module, 2nd is added to the end of result file, during loading
+TS-modules (including special format from PT v3.6+) creates TS-pair and tiles
+it vertically (if only two windows are opened).
 
 Examples of playing on ZX can be found in ZX-magazine InfoGuide #8.
+
+During exporting to ZX in TS-mode used special TS-player for ZX Spectrum.
 
 Files->Options... menu
 ----------------------
@@ -615,6 +647,7 @@ Thanks to
 - Ch41ns4w for wishes about TS-mode and about design.
 - Znahar for another branch of VT II with good ideas.
 - TAD for sugestions, bug-reports and test modules.
+- MMCM for sugestions.
 
 Thanks to musicians using VT II:
 Shiru Otaku
@@ -647,4 +680,4 @@ somewhere in your projects, where you include all or part of the sources and
 
 Sergey Bulba
 
-24 of August 2002 - 1 of May 2007
+24 of August 2002 - 20 of May 2007

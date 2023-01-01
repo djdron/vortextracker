@@ -51,6 +51,10 @@ type
     Label28: TLabel;
     Label29: TLabel;
     Label22: TLabel;
+    Label23: TLabel;
+    Label24: TLabel;
+    Label25: TLabel;
+    Label30: TLabel;
     procedure Edit2Change(Sender: TObject);
     procedure Edit1Change(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -66,7 +70,7 @@ var
   ExpDlg: TExpDlg;
   ZXCompAddr:integer = $C000;
   zxplsz,zxdtsz:word;
-  ZXModSize,blksz,TmpAddr:integer;
+  ZXModSize1,ZXModSize2,blksz,TmpAddr:integer;
 
 implementation
 
@@ -116,31 +120,43 @@ begin
 Edit1.Text := IntToHex(ZXCompAddr,4);
 Edit2.Text := IntToStr(ZXCompAddr);
 TmpAddr := ZXCompAddr;
-ShowZXStat
+ShowZXStat;
 end;
 
 procedure TExpDlg.ShowZXStat;
 var
  i:integer;
 begin
-blksz := ZXModSize;
-if RadioGroup1.ItemIndex <> 1 then inc(blksz,zxplsz + zxdtsz);
+blksz := ZXModSize1 + ZXModSize2;
+if RadioGroup1.ItemIndex <> 1 then
+ inc(blksz,zxplsz + zxdtsz)
+else
+ inc(blksz,16);
 Label22.Caption := IntToHex(65536 - blksz,4)+'):';
 i := TmpAddr and 65535;
 if i + blksz > 65536 then
  i := 65536 - blksz;
 ZXCompAddr := i;
+if ZXModSize2 = 0 then
+ begin
+  Label24.Caption := '----';
+  Label30.Caption := '----';
+ end
+else
+ Label30.Caption := IntToHex(ZXModSize2,4);
+Label14.Caption := '(' + '----' + ')';
 if RadioGroup1.ItemIndex = 1 then
  begin
   Label4.Caption := '----';
   Label6.Caption := '----';
   Label8.Caption := '----';
   Label10.Caption := '(' + '----' + ')';
-  Label14.Caption := '(' + '----' + ')';
   Label17.Caption := '----';
   Label19.Caption := '----';
   Label21.Caption := '----';
   Label27.Caption := IntToHex(ZXCompAddr,4);
+  if ZXModSize2 <> 0 then
+   Label24.Caption := IntToHex(ZXCompAddr + ZXModSize1,4);
  end
 else
  begin
@@ -148,13 +164,16 @@ else
   Label6.Caption := IntToHex(ZXCompAddr+5,4);
   Label8.Caption := IntToHex(ZXCompAddr+8,4);
   Label10.Caption := '(' + IntToHex(ZXCompAddr+10,4) + ')';
-  Label14.Caption := '(' + IntToHex(ZXCompAddr+11,4) + ')';
+  if ZXModSize2 = 0 then
+   Label14.Caption := '(' + IntToHex(ZXCompAddr+11,4) + ')';
   Label17.Caption := IntToHex(ZXCompAddr+zxplsz,4);
   Label19.Caption := IntToHex(zxdtsz,4);
   Label21.Caption := IntToHex(zxplsz,4);
   Label27.Caption := IntToHex(ZXCompAddr+zxplsz+zxdtsz,4);
+  if ZXModSize2 <> 0 then
+   Label24.Caption := IntToHex(ZXCompAddr+zxplsz+zxdtsz+ZXModSize1,4);
  end;
-Label29.Caption := IntToHex(ZXModSize,4);
+Label29.Caption := IntToHex(ZXModSize1,4);
 end;
 
 procedure TExpDlg.RadioGroup1Click(Sender: TObject);

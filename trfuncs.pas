@@ -26,7 +26,7 @@ const
                   //and with player, which supports up to 85 patterns
   MaxNumOfPats = MaxPatNum + 1;
 
-  MaxOrnLen = 64; //can be up to 255
+  MaxOrnLen = 255; //can be up to 255; 64 in ZX version of PT3-editor
 
   MaxSamLen = 64; //not bigger than 64 (players limitation)
 
@@ -366,7 +366,7 @@ function LoadPatternDataTxt(OnePat:PPattern):integer;
 function LoadSampleDataTxt(Sam:PSample):string;
 procedure ValidateSample(sam:integer;VTM:PModule);
 function RecognizeOrnamentString(const orst:string;Orn:POrnament):boolean;
-function LoadModuleFromText(FN:string;VTM:PModule):integer;
+function LoadModuleFromText(FN:string;VTM1:PModule;var VTM2:PModule):integer;
 function PT22VTM(PT2:PSpeccyModule;VTM:PModule):boolean;
 function PT12VTM(PT1:PSpeccyModule;VTM:PModule):boolean;
 function STC2VTM(STC:PSpeccyModule;FSize:integer;VTM:PModule):boolean;
@@ -395,14 +395,16 @@ function GetSampleString(SL:TSampleTick;Vol,Ns:boolean):string;
 procedure SavePattern(VTMP:PModule;n:integer);
 procedure SaveSample(VTMP:PModule;n:integer);
 procedure SaveOrnament(VTM:PModule;n:integer);
-procedure VTM2TextFile(FN:string;VTM:PModule);
+procedure VTM2TextFile(FN:string;VTM:PModule;Apnd:boolean);
 function VTM2PT3(PT3:PSpeccyModule;VTM:PModule;
                               var Module_Size:Integer):boolean;
 {конвертер из VTM в PT3.
  PT3 - указатель, где будет сформирован PT3
  в Module_Size возвращается размер данного PT3}
 
+procedure PrepareZXModule(ZXP:PSpeccyModule;var FType:Available_Types;Length:integer);
 function LoadAndDetect(ZXP:PSpeccyModule;FileName:string; var Length:integer;
+                          var FType2:Available_Types; var TSSize2:integer;
                           var ZXAddr:word; var Tm:integer; var Andsix:byte;
                           var AuthorName,SongName:string):Available_Types;
 function GetModuleTime(VTM:PModule):integer;
@@ -411,6 +413,9 @@ function GetPositionTimeEx(VTM:PModule;Pos,PosDelay,Line:integer):integer;
 function GetNoteFreq(t,j:integer):integer;
 
 procedure GetTimeParams(VTM:PModule; Time:integer; var Pos,Line:integer);
+
+procedure FreeVTMP(var VTMP:PModule);
+procedure NewVTMP(var VTMP:PModule);
 
 type
  PT3ToneTable = array[0..95] of word;
@@ -936,7 +941,7 @@ repeat
   begin
    Readln(TxtFile,st);
    inc(TxtLine)
-  end; 
+  end;
  st := Trim(st);
 until (not Result) or (st <> '')
 end;
@@ -978,7 +983,7 @@ if Result then
   Orn.Length := l;
   Orn.Loop := lp;
   for i := l to MaxOrnLen - 1 do
-   Orn.Items[i] := 0
+   Orn.Items[i] := 0;
  end;
 end;
 
@@ -1098,12 +1103,12 @@ begin
      exit
     end;
    Inc(len);
-   if len = MaxSamLen then break
+   if len = MaxSamLen then break;
   end;
  if len = 0 then
   begin
    Result := 'Error: empty sample';
-   exit
+   exit;
   end
  else
   begin
@@ -1111,8 +1116,8 @@ begin
    Sam.Loop := lp;
    Sam.Length := len;
    for len := len to MaxSamLen - 1 do
-    Sam.Items[len] := EmptySampleTick
-  end
+    Sam.Items[len] := EmptySampleTick;
+  end;
 end;
 
 procedure NewPattern(var Pat:PPattern);
@@ -1267,17 +1272,9 @@ var
  Pat:PPattern;
  Orn:POrnament;
  Sam:PSample;
-begin
-Result := 0;
-AssignFile(TxtFile,FN);
-Reset(TxtFile);
-TxtLine := 0;
-try
- if not GetString(s) or (UpperCase(s) <> '[MODULE]') then
-  begin
-   Result := 1;
-   exit
-  end;
+
+ procedure LoadTxtMod(VTM:PModule);
+ begin
  while GetString(s) do
   begin
    if s[1] = '[' then break;
@@ -1325,7 +1322,7 @@ try
       s1 := ''
      else
       s1 := TrimLeft(Copy(s,i + 1,Length(s) - i));
-     if Length(s1) > 32 then SetLength(s,32); 
+     if Length(s1) > 32 then SetLength(s,32);
      VTM.Title := s1
     end
    else if s1 = 'AUTHOR' then
@@ -1514,20 +1511,39 @@ try
       Result := 3;
       exit
      end;
-    New(Pat); 
+    New(Pat);
     Result := LoadPatternDataTxt(Pat);
     if Result <> 0 then
      begin
       Dispose(Pat);
       exit;
      end;
-    VTM.Patterns[i] := Pat
+    VTM.Patterns[i] := Pat;
    end
   else if not GetString(TxtString) then break
- until TxtString = ''
+ until (TxtString = '') or (UpperCase(TxtString) = '[MODULE]');
+ end;
+
+begin
+Result := 0;
+AssignFile(TxtFile,FN);
+Reset(TxtFile);
+TxtLine := 0;
+VTM2 := nil;
+try
+ if not GetString(s) or (UpperCase(s) <> '[MODULE]') then
+ begin
+  Result := 1;
+  exit
+ end;
+ LoadTxtMod(VTM1);
+ if (TxtString = '') or (Result <> 0) then exit;
+ NewVTMP(VTM2);
+ LoadTxtMod(VTM2);
+ if Result <> 0 then FreeVTMP(VTM2);
 finally
- CloseFile(TxtFile)
-end
+ CloseFile(TxtFile);
+end;
 end;
 
 function PT32VTM;
@@ -2113,7 +2129,10 @@ var
  i:integer;
 begin
 AssignFile(TxtFile,FN);
-Rewrite(TxtFile);
+if not Apnd then
+ Rewrite(TxtFile)
+else
+ Append(TxtFile);
 try
 Writeln(TxtFile,'[Module]');
 if VTM.VortexModule_Header then
@@ -2131,7 +2150,7 @@ with VTM.Positions do
   begin
    if i = Loop then Write(TxtFile,'L');
    Write(TxtFile,Value[i]);
-   if i <> Length - 1 then Write(TxtFile,',')
+   if i <> Length - 1 then Write(TxtFile,',');
   end;
 Writeln(TxtFile);
 Writeln(TxtFile);
@@ -2140,14 +2159,14 @@ for i := 1 to 15 do
  begin
   Writeln(TxtFile,'[Ornament' + IntToStr(i) + ']');
   SaveOrnament(VTM,i);
-  Writeln(TxtFile)
+  Writeln(TxtFile);
  end;
 
 for i := 1 to 31 do
  begin
   Writeln(TxtFile,'[Sample' + IntToStr(i) + ']');
   SaveSample(VTM,i);
-  Writeln(TxtFile)
+  Writeln(TxtFile);
  end;
 
 for i := 0 to MaxPatNum do
@@ -2155,12 +2174,12 @@ for i := 0 to MaxPatNum do
   begin
    Writeln(TxtFile,'[Pattern' + IntToStr(i) + ']');
    SavePattern(VTM,i);
-   Writeln(TxtFile)
+   Writeln(TxtFile);
   end;
 
 finally
-CloseFile(TxtFile)
-end
+CloseFile(TxtFile);
+end;
 end;
 
 function VTM2PT3(PT3:PSpeccyModule;VTM:PModule;
@@ -2829,8 +2848,8 @@ for i := 1 to 15 do
    New(VTM.Ornaments[i]);
    VTM.Ornaments[i].Loop := PT2.Index[PT2.PT2_OrnamentPointers[i] + 1];
    VTM.Ornaments[i].Length := PT2.Index[PT2.PT2_OrnamentPointers[i]];
-   if (VTM.Ornaments[i].Length = 0) or (VTM.Ornaments[i].Length > 64) then
-    VTM.Ornaments[i].Length := 64;
+   if (VTM.Ornaments[i].Length = 0) or (VTM.Ornaments[i].Length > MaxOrnLen) then
+    VTM.Ornaments[i].Length := MaxOrnLen;
    if VTM.Ornaments[i].Loop >= VTM.Ornaments[i].Length then
     VTM.Ornaments[i].Loop := VTM.Ornaments[i].Length - 1;
    for j := 0 to VTM.Ornaments[i].Length - 1 do
@@ -2848,8 +2867,8 @@ for i := 1 to 31 do
     New(VTM.Samples[i]);
     VTM.Samples[i].Loop := PT2.Index[PT2.PT2_SamplePointers[i] + 1];
     VTM.Samples[i].Length := PT2.Index[PT2.PT2_SamplePointers[i]];
-    if (VTM.Samples[i].Length = 0) or (VTM.Samples[i].Length > 64) then
-     VTM.Samples[i].Length := 64;
+    if (VTM.Samples[i].Length = 0) or (VTM.Samples[i].Length > MaxSamLen) then
+     VTM.Samples[i].Length := MaxSamLen;
     if VTM.Samples[i].Loop >= VTM.Samples[i].Length then
      VTM.Samples[i].Loop := VTM.Samples[i].Length - 1;
     for j := 0 to VTM.Samples[i].Length - 1 do
@@ -4502,9 +4521,9 @@ for i := 0 to 31 do
        end;
       Inc(k);
       Inc(j,2);
-      if k = 64 then break
+      if k = MaxOrnLen then break;
      until ASC.Index[j - 2] and 64 <> 0;
-    until (k = 64) or (n = nb) or (n < -$55) or (n > $55);
+    until (k = MaxOrnLen) or (n = nb) or (n < -$55) or (n > $55);
     if (k = 1) and (n = 0) then
      begin
       zo := l;
@@ -4522,15 +4541,15 @@ if zo = 0 then
      if orns[i] = 16 then
       begin
        orns[i] := -1;
-       break
+       break;
       end;
     for i := 0 to MaxPatNum do
      if VTM.Patterns[i] <> nil then
       for j := 0 to VTM.Patterns[i].Length - 1 do
        for k := 0 to 2 do
         if VTM.Patterns[i].Items[j].Channel[k].Ornament = 16 then
-         VTM.Patterns[i].Items[j].Channel[k].Ornament := 0
-   end
+         VTM.Patterns[i].Items[j].Channel[k].Ornament := 0;
+   end;
  end
 else
  begin
@@ -4544,7 +4563,7 @@ else
       if VTM.Patterns[i].Items[j].Channel[k].Ornament > zo then
        Dec(VTM.Patterns[i].Items[j].Channel[k].Ornament)
       else if VTM.Patterns[i].Items[j].Channel[k].Ornament = zo then
-       VTM.Patterns[i].Items[j].Channel[k].Ornament := 0
+       VTM.Patterns[i].Items[j].Channel[k].Ornament := 0;
  end;
 
 for i := 0 to 31 do
@@ -4570,16 +4589,16 @@ for i := 0 to 31 do
        begin
         VTM.Ornaments[l].Loop := k;
         nb := tmp;
-        jl := j
+        jl := j;
        end;
       Inc(k);
       VTM.Ornaments[l].Items[k - 1] := n;
       Inc(j,2);
-      if k = 64 then break
+      if k = MaxOrnLen then break;
      until ASC.Index[j - 2] and 64 <> 0;
-    until (k = 64) or (n = nb) or (n < -$55) or (n > $55);
-    VTM.Ornaments[l].Length := k
-   end
+    until (k = MaxOrnLen) or (n = nb) or (n < -$55) or (n > $55);
+    VTM.Ornaments[l].Length := k;
+   end;
  end;
 
 for i := 0 to 31 do
@@ -4619,17 +4638,17 @@ for i := 0 to 31 do
                                       shortint(ASC.Index[j] shl 3) div 8;
      Inc(k);
      Inc(j,3);
-     if k = 64 then break
+     if k = MaxSamLen then break;
     until ASC.Index[j - 3] and (64 + 32) <> 0;
-    if (ASC.Index[j - 3] and (64 + 32) = 32) and (k < 64) then
+    if (ASC.Index[j - 3] and (64 + 32) = 32) and (k < MaxSamLen) then
      begin
       VTM.Samples[l].Loop := k;
       Inc(k);
-      VTM.Samples[l].Items[k - 1] := EmptySampleTick
+      VTM.Samples[l].Items[k - 1] := EmptySampleTick;
      end;
-    VTM.Samples[l].Length := k
-   end
- end
+    VTM.Samples[l].Length := k;
+   end;
+ end;
 end;
 
 function PSC2VTM(PSC:PSpeccyModule;VTM:PModule):boolean;
@@ -4642,23 +4661,48 @@ var
  NOrns,NSams,NsC,NsB:integer;
  EnvEn,EnvSet,NtSet:array[0..2] of boolean;
  EnvT,EnvP,CDelay:integer;
- PrevOrn,PrevVol,PrevVol1,InitVol:array[0..2] of shortint;
+ OrnSet,OrnUsed,PrevVol,PrevVol1,InitVol:array[0..2] of shortint;
+ OrnEnabled:array[0..2] of boolean;
  Volume_Counter,VCDop,CurSam:array[0..2] of integer;
 
  procedure PatternInterpreter(PatNum,LnNum,ChNum:integer);
  var
-  quit,VCSet:boolean;
+  quit,VCSet,OrnOff,OrnOn:boolean;
   a,i:integer;
 
   begin
    quit := False;
    VCSet := False;
+   OrnOn := False;
+   OrnOff := False;
    repeat
     case PSC.Index[ChPtr[ChNum]] of
     $c0..$ff:
      begin
       SkipCounter[ChNum] := PSC.Index[ChPtr[ChNum]] - $bf;
-      quit := True
+      i := -1;
+      if OrnOn then
+       begin
+        if not OrnEnabled[ChNum] or (OrnSet[ChNum] <> OrnUsed[ChNum]) then
+         if OrnSet[ChNum] >= 0 then i := OrnSet[ChNum];
+        OrnEnabled[ChNum] := True;
+       end;
+      if OrnOff and OrnEnabled[ChNum] then
+       begin
+        i := 0;
+        OrnEnabled[ChNum] := False;
+       end;
+      if i >= 0 then
+       begin
+        OrnUsed[ChNum] := i;
+        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Ornament := i;
+        if VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Envelope = 0 then
+         begin
+          EnvSet[ChNum] := False;
+          VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Envelope := 15;
+         end;
+       end;
+      quit := True;
      end;
     $a0..$bf:
      begin
@@ -4672,13 +4716,7 @@ var
          orns[a] := i
         end;
       if i < 0 then i := 0;
-      PrevOrn[ChNum] := i;
-      VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Ornament := i;
-      if VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Envelope = 0 then
-       begin
-        EnvSet[ChNum] := False;
-        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Envelope := 15
-       end
+      OrnSet[ChNum] := i;
      end;
     $7e..$9f:
      if PSC.Index[ChPtr[ChNum]] >= $80 then
@@ -4694,7 +4732,7 @@ var
          end;
        if i < 0 then i := 0;
        CurSam[ChNum] := a;
-       VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Sample := i
+       VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Sample := i;
       end;
     $6b:
      begin
@@ -4737,13 +4775,8 @@ var
      end;
     $6f:
      begin
-      VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Ornament := 0;
-      if VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Envelope = 0 then
-       begin
-        EnvSet[ChNum] := False;
-        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Envelope := 15
-       end; 
-      Inc(ChPtr[ChNum])
+      OrnOff := True;
+      Inc(ChPtr[ChNum]);
      end;
     $70:
      begin
@@ -4752,12 +4785,12 @@ var
       Volume_Counter[ChNum] := PSC.Index[ChPtr[ChNum]];
       if Volume_Counter[ChNum] and $40 <> 0 then
        Volume_Counter[ChNum] := shortint(Volume_Counter[ChNum] or 128);
-      VCDop[ChNum] := 0
+      VCDop[ChNum] := 0;
      end;
     $71:
      begin
 //        Break_Ornament_Loop := True; //not available in PT3
-      Inc(ChPtr[ChNum])
+      Inc(ChPtr[ChNum]);
      end;
     $7a:
      begin
@@ -4782,7 +4815,10 @@ var
        NsB := PSC.Index[ChPtr[1]] and $1f
      end;
     $7c:
-     VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Note := -2;
+     begin
+      VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Note := -2;
+//      OrnOff := True;
+     end;
     $7d:
 //       Break_Sample_Loop := True //not available in PT3
      VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Note := -2;
@@ -4793,16 +4829,17 @@ var
       if PrevVol[ChNum] <> i then
        begin
         PrevVol[ChNum] := i;
-        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Volume := i
+        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Volume := i;
        end;
       if EnvEn[ChNum] then
        begin
         EnvSet[ChNum] := False;
         EnvEn[ChNum] := False;
         VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Envelope := 15;
-        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Ornament :=
-                                                       PrevOrn[ChNum]
-       end
+        i := 0; if OrnEnabled[ChNum] then i := OrnUsed[ChNum];
+        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Ornament := i;
+        OrnUsed[ChNum] := i;
+       end;
      end;
     $57:
      begin
@@ -4810,22 +4847,22 @@ var
        begin
         InitVol[ChNum] := 15;
         PrevVol[ChNum] := 15;
-        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Volume := 15
+        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Volume := 15;
        end;
       EnvSet[ChNum] := False;
-      EnvEn[ChNum] := True
+      EnvEn[ChNum] := True;
      end;
     0..$56:
      begin
-      VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Note :=
-                      PSC.Index[ChPtr[ChNum]];
+      OrnOn := True;
+      VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Note :=  PSC.Index[ChPtr[ChNum]];
       if InitVol[ChNum] <> PrevVol[ChNum] then
        begin
         PrevVol[ChNum] := InitVol[ChNum];
-        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Volume := InitVol[ChNum]
+        VTM.Patterns[PatNum].Items[LnNum].Channel[ChNum].Volume := InitVol[ChNum];
        end;
       if not VCSet then Volume_Counter[ChNum] := 0;
-      NtSet[ChNum] := True
+      NtSet[ChNum] := True;
      end
     else
      Inc(ChPtr[ChNum]);
@@ -4849,12 +4886,12 @@ var
    if PSC.Index[j + 4] and 8 = 0 then
     begin
      Result := True;
-     exit
+     exit;
     end;
    Inc(k);
    Inc(j,6);
-   if k = 64 then break
-  until PSC.Index[j - 2] and (64 + 32) in [0,32,64]
+   if k = MaxSamLen then break;
+  until PSC.Index[j - 2] and (64 + 32) in [0,32,64];
  end;
 
 var
@@ -4893,7 +4930,8 @@ for k := 0 to 2 do
   PrevVol[k] := 15;
   InitVol[k] := 15;
   CurSam[k] := 0;
-  EnvEn[k] := False
+  EnvEn[k] := False;
+  OrnUsed[k] := 0;
  end;
 
 EnvT := 0;
@@ -4943,8 +4981,9 @@ while Pos < 256 do
      begin
       PrevVol1[k] := PrevVol[k];
       PrevVol[k] := 0;
-      PrevOrn[k] := 0;
       SkipCounter[k] := 1;
+      OrnEnabled[k] := False;
+      OrnSet[k] := -1;
      end;
     VTM.Patterns[j].Length := nl;
     i := 0;
@@ -4998,8 +5037,8 @@ while Pos < 256 do
          begin
           VTM.Patterns[j].Items[i].Channel[k].Envelope := EnvT;
           VTM.Patterns[j].Items[i].Envelope := EnvP;
-          VTM.Patterns[j].Items[i].Channel[k].Ornament := PrevOrn[k];
-          EnvSet[k] := True
+          VTM.Patterns[j].Items[i].Channel[k].Ornament := OrnUsed[k];
+          EnvSet[k] := True;
          end;
       for k := 2 downto 0 do
        if NtSet[k] and IsNsInSam(CurSam[k]) then
@@ -5040,16 +5079,15 @@ for i := 0 to 31 do
        end;
       Inc(k);
       Inc(j,2);
-      if k = 64 then break
+      if k = MaxOrnLen then break;
      until PSC.Index[j - 2] and (64 + 32) in [0,32,64];
-     if PSC.Index[j - 2] and (64 + 32) = 64 then
-      break
-    until (k = 64) or (n = nb) or (n < -$55) or (n > $55);
+     if PSC.Index[j - 2] and (64 + 32) = 64 then break;
+    until (k = MaxOrnLen) or (n = nb) or (n < -$55) or (n > $55);
     if (k = 1) and (n = 0) then
      begin
       zo := l;
       orns[i] := -1;
-      break
+      break;
      end
    end
  end;
@@ -5062,15 +5100,15 @@ if zo = 0 then
      if orns[i] = 16 then
       begin
        orns[i] := -1;
-       break
+       break;
       end;
     for i := 0 to MaxPatNum do
      if VTM.Patterns[i] <> nil then
       for j := 0 to VTM.Patterns[i].Length - 1 do
        for k := 0 to 2 do
         if VTM.Patterns[i].Items[j].Channel[k].Ornament = 16 then
-         VTM.Patterns[i].Items[j].Channel[k].Ornament := 0
-   end
+         VTM.Patterns[i].Items[j].Channel[k].Ornament := 0;
+   end;
  end
 else
  begin
@@ -5084,7 +5122,7 @@ else
       if VTM.Patterns[i].Items[j].Channel[k].Ornament > zo then
        Dec(VTM.Patterns[i].Items[j].Channel[k].Ornament)
       else if VTM.Patterns[i].Items[j].Channel[k].Ornament = zo then
-       VTM.Patterns[i].Items[j].Channel[k].Ornament := 0
+       VTM.Patterns[i].Items[j].Channel[k].Ornament := 0;
  end;
 
 for i := 0 to 31 do
@@ -5115,16 +5153,16 @@ for i := 0 to 31 do
       Inc(k);
       VTM.Ornaments[l].Items[k - 1] := n;
       Inc(j,2);
-      if k = 64 then break
+      if k = MaxOrnLen then break;
      until PSC.Index[j - 2] and (64 + 32) in [0,32,64];
      if PSC.Index[j - 2] and (64 + 32) = 64 then
       begin
        VTM.Ornaments[l].Loop := k - 1;
-       break
-      end 
-    until (k = 64) or (n = nb) or (n < -$55) or (n > $55);
-    VTM.Ornaments[l].Length := k
-   end
+       break;
+      end;
+    until (k = MaxOrnLen) or (n = nb) or (n < -$55) or (n > $55);
+    VTM.Ornaments[l].Length := k;
+   end;
  end;
 
 for i := 0 to 31 do
@@ -5164,32 +5202,169 @@ for i := 0 to 31 do
                                       shortint(PSC.Index[j + 2]);
      Inc(k);
      Inc(j,6);
-     if k = 64 then break
+     if k = MaxSamLen then break;
     until PSC.Index[j - 2] and (64 + 32) in [0,32,64];
-    if (PSC.Index[j - 2] and (64 + 32) = 64) and (k < 64) then
+    if (PSC.Index[j - 2] and (64 + 32) = 64) and (k < MaxSamLen) then
      begin
       VTM.Samples[l].Loop := k;
       Inc(k);
-      VTM.Samples[l].Items[k - 1] := EmptySampleTick
+      VTM.Samples[l].Items[k - 1] := EmptySampleTick;
      end;
-    VTM.Samples[l].Length := k
+    VTM.Samples[l].Length := k;
+   end;
+ end;
+end;
+
+procedure PrepareZXModule(ZXP:PSpeccyModule;var FType:Available_Types;Length:integer);
+var
+ i,j,k,i1,i2:integer;
+ pwrd:WordPtr;
+begin
+case FType of
+FLSFile:
+ begin
+  i := ZXP.FLS_OrnamentsPointer - 16;
+  if i >= 0 then
+   repeat
+    i2 := ZXP.FLS_SamplesPointer + 2 - i;
+    if (i2 >= 8) and (i2 < Length) then
+     begin
+      pwrd := @ZXP.Index[i2];
+      i1 := pwrd^ - i;
+      if (i1 >= 8) and (i1 < Length) then
+       begin
+        pwrd := @ZXP.Index[i2 - 4];
+        i2 := pwrd^ - i;
+        if (i2 >= 6) and (i2 < Length) then
+         if i1 - i2 = $20 then
+          begin
+           i2 := ZXP.FLS_PatternsPointers[1].PatternB - i;
+           if (i2 > 21) and (i2 < Length) then
+            begin
+             i1 := ZXP.FLS_PatternsPointers[1].PatternA - i;
+             if (i1 > 20) and (i1 < Length) then
+              if ZXP.Index[i1 - 1] = 0 then
+               begin
+                while (i1 < Length) and (ZXP.Index[i1] <> 255) do
+                 begin
+                  repeat
+                   case ZXP.Index[i1] of
+                   0..$5f,$80,$81:
+                    begin
+                     Inc(i1);
+                     break
+                    end;
+                   $82..$8e:
+                    Inc(i1)
+                   end;
+                   Inc(i1);
+                  until i1 >= Length;
+                 end;
+                if i1 + 1 = i2 then break
+               end
+            end
+          end
+       end
+     end;
+    Dec(i)
+   until i < 0;
+   if i < 0 then
+    FType := Unknown
+   else
+    begin
+     pwrd := pointer(ZXP);
+     i1 := ZXP.FLS_SamplesPointer - i + integer(pwrd);
+     i2 := ZXP.FLS_PositionsPointer - i + integer(pwrd) + 2;
+     repeat
+      Dec(pwrd^,i);
+      Inc(integer(pwrd),2)
+     until i1 = integer(pwrd);
+     Inc(integer(pwrd),2);
+     repeat
+      Dec(pwrd^,i);
+      Inc(integer(pwrd),4)
+     until i2 = integer(pwrd)
+    end
+ end;
+SQTFile:
+ begin
+  i := ZXP.SQT_SamplesPointer - 10;
+  j := 0;
+  k := ZXP.SQT_PositionsPointer - i;
+  while ZXP.Index[k] <> 0 do
+   begin
+    if j < ZXP.Index[k] and $7f then
+     j := ZXP.Index[k] and $7f;
+    Inc(k,2);
+    if j < ZXP.Index[k] and $7f then
+     j := ZXP.Index[k] and $7f;
+    Inc(k,2);
+    if j < ZXP.Index[k] and $7f then
+     j := ZXP.Index[k] and $7f;
+    Inc(k,3)
+   end;
+  pwrd := @ZXP.SQT_SamplesPointer;
+  for k := 1 to (ZXP.SQT_PatternsPointer - i + j shl 1) div 2 do
+   begin
+    Dec(pwrd^,i);
+    Inc(integer(pwrd),2)
    end
  end
 end;
+end;
 
 function LoadAndDetect;
+type
+ TStr4 = array[0..3] of char;
+
+ function GetTSType(TS:TStr4):Available_Types;
+ const
+  STC=$21435453;
+  ASC=$21435341;
+  STP=$21505453;
+  PSC=$21435350;
+  FLS=$21534C46;
+  FTC=$21435446;
+  PT1=$21315450;
+  PT2=$21325450;
+  PT3=$21335450;
+  SQT=$21545153;
+  GTR=$21525447;
+  PSM=$214D5350;
+ begin
+  Result := Unknown;
+  case PLongWord(@TS)^ of
+  STC:Result := STCFile;
+  ASC:Result := ASCFile;
+  STP:Result := STPFile;
+  PSC:Result := PSCFile;
+  FLS:Result := FLSFile;
+  FTC:Result := FTCFile;
+  PT1:Result := PT1File;
+  PT2:Result := PT2File;
+  PT3:Result := PT3File;
+  SQT:Result := SQTFile;
+  GTR:Result := GTRFile;
+  PSM:Result := PSMFile;
+  end;
+ end;
+
 var
- i,i1,i2,j,k,CurPos,Offset:integer;
+ i,CurPos,Offset:integer;
  f:file;
  s:string;
- pwrd:WordPtr;
  AYFileHeader:TAYFileHeader;
  SongStructure:TSongStructure;
  Ch:char;
  Byt:byte;
  Wrd:word;
+ TSData:packed record
+  Type1:TStr4; Size1:word;
+  Type2:TStr4; Size2:word;
+  TSID:TStr4;
+ end;
 begin
-Result := Unknown;
+Result := Unknown; FType2 := Unknown;
 s := LowerCase(ExtractFileExt(FileName));
 if s = '.pt2' then
  Result := PT2File
@@ -5222,9 +5397,27 @@ else
 FillChar(ZXP^,65536,0);
 AssignFile(f,FileName);
 Reset(f,1);
+Length := 65536;
 try
 if Result <> FXMFile then
- BlockRead(f,ZXP^,65536,Length)
+ begin
+  if FileSize(f) <= SizeOf(TSData) then
+   begin
+    Result := Unknown;
+    exit;
+   end;
+  Seek(f,FileSize(f) - SizeOf(TSData));
+  BlockRead(f,TSData,16);
+  if TSData.TSID = '02TS' then
+   begin
+    Result := GetTSType(TSData.Type1); if Result = Unknown then exit;
+    Length := TSData.Size1;
+    FType2 := GetTSType(TSData.Type2);
+    TSSize2 := TSData.Size2;
+   end;
+  Seek(f,0);
+  BlockRead(f,ZXP^,Length,Length);
+ end
 else
  if s = '.fxm' then
   begin
@@ -5281,98 +5474,8 @@ else
   end
 finally
  CloseFile(f);
-end; 
-case Result of
-FLSFile:
- begin
-  i := ZXP.FLS_OrnamentsPointer - 16;
-  if i >= 0 then
-   repeat
-    i2 := ZXP.FLS_SamplesPointer + 2 - i;
-    if (i2 >= 8) and (i2 < Length) then
-     begin
-      pwrd := @ZXP.Index[i2];
-      i1 := pwrd^ - i;
-      if (i1 >= 8) and (i1 < Length) then
-       begin
-        pwrd := @ZXP.Index[i2 - 4];
-        i2 := pwrd^ - i;
-        if (i2 >= 6) and (i2 < Length) then
-         if i1 - i2 = $20 then
-          begin
-           i2 := ZXP.FLS_PatternsPointers[1].PatternB - i;
-           if (i2 > 21) and (i2 < Length) then
-            begin
-             i1 := ZXP.FLS_PatternsPointers[1].PatternA - i;
-             if (i1 > 20) and (i1 < Length) then
-              if ZXP.Index[i1 - 1] = 0 then
-               begin
-                while (i1 < Length) and (ZXP.Index[i1] <> 255) do
-                 begin
-                  repeat
-                   case ZXP.Index[i1] of
-                   0..$5f,$80,$81:
-                    begin
-                     Inc(i1);
-                     break
-                    end;
-                   $82..$8e:
-                    Inc(i1)
-                   end;
-                   Inc(i1);
-                  until i1 >= Length;
-                 end;
-                if i1 + 1 = i2 then break
-               end
-            end
-          end
-       end
-     end;
-    Dec(i)
-   until i < 0;
-   if i < 0 then
-    Result := Unknown
-   else
-    begin
-     pwrd := pointer(ZXP);
-     i1 := ZXP.FLS_SamplesPointer - i + integer(pwrd);
-     i2 := ZXP.FLS_PositionsPointer - i + integer(pwrd) + 2;
-     repeat
-      Dec(pwrd^,i);
-      Inc(integer(pwrd),2)
-     until i1 = integer(pwrd);
-     Inc(integer(pwrd),2);
-     repeat
-      Dec(pwrd^,i);
-      Inc(integer(pwrd),4)
-     until i2 = integer(pwrd)
-    end
- end;
-SQTFile:
- begin
-  i := ZXP.SQT_SamplesPointer - 10;
-  j := 0;
-  k := ZXP.SQT_PositionsPointer - i;
-  while ZXP.Index[k] <> 0 do
-   begin
-    if j < ZXP.Index[k] and $7f then
-     j := ZXP.Index[k] and $7f;
-    Inc(k,2);
-    if j < ZXP.Index[k] and $7f then
-     j := ZXP.Index[k] and $7f;
-    Inc(k,2);
-    if j < ZXP.Index[k] and $7f then
-     j := ZXP.Index[k] and $7f;
-    Inc(k,3)
-   end;
-  pwrd := @ZXP.SQT_SamplesPointer;
-  for k := 1 to (ZXP.SQT_PatternsPointer - i + j shl 1) div 2 do
-   begin
-    Dec(pwrd^,i);
-    Inc(integer(pwrd),2)
-   end
- end
-end
+end;
+PrepareZXModule(ZXP,Result,Length);
 end;
 
 function FLS2VTM(FLS:PSpeccyModule;VTM:PModule):boolean;
@@ -5816,9 +5919,9 @@ for i := 1 to 16 do
       end;
      VTM.Samples[i].Items[k].Mixer_Ton :=
                              PT1.Index[j + k*3 + 1] and 64 = 0;
-     VTM.Samples[i].Items[k].Envelope_Enabled := True
-    end
-  end
+     VTM.Samples[i].Items[k].Envelope_Enabled := True;
+    end;
+  end;
 end;
 
 function GTR2VTM(GTR:PSpeccyModule;VTM:PModule):boolean;
@@ -6285,17 +6388,17 @@ for i := 0 to 32 do
        nb := tmp;
       Inc(k);
       Inc(j,2);
-      if k = 64 then break
+      if k = MaxOrnLen then break;
      until j >= len;
      j := jl;
-    until (k = 64) or (n = nb) or (n < -$5F) or (n > $5F);
+    until (k = MaxOrnLen) or (n = nb) or (n < -$5F) or (n > $5F);
     if (k = 1) and (n = 0) then
      begin
       zo := l;
       orns[i] := -1;
-      break
-     end
-   end
+      break;
+     end;
+   end;
  end;
 
 if zo = 0 then
@@ -6362,12 +6465,12 @@ for i := 0 to 32 do
       Inc(k);
       VTM.Ornaments[l].Items[k - 1] := n;
       Inc(j,2);
-      if k = 64 then break
+      if k = MaxOrnLen then break;
      until j >= len;
      j := jl;
-    until (k = 64) or (n = nb) or (n < -$5F) or (n > $5F);
-    VTM.Ornaments[l].Length := k
-   end
+    until (k = MaxOrnLen) or (n = nb) or (n < -$5F) or (n > $5F);
+    VTM.Ornaments[l].Length := k;
+   end;
  end;
 
 for i := 0 to 31 do
@@ -6451,11 +6554,11 @@ var
   Channel:array[0..2]of TChannelLine;
  end;
 
- VirtualSample:array[0..63] of record
+ VirtualSample:array[0..MaxSamLen-1] of record
   ST:TSampleTick;
   CAddr:word;
  end;
- VirtualOrnament:array[0..63] of record
+ VirtualOrnament:array[0..MaxOrnLen-1] of record
   OT:shortint;
   CAddr:word;
  end;
@@ -6995,15 +7098,15 @@ var
               begin
                PrevSam := SamNum;
                VirtualPattern[Line].Channel[Chan].Sample := SamNum;
-               VirtualPattern[Line].Channel[Chan].Note := b
+               VirtualPattern[Line].Channel[Chan].Note := b;
               end;
              if OrnNum <> PrevOrn then
               begin
                PrevOrn := OrnNum;
                VirtualPattern[Line].Channel[Chan].Ornament := OrnNum;
-               if OrnNum = 0 then VirtualPattern[Line].Channel[Chan].Envelope := 15
+               if OrnNum = 0 then VirtualPattern[Line].Channel[Chan].Envelope := 15;
               end;
-             break
+             break;
             end;
 
 
@@ -7379,7 +7482,7 @@ for i := 1 to MaxInstr do
   tmp := Instruments[i].Mixer;
   SamAddr := Instruments[i].SamplePtr;
   OrnAddr := Instruments[i].OrnPtr;
-  while j < 64 do
+  while j < MaxSamLen do
    begin
     VirtualSample[j].CAddr := SamAddr;
     VirtualSample[j].ST := EmptySampleTick;
@@ -7487,13 +7590,13 @@ for i := 1 to MaxInstr do
     VirtualSample[j].ST.Mixer_Noise := (tmp and 8) = 0;
     inc(j)
    end;
-  if SLen = 0 then SLen := 64;
+  if SLen = 0 then SLen := MaxSamLen;
   if SLoop = 255 then
    begin
     SLoop := SLen - 1;
-    VirtualSample[SLoop].ST.Ton_Accumulation := False
+    VirtualSample[SLoop].ST.Ton_Accumulation := False;
    end;
-  if OLen = 0 then OLen := 64;
+  if OLen = 0 then OLen := MaxOrnLen;
   if OLoop = 255 then OLoop := OLen - 1;
   flg := false;
   for j := 0 to OLen - 1 do
@@ -8028,7 +8131,7 @@ for i := 0 to 31 do
      begin
       VTM.Ornaments[j].Length := k + 2;
       VTM.Ornaments[j].Loop := k + 1;
-      VTM.Ornaments[j].Items[k + 1] := 0
+      VTM.Ornaments[j].Items[k + 1] := 0;
      end
     else
      VTM.Ornaments[j].Loop := PSM.Index[wo + 1] and 31;
@@ -8078,7 +8181,7 @@ for i := 0 to 14 do
       begin
        inc(len);
        VTM.Samples[k].Items[len] := EmptySampleTick;
-       VTM.Samples[k].Loop := len
+       VTM.Samples[k].Loop := len;
       end
      else
       begin
@@ -8094,10 +8197,10 @@ for i := 0 to 14 do
         b2 := VTM.Samples[k].Loop;
         lc := b1 shr 5;
         lp := len + 1;
-        while (len < 63) and (lc > 0) do
+        while (len < MaxSamLen-1) and (lc > 0) do
          begin
           l := 0;
-          while (l <= ls) and (len + l < 63) do
+          while (l <= ls) and (len + l < MaxSamLen-1) do
            begin
             VTM.Samples[k].Items[len + l + 1] := VTM.Samples[k].Items[b2 + l];
             if j > 0 then
@@ -8124,15 +8227,15 @@ for i := 0 to 14 do
          begin
           VTM.Samples[k].Items[lp].Amplitude_Sliding := True;
           VTM.Samples[k].Items[lp].Amplitude_Slide_Up := False;
-          break
+          break;
          end
         else if (j = 0) and (b0 = 1) then
          begin
           VTM.Samples[k].Items[lp].Amplitude_Sliding := True;
           VTM.Samples[k].Items[lp].Amplitude_Slide_Up := True;
-          break
+          break;
          end
-       until len >= 63
+       until len >= MaxSamLen-1;
       end;
      VTM.Samples[k].Length := Len + 1;
      if VTM.Samples[k].Loop >= VTM.Samples[k].Length then
@@ -8270,6 +8373,72 @@ for i := 0 to VTM.Positions.Length - 1 do
      Inc(ct,d)
     end
  end;
+end;
+
+procedure FreeVTMP(var VTMP:PModule);
+var
+ i:integer;
+begin
+for i := 1 to 31 do
+ if VTMP.Samples[i] <> nil then Dispose(VTMP.Samples[i]);
+for i := 0 to 15 do
+ if VTMP.Ornaments[i] <> nil then Dispose(VTMP.Ornaments[i]);
+for i := -1 to MaxPatNum do
+ if VTMP.Patterns[i] <> nil then Dispose(VTMP.Patterns[i]);
+Dispose(VTMP);
+VTMP := nil;
+end;
+
+procedure NewVTMP(var VTMP:PModule);
+var
+ i:integer;
+begin
+ New(VTMP);
+ VTMP.Title := '';
+ VTMP.Author := '';
+ VTMP.Ton_Table := 2;
+ VTMP.Initial_Delay := 3;
+ VTMP.Positions.Length := 0;
+ VTMP.Positions.Loop := 0;
+ for i := 1 to 31 do
+  VTMP.Samples[i] := nil;
+ for i := 0 to 15 do
+  VTMP.Ornaments[i] := nil;
+ for i := 0 to MaxPatNum do
+  VTMP.Patterns[i] := nil;
+ New(VTMP.Patterns[-1]);
+ VTMP.Patterns[-1].Length := 2;
+ VTMP.Patterns[-1].Items[0].Envelope := 0;
+ VTMP.Patterns[-1].Items[1].Envelope := 0;
+ VTMP.Patterns[-1].Items[0].Noise := 0;
+ VTMP.Patterns[-1].Items[1].Noise := 0;
+ VTMP.Patterns[-1].Items[0].Channel[0] := EmptyChannelLine;
+ VTMP.Patterns[-1].Items[0].Channel[1] := EmptyChannelLine;
+ VTMP.Patterns[-1].Items[0].Channel[2] := EmptyChannelLine;
+ VTMP.Patterns[-1].Items[1].Channel[0] := EmptyChannelLine;
+ VTMP.Patterns[-1].Items[1].Channel[1] := EmptyChannelLine;
+ VTMP.Patterns[-1].Items[1].Channel[2] := EmptyChannelLine;
+ VTMP.Patterns[-1].Items[0].Channel[0].Note := 36;
+ VTMP.Patterns[-1].Items[1].Channel[0].Note := 36;
+ VTMP.Patterns[-1].Items[0].Channel[0].Sample := 1;
+ VTMP.Patterns[-1].Items[1].Channel[0].Sample := 1;
+ VTMP.Patterns[-1].Items[0].Channel[0].Envelope := 15;
+ VTMP.Patterns[-1].Items[1].Channel[0].Envelope := 15;
+ VTMP.Patterns[-1].Items[0].Channel[0].Ornament := 1;
+ VTMP.Patterns[-1].Items[0].Channel[0].Volume := 15;
+ VTMP.Patterns[-1].Items[1].Channel[0].Volume := 15;
+ for i := 0 to 2 do
+  begin
+   VTMP.IsChans[i].Global_Ton := True;
+   VTMP.IsChans[i].Global_Noise := True;
+   VTMP.IsChans[i].Global_Envelope := True;
+   VTMP.IsChans[i].Sample := 1;
+   VTMP.IsChans[i].EnvelopeEnabled := False;
+   VTMP.IsChans[i].Ornament := 0;
+   VTMP.IsChans[i].Volume := 15
+  end;
+ VTMP.FeaturesLevel := FeaturesLevel;
+ VTMP.VortexModule_Header := VortexModuleHeader;
 end;
 
 end.

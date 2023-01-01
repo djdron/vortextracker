@@ -35,7 +35,7 @@ moved to variables area).
 Entry points
 ------------
 
-Before playing call START (loading) address. Player are not realocable, so you
+Before playing call START (loading) address. Player are not reallocable, so you
 need to assemble with other ORG value, if you want to load code at other than
 #C000 address, also you can place VARS area to any other address too. After
 calling START AY is stop any sounding. At START+10 is located SETUP byte, where
@@ -51,10 +51,10 @@ module address in HL as follows:
 	CALL START+3
 
 The easiest way to compile player with module is using built-in Vortex Tracker
-II exporter to ZX Spectrum, where you can specifiy both START address and setup
+II exporter to ZX Spectrum, where you can specify both START address and setup
 byte.
 
-By calling START you are proceeding INIT procedure, which analizes PT3 module
+By calling START you are proceeding INIT procedure, which analyzes PT3 module
 header and prepares corresponding note and volume tables (it is need for correct
 playing of modules of different PT3 subversions). Also you can call START after
 stopping playing to mute AY sound. In last case you can call START+8 to simple
@@ -63,7 +63,7 @@ mute AY sound, to continue playing simply continue calling START+5 as usually.
 To play, call START+5 address each 1/50 of second (interrupt). Playing selects
 right portamento algorithm for old (v3.5-) and new (v3.6+ or VT II) modules.
 During running PLAY subprogram no any interrupts are expected, it is your task
-to right call PLAY. For example, next example is totaly right:
+to right call PLAY. For example, next example is totally right:
 
 	CALL #C000 ;calling init
 	EI ;enable interrupts
@@ -127,7 +127,7 @@ Read also all comments in source file.
 Thanks
 ------
 
-Very big thanks to all who helped, and especcially to:
+Very big thanks to all who helped, and especially to:
 
 Spectre for help in debugging and adaptation for ZX assemblers.
 Ivan Roshin for optimization, tables generators, articles.
@@ -138,4 +138,4 @@ Himik's ZxZ for moral support.
 
 Sergey Bulba
 
-19 of September - 30 of April 2007
+19 of September 2004 - 30 of April 2007

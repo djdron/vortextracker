@@ -20,7 +20,8 @@ uses
   TrkMng in 'TrkMng.pas' {TrMng},
   GlbTrn in 'GlbTrn.pas' {GlbTrans},
   ExportZX in 'ExportZX.pas' {ExpDlg},
-  FXMImport in 'FXMImport.pas' {FXMParams};
+  FXMImport in 'FXMImport.pas' {FXMParams},
+  selectts in 'selectts.pas' {TSSel};
 
 {$R *.RES}
 {$R SNDH\SNDH.RES}
@@ -36,6 +37,7 @@ begin
   Application.CreateForm(TGlbTrans, GlbTrans);
   Application.CreateForm(TExpDlg, ExpDlg);
   Application.CreateForm(TFXMParams, FXMParams);
+  Application.CreateForm(TTSSel, TSSel);
   MainForm.CheckCommandLine;
   Application.Run;
 end.

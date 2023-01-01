@@ -2,9 +2,9 @@ object ExpDlg: TExpDlg
   Left = 204
   Top = 151
   BorderStyle = bsDialog
-  Caption = 'ZX Spectrum PT3 player parameters'
-  ClientHeight = 283
-  ClientWidth = 474
+  Caption = 'ZX Spectrum PT3/TS player parameters'
+  ClientHeight = 320
+  ClientWidth = 505
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -17,8 +17,8 @@ object ExpDlg: TExpDlg
   PixelsPerInch = 96
   TextHeight = 13
   object Button1: TButton
-    Left = 136
-    Top = 248
+    Left = 144
+    Top = 288
     Width = 75
     Height = 25
     Caption = 'OK'
@@ -27,8 +27,8 @@ object ExpDlg: TExpDlg
     TabOrder = 1
   end
   object Button2: TButton
-    Left = 264
-    Top = 248
+    Left = 280
+    Top = 288
     Width = 75
     Height = 25
     Cancel = True
@@ -114,8 +114,8 @@ object ExpDlg: TExpDlg
   object GroupBox2: TGroupBox
     Left = 232
     Top = 8
-    Width = 233
-    Height = 233
+    Width = 265
+    Height = 273
     Caption = 'Hints'
     TabOrder = 4
     object Label1: TLabel
@@ -171,7 +171,7 @@ object ExpDlg: TExpDlg
       Height = 13
     end
     object Label11: TLabel
-      Left = 104
+      Left = 112
       Top = 80
       Width = 124
       Height = 13
@@ -262,14 +262,40 @@ object ExpDlg: TExpDlg
       Width = 3
       Height = 13
     end
+    object Label23: TLabel
+      Left = 136
+      Top = 159
+      Width = 38
+      Height = 13
+      Caption = '; length:'
+    end
+    object Label24: TLabel
+      Left = 104
+      Top = 159
+      Width = 3
+      Height = 13
+    end
+    object Label25: TLabel
+      Left = 16
+      Top = 159
+      Width = 84
+      Height = 13
+      Caption = 'Module2 address:'
+    end
+    object Label30: TLabel
+      Left = 176
+      Top = 159
+      Width = 3
+      Height = 13
+    end
     object Memo1: TMemo
       Left = 16
-      Top = 160
-      Width = 201
-      Height = 65
+      Top = 176
+      Width = 233
+      Height = 89
       Lines.Strings = (
-        'Classic example (START is player '
-        'address):'
+        'Classic example (START is player address):'
+        '        LD DE,Module2_Address ;for TS-player'
         '        CALL START'
         '        EI'
         'LOOP:'
@@ -292,6 +318,7 @@ object ExpDlg: TExpDlg
         ''
         'Pointing module address example:'
         '        LD HL,PT3_Module_Address'
+        '        LD DE,Module2_Address ;for TS-player'
         '        CALL START+3'
         '        EI'
         'LOOP:'
@@ -299,10 +326,10 @@ object ExpDlg: TExpDlg
         '        CALL START+5'
         '        JR LOOP'
         ''
-        'Call MUTE (START+8) for sound off '
-        'during pause or after stoping playing. '
-        'In last case you can call START one '
-        'more time to reinit and sound off.')
+        'Call MUTE (START+8) for sound off during '
+        'pause or after stoping playing. In last case '
+        'you can call START one more time to reinit '
+        'and sound off.')
       ReadOnly = True
       ScrollBars = ssVertical
       TabOrder = 0

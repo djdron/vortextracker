@@ -1261,22 +1261,32 @@ PMPlayModule:
   if Module_PlayCurrentLine = 3 then
    if not LoopAllowed and
      (not MainForm.LoopAllAllowed or (MainForm.MDIChildCount <> 1))  then
-    Real_End[CurChip] := True
+    begin
+     Real_End[CurChip] := True;
+     SoundChip[CurChip].SetAmplA(0);
+     SoundChip[CurChip].SetAmplB(0);
+     SoundChip[CurChip].SetAmplC(0);
+    end;
  end;
 PMPlayPattern:
  begin
   if Pattern_PlayCurrentLine = 2 then
    if not LoopAllowed and not MainForm.LoopAllAllowed then
-    Real_End[CurChip] := True
+    begin
+     Real_End[CurChip] := True;
+     SoundChip[CurChip].SetAmplA(0);
+     SoundChip[CurChip].SetAmplB(0);
+     SoundChip[CurChip].SetAmplC(0);
+    end
    else
     begin
      Pattern_SetCurrentLine(0);
-     Pattern_PlayCurrentLine
-    end
+     Pattern_PlayCurrentLine;
+    end;
  end;
 PMPlayLine:
  Pattern_PlayOnlyCurrentLine;
-end
+end;
 end;
 
 procedure MakeBuffer(Buf:pointer);

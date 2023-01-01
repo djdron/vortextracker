@@ -207,7 +207,7 @@ object MainForm: TMainForm
       Height = 22
       Action = ToggleChip
       Font.Charset = DEFAULT_CHARSET
-      Font.Color = clBlack
+      Font.Color = clWindowText
       Font.Height = -11
       Font.Name = 'MS Sans Serif'
       Font.Style = [fsBold]
@@ -220,7 +220,7 @@ object MainForm: TMainForm
       Height = 22
       Action = ToggleChanAlloc
       Font.Charset = DEFAULT_CHARSET
-      Font.Color = clBlack
+      Font.Color = clWindowText
       Font.Height = -11
       Font.Name = 'MS Sans Serif'
       Font.Style = [fsBold]
@@ -247,28 +247,6 @@ object MainForm: TMainForm
       TabStop = False
       ThumbLength = 15
       OnChange = TrackBar1Change
-    end
-    object ToolButton25: TToolButton
-      Left = 198
-      Top = 29
-      Width = 8
-      Caption = 'ToolButton25'
-      Style = tbsSeparator
-    end
-    object ComboBox1: TComboBox
-      Left = 206
-      Top = 29
-      Width = 185
-      Height = 21
-      Hint = '2nd module for Turbo-AY|Select module for Turbo-AY'
-      Style = csDropDownList
-      ItemHeight = 13
-      ItemIndex = 0
-      TabOrder = 1
-      TabStop = False
-      Text = '2nd soundchip is disabled'
-      Items.Strings = (
-        '2nd soundchip is disabled')
     end
   end
   object MainMenu1: TMainMenu

@@ -28,7 +28,7 @@ const
 //Version related constants
  VersionString = '1.0';
  IsBeta = ' beta';
- BetaNumber = ' 16';
+ BetaNumber = ' 17';
 
  FullVersString:string = 'Vortex Tracker II v' + VersionString + IsBeta + BetaNumber;
  HalfVersString:string = 'Version ' + VersionString + IsBeta + BetaNumber;
@@ -156,8 +156,6 @@ type
     Redo: TAction;
     Undo1: TMenuItem;
     Redo1: TMenuItem;
-    ToolButton25: TToolButton;
-    ComboBox1: TComboBox;
     TransposeUp1: TAction;
     TransposeDown1: TAction;
     TransposeUp12: TAction;
@@ -185,6 +183,8 @@ type
     Window2: TMenuItem;
     Play5: TMenuItem;
     rack1: TMenuItem;
+    procedure AddWindowListItem(Child:TMDIChild);
+    procedure DeleteWindowListItem(Child:TMDIChild);
     procedure FileNew1Execute(Sender: TObject);
     procedure FileOpen1Execute(Sender: TObject);
     procedure HelpAbout1Execute(Sender: TObject);
@@ -303,7 +303,17 @@ implementation
 
 {$R *.DFM}
 
-uses About, options, TrkMng, GlbTrn, ExportZX;
+uses About, options, TrkMng, GlbTrn, ExportZX, selectts;
+
+type
+ TStr4 = array[0..3] of char;
+ 
+const
+ TSData:packed record
+  Type1:TStr4; Size1:word;
+  Type2:TStr4; Size2:word;
+  TSID:TStr4;
+ end = (Type1:'PT3!';Type2:'PT3!';TSID:'02TS');
 
 function IntelWord(a:word):word;
 asm
@@ -326,6 +336,29 @@ if Index <> ERROR_SUCCESS then
  end
 end;
 
+procedure TMainForm.DeleteWindowListItem(Child:TMDIChild);
+var
+ i,j:integer;
+begin
+for i := 1 to TSSel.ListBox1.Items.Count - 1 do
+ if TSSel.ListBox1.Items.Objects[i] = Child then
+  begin
+   TSSel.ListBox1.Items.Delete(i);
+   for j := 0 to MDIChildCount - 1 do
+    if (MDIChildren[j] <> Child) and (TMDIChild(MDIChildren[j]).TSWindow = Child) then
+     begin
+      TMDIChild(MDIChildren[j]).TSWindow := nil;
+      TMDIChild(MDIChildren[j]).TSBut.Caption := TMDIChild(MDIChildren[j]).PrepareTSString(TMDIChild(MDIChildren[j]).TSBut,TSSel.ListBox1.Items[0]);
+     end;
+   break;
+  end;
+end;
+
+procedure TMainForm.AddWindowListItem(Child:TMDIChild);
+begin
+TSSel.ListBox1.AddItem(Child.Caption,Child);
+end;
+
 procedure TMainForm.CreateMDIChild(const Name: string);
 var
   Child: TMDIChild;
@@ -341,13 +374,21 @@ begin
    Child := TMDIChild.Create(Application);
    Child.WinNumber := WinCount;
    Child.Caption := IntToStr(WinCount) + ': new module';
-   ComboBox1.AddItem(Child.Caption,Child);
+   AddWindowListItem(Child);
    Ok := True;
    if (Name <> '') and FileExists(Name) then
     Ok := Child.LoadTrackerModule(Name,VTMP2);
    if Ok then Caption := Child.Caption + ' - Vortex Tracker II';
-   if VTMP2 = nil then break;
+   if not Ok or (VTMP2 = nil) then break;
   end;
+  if Ok and (VTMP2 <> nil) then
+   begin
+    Child.TSBut.Caption := Child.PrepareTSString(Child.TSBut,TSSel.ListBox1.Items[MDIChildCount - 1]);
+    Child.TSWindow := TMDIChild(TSSel.ListBox1.Items.Objects[MDIChildCount - 1]);
+    Child.TSWindow.TSBut.Caption := Child.TSWindow.PrepareTSString(Child.TSWindow.TSBut,TSSel.ListBox1.Items[MDIChildCount]);
+    Child.TSWindow.TSWindow := TMDIChild(TSSel.ListBox1.Items.Objects[MDIChildCount]);
+    if MDIChildCount = 2 then WindowTileVertical1.Execute;
+   end;
 end;
 
 procedure TMainForm.FileNew1Execute(Sender: TObject);
@@ -662,6 +703,8 @@ else
 end;
 
 procedure TMainForm.SavePT3(CW:TMDIChild;FileName:string;AsText:boolean);
+const
+ ErrMsg = 'Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.';
 var
  PT3:TSpeccyModule;
  Size:integer;
@@ -671,19 +714,44 @@ if not AsText then
  begin
   if not VTM2PT3(@PT3,CW.VTMP,Size) then
    begin
-    Application.MessageBox('Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.',PAnsiChar(FileName));
-    exit
+    Application.MessageBox(ErrMsg,PAnsiChar(FileName));
+    exit;
    end;
   AssignFile(f,FileName);
   Rewrite(f,1);
-  BlockWrite(f,PT3,Size);
-  CloseFile(f)
+  try
+   BlockWrite(f,PT3,Size);
+   if CW.TSWindow <> nil then
+    begin
+     TSData.Size1 := Size;
+     if not VTM2PT3(@PT3,CW.TSWindow.VTMP,Size) then
+      begin
+       Application.MessageBox(ErrMsg,PAnsiChar(FileName));
+       exit;
+      end;
+     BlockWrite(f,PT3,Size);
+     TSData.Size2 := Size;
+     BlockWrite(f,TSData,SizeOf(TSData));
+    end;
+  finally
+   CloseFile(f);
+  end;
  end
 else
- VTM2TextFile(FileName,CW.VTMP);
+ begin
+  VTM2TextFile(FileName,CW.VTMP,False);
+  if CW.TSWindow <> nil then
+   VTM2TextFile(FileName,CW.TSWindow.VTMP,True);
+ end;
 CW.SavedAsText := AsText;
 CW.SongChanged := False;
-AddFileName(FileName)
+if CW.TSWindow <> nil then
+ begin
+  CW.TSWindow.SavedAsText := AsText;
+  CW.TSWindow.SongChanged := False;
+  CW.TSWindow.SetFileName(FileName);
+ end;
+AddFileName(FileName);
 end;
 
 procedure TMainForm.FileSave1Execute(Sender: TObject);
@@ -1164,18 +1232,19 @@ end;
 
 procedure TMainForm.CheckSecondWindow;
 begin
-if ComboBox1.ItemIndex > 0 then
+if PlayingWindow[1].TSWindow <> nil then
  begin
-  PlayingWindow[2] := TMDIChild(ComboBox1.Items.Objects[ComboBox1.ItemIndex]);
+  PlayingWindow[2] := PlayingWindow[1].TSWindow;
   if (PlayingWindow[1] <> PlayingWindow[2]) and (PlayingWindow[2].VTMP.Positions.Length <> 0) then
    begin
     NumberOfSoundChips := 2;
     PlayingWindow[2].Edit2.Enabled := False;
     PlayingWindow[2].UpDown1.Enabled := False;
     PlayingWindow[2].Tracks.Enabled := False;
+    PlayingWindow[2].TSBut.Enabled := False;
    end;
  end;
-ComboBox1.Enabled := False;
+PlayingWindow[1].TSBut.Enabled := False;
 end;
 
 procedure TMainForm.RestoreControls;
@@ -1190,16 +1259,8 @@ for i := 1 to NumberOfSoundChips do
   if PlayMode in [PMPlayModule,PMPlayPattern] then
    PlayingWindow[i].Tracks.CursorY := PlayingWindow[i].Tracks.N1OfLines;
   PlayingWindow[i].Tracks.Enabled := True;
+  PlayingWindow[i].TSBut.Enabled := True;
  end;
-ComboBox1.Enabled := True;
-{if NumberOfSoundChips > 1 then
- if PlayingWindow[2] = TMDIChild(ActiveMDIChild) then
-  for i := 1 to ComboBox1.Items.Count - 1 do
-   if ComboBox1.Items.Objects[i] = PlayingWindow[1] then
-    begin
-     ComboBox1.ItemIndex := i;
-     break;
-    end;}
 end;
 
 procedure TMainForm.SetIntFreqEx;
@@ -1650,9 +1711,11 @@ CloseFile(f)
 end;
 
 procedure TMainForm.SaveforZXMenuClick(Sender: TObject);
+const
+ ErrMsg = 'Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.';
 var
  s:string;
- PT3:TSpeccyModule;
+ PT3_1,PT3_2:TSpeccyModule;
  i,t,j,k:integer;
  f:file;
  p:WordPtr;
@@ -1691,12 +1754,21 @@ var
 begin
 if MDIChildCount = 0 then exit;
 CurrentWindow := TMDIChild(ActiveMDIChild);
-if not VTM2PT3(@PT3,CurrentWindow.VTMP,ZXModSize) then
+if not VTM2PT3(@PT3_1,CurrentWindow.VTMP,ZXModSize1) then
  begin
-  Application.MessageBox('Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.',PAnsiChar(CurrentWindow.Caption));
+  Application.MessageBox(ErrMsg,PAnsiChar(CurrentWindow.Caption));
   exit
  end;
-i := FindResource(HInstance,'ZXAYPLAYER','ZXAY');
+ZXModSize2 := 0;
+if (CurrentWindow.TSWindow <> nil) and not VTM2PT3(@PT3_2,CurrentWindow.TSWindow.VTMP,ZXModSize2) then
+ begin
+  Application.MessageBox(ErrMsg,PAnsiChar(CurrentWindow.TSWindow.Caption));
+  exit
+ end;
+if CurrentWindow.TSWindow = nil then
+ i := FindResource(HInstance,'ZXAYPLAYER','ZXAY')
+else
+ i := FindResource(HInstance,'ZXTSPLAYER','ZXTS');
 p := LockResource(LoadResource(HInstance,i));
 Move(p^,zxplsz,2);
 Inc(integer(p),2);
@@ -1707,10 +1779,12 @@ if SaveDialogZXAY.InitialDir = '' then
 SaveDialogZXAY.FilterIndex := ExpDlg.RadioGroup1.ItemIndex + 1;
 SetDialogZXAYExt;
 
-if CurrentWindow.WinFileName = '' then
- MainForm.SaveDialogZXAY.FileName := 'VTIIModule' + IntToStr(CurrentWindow.WinNumber)
+if CurrentWindow.WinFileName <> '' then
+ SaveDialogZXAY.FileName := ChangeFileExt(CurrentWindow.WinFileName,'')
+else if (CurrentWindow.TSWindow <> nil) and (CurrentWindow.TSWindow.WinFileName <> '') then
+ SaveDialogZXAY.FileName := ChangeFileExt(CurrentWindow.TSWindow.WinFileName,'')
 else
- MainForm.SaveDialogZXAY.FileName := ChangeFileExt(CurrentWindow.WinFileName,'');
+ SaveDialogZXAY.FileName := 'VTIIModule' + IntToStr(CurrentWindow.WinNumber);
 
 repeat
  if not SaveDialogZXAY.Execute then exit;
@@ -1731,7 +1805,7 @@ if SaveDialogZXAY.FilterIndex in [1..5] then
 t := ExpDlg.RadioGroup1.ItemIndex;
 if t <> 1 then
  begin
-  if ZXModSize + zxplsz + zxdtsz > 65536 then
+  if ZXModSize1 + ZXModSize2 + zxplsz + zxdtsz > 65536 then
    begin
     Application.MessageBox('Size of module with player exceeds 65536 RAM size.','Cannot export');
     exit
@@ -1757,16 +1831,20 @@ if t <> 1 then
     Inc(BytePtr(@pl[p^])^,ZXCompAddr shr 8);
     Inc(integer(p),2)
    end;
-  if ExpDlg.LoopChk.Checked then pl[10] := 1
+  if ExpDlg.LoopChk.Checked then pl[10] := pl[10] or 1;
  end;
 AssignFile(f,SaveDialogZXAY.FileName);
 Rewrite(f,1);
 try
-i := ZXModSize;
-if t = 0 then inc(i,zxplsz + zxdtsz);
+i := ZXModSize1;
 case t of
 0,1:
  begin
+  inc(i,ZXModSize2);
+  if t = 0 then
+   inc(i,zxplsz + zxdtsz)
+  else
+   inc(i,16);
   with hobetahdr do
    begin
     Name := '        ';
@@ -1785,14 +1863,14 @@ case t of
     if SectLeng = 0 then
      begin
       Application.MessageBox('Size of hobeta file exceeds 255 sectors.','Cannot export');
-      exit
+      exit;
      end;
     k := 0;
     for j := 0 to 14 do
      Inc(k,Ind[j]);
-    CheckSum := k * 257 + 105
+    CheckSum := k * 257 + 105;
    end;
-  BlockWrite(f,hobetahdr,sizeof(hobetahdr))
+  BlockWrite(f,hobetahdr,sizeof(hobetahdr));
  end;
 2:
  begin
@@ -1810,13 +1888,13 @@ case t of
     PMisc := IntelWord(j);
     NumOfSongs := 0;
     FirstSong := 0;
-    PSongsStructure := $200
+    PSongsStructure := $200;
    end;
   BlockWrite(f,AYFileHeader,SizeOf(TAYFileHeader));
   with SongStructure do
    begin
     PSongName := IntelWord(4 + SizeOf(TSongData) + SizeOf(TPoints));
-    PSongData := $200
+    PSongData := $200;
    end;
   BlockWrite(f,SongStructure,SizeOf(TSongStructure));
   with AYSongData do
@@ -1825,15 +1903,24 @@ case t of
     ChanB := 1;
     ChanC := 2;
     Noise := 3;
-    if CurrentWindow.TotInts > 65535 then
-     SongLength := 65535
-    else
-     SongLength := IntelWord(CurrentWindow.TotInts);
+    j := CurrentWindow.TotInts;
+    if (CurrentWindow.TSWindow <> nil) and (CurrentWindow.TSWindow.TotInts > j) then
+     j := CurrentWindow.TSWindow.TotInts;
+    if j > 65535 then SongLength := 65535 else SongLength := IntelWord(j);
     FadeLength := 0;
-    HiReg := 0;
-    LoReg := 0;
+    if CurrentWindow.TSWindow = nil then
+     begin
+      HiReg := 0;
+      LoReg := 0;
+     end
+    else
+     begin
+      j := ZXCompAddr + zxplsz + zxdtsz + ZXModSize1;
+      HiReg := j shr 8;
+      LoReg := j;
+     end;
     PPoints := $400;
-    PAddresses := $800
+    PAddresses := $800;
    end;
   BlockWrite(f,AYSongData,SizeOf(TSongData));
   with AYPoints do
@@ -1848,9 +1935,9 @@ case t of
                       Length(FullVersString) + 3;
     Offs1 := IntelWord(j);
     Adr2 := IntelWord(ZXCompAddr + zxplsz + zxdtsz);
-    Len2 := IntelWord(ZXModSize);
+    Len2 := IntelWord(ZXModSize1 + ZXModSize2);
     Offs2 := IntelWord(j - 6 + zxplsz);
-    Zero := 0
+    Zero := 0;
    end;
   BlockWrite(f,AYPoints,SizeOf(TPoints));
   j := Length(CurrentWindow.VTMP.Title);
@@ -1863,14 +1950,18 @@ case t of
    BlockWrite(f,CurrentWindow.VTMP.Author[1],j + 1)
   else
    BlockWrite(f,j,1);
-  BlockWrite(f,FullVersString[1],Length(FullVersString) + 1)
+  BlockWrite(f,FullVersString[1],Length(FullVersString) + 1);
  end;
 3:
  begin
   with SCLHdr do
    begin
     SCL := 'SINCLAIR'; NBlk := 2;
-    Name1 := 'vtplayer'; Typ1 := 'C';
+    if CurrentWindow.TSWindow <> nil then
+     Name1 := 'tsplayer'
+    else
+     Name1 := 'vtplayer';
+    Typ1 := 'C';
     Start1 := ZXCompAddr; Leng1 := zxplsz;
     Sect1 := zxplsz shr 8;
     if zxplsz and 255 <> 0 then Inc(Sect1);
@@ -1881,21 +1972,27 @@ case t of
     if j > 0 then Move(s[1],Name2,j);
     Typ2 := 'C';
     Start2 := ZXCompAddr + zxplsz + zxdtsz;
-    Leng2 := ZXModSize;
-    Sect2 := ZXModSize shr 8;
-    if ZXModSize and 255 <> 0 then Inc(Sect2);
+    Leng2 := ZXModSize1 + ZXModSize2;
+    Sect2 := Leng2 shr 8;
+    if Leng2 and 255 <> 0 then Inc(Sect2);
     k := 0;
     for j := 0 to sizeof(SCLHdr) - 1 do Inc(k,Ind[j]);
    end;
   BlockWrite(f,SCLHdr,sizeof(SCLHdr));
   for j := 0 to zxplsz - 1 do Inc(k,pl[j]);
-  for j := 0 to ZXModSize - 1 do Inc(k,PT3.Index[j]);
+  for j := 0 to ZXModSize1 - 1 do Inc(k,PT3_1.Index[j]);
+  if CurrentWindow.TSWindow <> nil then
+   for j := 0 to ZXModSize2 - 1 do Inc(k,PT3_2.Index[j]);
  end;
 4:
  begin
   with TAPHdr do
    begin
-    Sz := 19; Flag := 0; Typ := 3; Name := 'vtplayer  ';
+    Sz := 19; Flag := 0; Typ := 3;
+    if CurrentWindow.TSWindow <> nil then
+     Name := 'tsplayer  '
+    else
+     Name := 'vtplayer  ';
     Leng := zxplsz; Start := ZXCompAddr; Trash := 32768;
     k := 0; for j := 2 to 19 do k := k xor Ind[j]; Sum := k;
     BlockWrite(f,TAPHdr,21);
@@ -1913,14 +2010,14 @@ case t of
     k := 255; for j := 0 to zxplsz - 1 do k := k xor pl[j];
     BlockWrite(f,k,1);
     Sz := 19; Flag := 0; Typ := 3; Name := '          ';
-    Leng := ZXModSize; Start := ZXCompAddr + zxplsz + zxdtsz; Trash := 32768;
+    Leng := ZXModSize1 + ZXModSize2; Start := ZXCompAddr + zxplsz + zxdtsz; Trash := 32768;
     s := ExtractFileName(SaveDialogZXAY.FileName);
     j := Length(s) - 4;
     if j > 10 then j := 10;
     if j > 0 then Move(s[1],Name,j);
     k := 0; for j := 2 to 19 do k := k xor Ind[j]; Sum := k;
     BlockWrite(f,TAPHdr,21);
-    Sz := 2 + ZXModSize; Flag := 255;
+    Sz := 2 + ZXModSize1 + ZXModSize2; Flag := 255;
    end;
   BlockWrite(f,TAPHdr,3);
  end;
@@ -1940,17 +2037,20 @@ case t of
   FillChar(pl[0],zxdtsz,0);
   BlockWrite(f,pl[0],zxdtsz)
  end;
-end; 
-BlockWrite(f,PT3,ZXModSize);
+end;
+BlockWrite(f,PT3_1,ZXModSize1);
+if CurrentWindow.TSWindow <> nil then BlockWrite(f,PT3_2,ZXModSize2);
 case t of
 4:
  begin
-  k := 255; for j := 0 to ZXModSize - 1 do k := k xor PT3.Index[j];
+  k := 255; for j := 0 to ZXModSize1 - 1 do k := k xor PT3_1.Index[j];
+  if CurrentWindow.TSWindow <> nil then
+   for j := 0 to ZXModSize2 - 1 do k := k xor PT3_2.Index[j];
   BlockWrite(f,k,1);
  end;
 3:
  begin
-  j := ZXModSize mod 256;
+  j := (ZXModSize1 + ZXModSize2) mod 256;
   if j <> 0 then
    begin
     j := 256 - j;
@@ -1960,16 +2060,24 @@ case t of
   BlockWrite(f,k,4);
  end;
 0..1:
- with hobetahdr do
-  if SectLeng <> i then
+ begin
+  if (t = 1) and (CurrentWindow.TSWindow <> nil) then
    begin
-    FillChar(PT3,SectLeng - i,0);
-    BlockWrite(f,PT3,SectLeng - i)
+    TSData.Size1 := ZXModSize1;
+    TSData.Size2 := ZXModSize2;
+    BlockWrite(f,TSData,SizeOf(TSData));
    end;
+  with hobetahdr do
+   if SectLeng <> i then
+    begin
+     FillChar(PT3_1,SectLeng - i,0);
+     BlockWrite(f,PT3_1,SectLeng - i);
+    end;
+ end;
 end;
 finally
- CloseFile(f)
-end
+ CloseFile(f);
+end;
 end;
 
 procedure TMainForm.SetDialogZXAYExt;

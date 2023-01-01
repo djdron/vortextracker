@@ -81,6 +81,7 @@ type
   public
     InputONumber,CelW,CelH:integer;
     CursorX,CursorY{,SelW,SelH}:integer;
+    ShownFrom,NOfLines:integer;
     ShownOrnament:POrnament;
     constructor Create(AOwner: TComponent); override;
     procedure DefaultHandler(var Message); override;
@@ -103,7 +104,7 @@ type
   TChangeParams = record
    PatternShownFrom, PatternCursorY,
    SampleShownFrom, SampleCursorX, SampleCursorY, PositionListLen,
-   OrnamentCursor, PrevLoop:integer;
+   OrnamentShownFrom,OrnamentCursor,PrevLoop:integer;
    case TChangeAction of
    CAChangeNote:(Note:integer);
    CAChangeEnvelopePeriod:(EnvelopePeriod:integer);
@@ -151,23 +152,11 @@ type
   TMDIChild = class(TForm)
     PageControl1: TPageControl;
     PatternsSheet: TTabSheet;
-    Label2: TLabel;
-    Label3: TLabel;
-    UpDown1: TUpDown;
-    Edit2: TEdit;
     Edit3: TEdit;
     Edit4: TEdit;
     StringGrid1: TStringGrid;
-    Edit6: TEdit;
-    UpDown3: TUpDown;
     SamplesSheet: TTabSheet;
     OrnamentsSheet: TTabSheet;
-    Edit7: TEdit;
-    UpDown4: TUpDown;
-    Label4: TLabel;
-    Label5: TLabel;
-    Edit8: TEdit;
-    UpDown5: TUpDown;
     GroupBox1: TGroupBox;
     Edit1: TEdit;
     Label1: TLabel;
@@ -254,13 +243,6 @@ type
     SpeedButton25: TSpeedButton;
     SpeedButton23: TSpeedButton;
     Label6: TLabel;
-    GroupBox3: TGroupBox;
-    SpeedButton26: TSpeedButton;
-    SpeedButton27: TSpeedButton;
-    GroupBox7: TGroupBox;
-    AutoHLCheck: TCheckBox;
-    Edit17: TEdit;
-    UpDown15: TUpDown;
     GroupBox8: TGroupBox;
     Label25: TLabel;
     Label22: TLabel;
@@ -268,6 +250,25 @@ type
     Label24: TLabel;
     Label23: TLabel;
     Label21: TLabel;
+    TSBut: TSpeedButton;
+    PatOptions: TGroupBox;
+    Label2: TLabel;
+    Label5: TLabel;
+    UpDown1: TUpDown;
+    Edit2: TEdit;
+    Edit8: TEdit;
+    UpDown5: TUpDown;
+    SpeedButton26: TSpeedButton;
+    SpeedButton27: TSpeedButton;
+    AutoHL: TSpeedButton;
+    Edit17: TEdit;
+    UpDown15: TUpDown;
+    Label4: TLabel;
+    Edit7: TEdit;
+    UpDown4: TUpDown;
+    Edit6: TEdit;
+    UpDown3: TUpDown;
+    Label3: TLabel;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure TracksMoveCursorMouse(X,Y:integer;Sel,Mv,ButRight:boolean);
@@ -453,6 +454,8 @@ type
     procedure FormActivate(Sender: TObject);
     procedure GoToTime(Time:integer);
     procedure SinchronizeModules;
+    function PrepareTSString(TSBut:TSpeedButton;s:string):string;
+    procedure TSButClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -476,17 +479,21 @@ type
     WinNumber:integer;
     WinFileName:string;
     SavedAsText:boolean;
+    TSWindow:TMDIChild;
+    IsSinchronizing:boolean;
   end;
 
 var
  PlayingWindow:array[1..MaxNumberOfSoundChips] of TMDIChild;
- LastActiveWindow:TMDIChild;
 
 implementation
 
-uses Main, options, ShellApi;
+uses Main, options, ShellApi, selectts;
 
 {$R *.DFM}
+
+const
+ OrnNCol = 5; OrnNRaw = 16;
 
 function Ns(n:integer):shortint;
 begin
@@ -497,30 +504,25 @@ begin
 end;
 
 procedure TMDIChild.FormClose(Sender: TObject; var Action: TCloseAction);
-var
- i:integer;
 begin
 if IsPlaying and ((PlayingWindow[1] = Self) or
      ((NumberOfSoundChips > 1) and (PlayingWindow[2] = Self))) then
  begin
   StopPlaying;
-  MainForm.RestoreControls
+  MainForm.RestoreControls;
  end;
-for i := 1 to MainForm.ComboBox1.Items.Count - 1 do
- if MainForm.ComboBox1.Items.Objects[i] = Self then
-  begin
-   MainForm.ComboBox1.ItemIndex := 0;
-   MainForm.ComboBox1.Items.Delete(i);
-   break
-  end;
+MainForm.DeleteWindowListItem(Self);
 MainForm.Caption := 'Vortex Tracker II';
-Action := caFree
+Action := caFree;
 end;
 
 procedure TMDIChild.FormCreate(Sender: TObject);
 var
  i,j:integer;
 begin
+ IsSinchronizing := False;
+ TSWindow := nil;
+ TSBut.Caption := PrepareTSString(TSBut,TSSel.ListBox1.Items[0]);
  WinFileName := '';
  SavedAsText := True;
  UndoWorking := True;
@@ -528,56 +530,17 @@ begin
  SetLength(ChangeList,64);
  SaveTextDlg.InitialDir := ExtractFilePath(ParamStr(0));
  OrGenRunning := False;
- New(VTMP);
- VTMP.Title := '';
- VTMP.Author := '';
- VTMP.Ton_Table := 2;
- VTMP.Initial_Delay := 3;
- VTMP.Positions.Length := 0;
- VTMP.Positions.Loop := 0;
- for i := 1 to 31 do
-  VTMP.Samples[i] := nil;
- for i := 0 to 15 do
-  VTMP.Ornaments[i] := nil;
- for i := 0 to MaxPatNum do
-  VTMP.Patterns[i] := nil;
- New(VTMP.Patterns[-1]);
- VTMP.Patterns[-1].Length := 2;
- VTMP.Patterns[-1].Items[0].Envelope := 0;
- VTMP.Patterns[-1].Items[1].Envelope := 0;
- VTMP.Patterns[-1].Items[0].Noise := 0;
- VTMP.Patterns[-1].Items[1].Noise := 0;
- VTMP.Patterns[-1].Items[0].Channel[0] := EmptyChannelLine;
- VTMP.Patterns[-1].Items[0].Channel[1] := EmptyChannelLine;
- VTMP.Patterns[-1].Items[0].Channel[2] := EmptyChannelLine;
- VTMP.Patterns[-1].Items[1].Channel[0] := EmptyChannelLine;
- VTMP.Patterns[-1].Items[1].Channel[1] := EmptyChannelLine;
- VTMP.Patterns[-1].Items[1].Channel[2] := EmptyChannelLine;
- VTMP.Patterns[-1].Items[0].Channel[0].Note := 36;
- VTMP.Patterns[-1].Items[1].Channel[0].Note := 36;
- VTMP.Patterns[-1].Items[0].Channel[0].Sample := 1;
- VTMP.Patterns[-1].Items[1].Channel[0].Sample := 1;
- VTMP.Patterns[-1].Items[0].Channel[0].Envelope := 15;
- VTMP.Patterns[-1].Items[1].Channel[0].Envelope := 15;
- VTMP.Patterns[-1].Items[0].Channel[0].Ornament := 1;
- VTMP.Patterns[-1].Items[0].Channel[0].Volume := 15;
- VTMP.Patterns[-1].Items[1].Channel[0].Volume := 15;
+ NewVTMP(VTMP);
  UpDown1.Max := MaxPatNum;
  UpDown5.Max := MaxPatLen;
+ UpDown12.Max := MaxPatLen;
+ UpDown12.Min := -MaxPatLen;
  UpDown15.Max := MaxPatLen;
- for i := 0 to 2 do
-  begin
-   VTMP.IsChans[i].Global_Ton := True;
-   VTMP.IsChans[i].Global_Noise := True;
-   VTMP.IsChans[i].Global_Envelope := True;
-   VTMP.IsChans[i].Sample := 1;
-   VTMP.IsChans[i].EnvelopeEnabled := False;
-   VTMP.IsChans[i].Ornament := 0;
-   VTMP.IsChans[i].Volume := 15
-  end;
- VTMP.FeaturesLevel := FeaturesLevel;
+ UpDown7.Max := MaxSamLen;
+ UpDown8.Max := MaxSamLen-1;
+ UpDown11.Max := MaxOrnLen;
+ UpDown10.Max := MaxOrnLen-1;
  VtmFeaturesGrp.ItemIndex := FeaturesLevel;
- VTMP.VortexModule_Header := VortexModuleHeader;
  SaveHead.ItemIndex := Ord(not VortexModuleHeader);
  for i := 0 to 255 do
   StringGrid1.Cells[i,0] := '...';
@@ -616,6 +579,7 @@ begin
  PageControl1.ClientWidth := i + PatternsSheet.Left * 2;
  GroupBox1.Left := i - GroupBox1.Width - Tracks.Left;
  GroupBox8.Left := i - GroupBox8.Width - Tracks.Left;
+ TSBut.Width := GroupBox8.Left - TSBut.Left - 2;
  Edit3.Width := (i - Label6.Width - 2 - Tracks.Left) div 2;
  Label6.Left := Edit3.Left + Edit3.Width + 1;
  Edit4.Width := Edit3.Width;
@@ -680,7 +644,7 @@ begin
  xe[2] := SpeedButton12.Left;
  ResetChanAlloc;
  UndoWorking := False;
- SongChanged := False
+ SongChanged := False;
 end;
 
 procedure TMDIChild.ResetChanAlloc;
@@ -746,7 +710,7 @@ begin
  SelectObject(DC,p);
  ReleaseDC(Tracks.Handle,DC);
  Tracks.Left := StringGrid1.Left;
- Tracks.Top := GroupBox3.Top + GroupBox3.Height + 4;
+ Tracks.Top := AutoHL.Top + AutoHL.Height + 4;
  Tracks.ClientWidth := Tracks.CelW * 52;
  Tracks.ClientHeight := Tracks.CelH * Tracks.NOfLines;
  Tracks.OnKeyDown := TracksKeyDown;
@@ -832,7 +796,7 @@ begin
   CursorX := 0;
   CursorY := 0;
   ShownFrom := 0;
-  ShownSample := nil
+  ShownSample := nil;
 end;
 
 procedure TMDIChild.CreateSamples;
@@ -870,9 +834,11 @@ begin
   BevelKind := bkTile;
   BevelInner := bvLowered;
   Font := MainForm.NewTrack_Font;
+  NOfLines := OrnNCol * OrnNRaw;
   CursorX := 0;
   CursorY := 0;
-  ShownOrnament := nil
+  ShownFrom := 0;
+  ShownOrnament := nil;
 end;
 
 procedure TMDIChild.CreateOrnaments;
@@ -892,8 +858,8 @@ SelectObject(DC,p);
 ReleaseDC(Ornaments.Handle,DC);
 Ornaments.Left := Edit5.Left;
 Ornaments.Top := Edit5.Left + Edit5.Top + Edit5.Height;
-Ornaments.ClientWidth := Ornaments.CelW * 4 * 7;
-Ornaments.ClientHeight := Ornaments.CelH * 16;
+Ornaments.ClientWidth := Ornaments.CelW * OrnNCol * 7;
+Ornaments.ClientHeight := Ornaments.CelH * OrnNRaw;
 i := Ornaments.Left * 2 + Ornaments.Width;
 GroupBox4.Left := i;
 SpeedButton19.Left := i;
@@ -901,7 +867,7 @@ SpeedButton20.Left := i;
 SpeedButton21.Left := i;
 GroupBox5.Left := SpeedButton19.Left + SpeedButton19.Width + Ornaments.Left;
 Ornaments.OnKeyDown := OrnamentsKeyDown;
-Ornaments.OnMouseDown := OrnamentsMouseDown
+Ornaments.OnMouseDown := OrnamentsMouseDown;
 end;
 
 procedure TTracks.DefaultHandler(var Message);
@@ -1325,10 +1291,23 @@ else
   len := ShownOrnament.Length;
   lp := ShownOrnament.Loop
  end;
-SetBkColor(DC1,GetSysColor(COLOR_WINDOW));
-SetTextColor(DC1,GetSysColor(COLOR_WINDOWTEXT));
+if ShownFrom >= len then
+ begin
+  SetBkColor(DC1,GetSysColor(COLOR_WINDOW));
+  SetTextColor(DC1,GetSysColor(COLOR_GRAYTEXT))
+ end
+else if ShownFrom >= lp then
+ begin
+  SetBkColor(DC1,GetSysColor(COLOR_HIGHLIGHT));
+  SetTextColor(DC1,GetSysColor(COLOR_HIGHLIGHTTEXT))
+ end
+else
+ begin
+  SetBkColor(DC1,GetSysColor(COLOR_WINDOW));
+  SetTextColor(DC1,GetSysColor(COLOR_WINDOWTEXT))
+ end;
 x := 0; y := 0;
-for i := 0 to 63 do
+for i := ShownFrom to ShownFrom + NOfLines - 1 do
  begin
   if i = lp then
    begin
@@ -1348,17 +1327,16 @@ for i := 0 to 63 do
   else
    s := s + '-' + Int2ToStr(-ShownOrnament.Items[i]) + ' ';
   TextOut(DC1,x,y,PChar(s),Length(s));
-  if i and 15 = 15 then
+  if (i - ShownFrom) mod OrnNRaw = OrnNRaw - 1 then
    begin
     y := 0;
-    Inc(x,CelW*7)
+    Inc(x,CelW*7);
    end
   else
-   Inc(y,CelH)
+   Inc(y,CelH);
  end;
 SelectObject(DC1,p);
-if DC = 0 then
- ReleaseDC(Handle,DC1)
+if DC = 0 then ReleaseDC(Handle,DC1);
 end;
 
 function ColSpace(i:integer):boolean;
@@ -1642,22 +1620,16 @@ procedure TMDIChild.TracksKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 
  procedure GoToNextWindow(Right:boolean);
- var
-  w:TMDIChild;
  begin
- if MainForm.ComboBox1.ItemIndex > 0 then
-  begin
-   w := TMDIChild(MainForm.ComboBox1.Items.Objects[MainForm.ComboBox1.ItemIndex]);
-   if w <> Self then
-    if w.Tracks.Enabled then
-     begin
-      w.Tracks.RemoveSelection(0,False);
-      if Right then w.Tracks.CursorX := 48 else w.Tracks.CursorX := 0;
-      w.Tracks.RemoveSelection(0,True);
-      w.PageControl1.ActivePageIndex := 0;
-      w.Show; w.SetFocus; if w.Tracks.CanFocus then w.Tracks.SetFocus;
-     end;
-  end;
+ if (TSWindow <> nil) and (TSWindow <> Self) then
+  if TSWindow.Tracks.Enabled then
+   begin
+    TSWindow.Tracks.RemoveSelection(0,False);
+    if Right then TSWindow.Tracks.CursorX := 48 else TSWindow.Tracks.CursorX := 0;
+    TSWindow.Tracks.RemoveSelection(0,True);
+    TSWindow.PageControl1.ActivePageIndex := 0;
+    TSWindow.Show; TSWindow.SetFocus; if TSWindow.Tracks.CanFocus then TSWindow.Tracks.SetFocus;
+   end;
  end;
 
  procedure RemSel;
@@ -1832,7 +1804,7 @@ procedure TMDIChild.TracksKeyDown(Sender: TObject; var Key: Word;
                          Tracks.CelH * Tracks.CursorY);
     ShowCaret(Tracks.Handle)
    end;
-  ShowStat
+  ShowStat;
  end;
 
  procedure DoCursorLeft;
@@ -2164,7 +2136,7 @@ VK_PRIOR:
        Tracks.RemoveSelection(0,True)
      end;
    end;
-  ShowStat
+  ShowStat;
  end;
 VK_NEXT:
  begin
@@ -2228,7 +2200,7 @@ VK_NEXT:
        Tracks.RemoveSelection(0,True)
      end;
    end;
-  ShowStat
+  ShowStat;
  end;
 VK_INSERT:
  if Shift = [] then
@@ -2725,11 +2697,11 @@ VK_NEXT:
     SetCaretPos(Samples.CelW * (3 + Samples.CursorX),
                         Samples.CelH * Samples.CursorY)
    end
-  else if Samples.ShownFrom < 64 - Samples.NOfLines then
+  else if Samples.ShownFrom < MaxSamLen - Samples.NOfLines then
    begin
     Inc(Samples.ShownFrom,Samples.NOfLines);
-    if Samples.ShownFrom > 64 - Samples.NOfLines then
-     Samples.ShownFrom := 64 - Samples.NOfLines;
+    if Samples.ShownFrom > MaxSamLen - Samples.NOfLines then
+     Samples.ShownFrom := MaxSamLen - Samples.NOfLines;
     HideCaret(Samples.Handle);
     Samples.RedrawSamples(0);
     ShowCaret(Samples.Handle)
@@ -2766,32 +2738,29 @@ VK_END:
   begin
    Samples.CursorX := 20;
    Samples.RecreateCaret;
-   SetCaretPos(Samples.CelW * (3 + Samples.CursorX),
-                        Samples.CelH * Samples.CursorY)
+   SetCaretPos(Samples.CelW * (3 + Samples.CursorX),Samples.CelH * Samples.CursorY);
   end;
 VK_DOWN:
  begin
   if (Samples.CursorY < Samples.NOfLines - 1) then
    begin
     Inc(Samples.CursorY);
-    SetCaretPos(Samples.CelW * (3 + Samples.CursorX),
-                        Samples.CelH * Samples.CursorY)
+    SetCaretPos(Samples.CelW * (3 + Samples.CursorX),Samples.CelH * Samples.CursorY);
    end
-  else if Samples.ShownFrom < 64 - Samples.NOfLines then
+  else if Samples.ShownFrom < MaxSamLen - Samples.NOfLines then
    begin
     Inc(Samples.ShownFrom);
     HideCaret(Samples.Handle);
     Samples.RedrawSamples(0);
-    ShowCaret(Samples.Handle)
-   end
+    ShowCaret(Samples.Handle);
+   end;
  end;
 VK_UP:
  begin
   if (Samples.CursorY > 0) then
    begin
     Dec(Samples.CursorY);
-    SetCaretPos(Samples.CelW * (3 + Samples.CursorX),
-                        Samples.CelH * Samples.CursorY)
+    SetCaretPos(Samples.CelW * (3 + Samples.CursorX),Samples.CelH * Samples.CursorY);
    end
   else if Samples.ShownFrom > 0 then
    begin
@@ -2866,9 +2835,9 @@ VK_NEXT,VK_END:
     SetCaretPos(Samples.CelW * (3 + Samples.CursorX),
                         Samples.CelH * Samples.CursorY)
    end;
-  if Samples.ShownFrom < 64 - Samples.NOfLines then
+  if Samples.ShownFrom < MaxSamLen - Samples.NOfLines then
    begin
-    Samples.ShownFrom := 64 - Samples.NOfLines;
+    Samples.ShownFrom := MaxSamLen - Samples.NOfLines;
     HideCaret(Samples.Handle);
     Samples.RedrawSamples(0);
     ShowCaret(Samples.Handle)
@@ -2941,7 +2910,7 @@ procedure TMDIChild.OrnamentsKeyDown(Sender: TObject; var Key: Word;
 type
  TOrnToggles = (TgSgn,TgSgnP,TgSgnM);
 
- procedure GetOrnParams(var l,i:integer);
+ procedure GetOrnParams(var l,i,c:integer);
  begin
   with Ornaments do
    begin
@@ -2949,17 +2918,18 @@ type
      l := 1
     else
      l := ShownOrnament.Length;
-    i := CursorY + (CursorX div 7) * 16
-   end
+    c := CursorY + (CursorX div 7) * OrnNRaw;
+    i := ShownFrom + c;
+   end;
  end;
 
  procedure DoToggles(n:TOrnToggles);
  var
-  i,l,o:integer;
+  c,i,l,o:integer;
  begin
   with Ornaments do
    begin
-    GetOrnParams(l,i);
+    GetOrnParams(l,i,c);
     if i >= l then exit;
     SongChanged := True;
     ValidateOrnament(OrnNum);
@@ -2973,7 +2943,8 @@ type
      ShownOrnament.Items[i] := -Abs(ShownOrnament.Items[i])
     end;
     AddUndo(CAChangeOrnamentValue,o,ShownOrnament.Items[i]);
-    ChangeList[ChangeCount - 1].OldParams.prm.OrnamentCursor := i;
+    ChangeList[ChangeCount - 1].OldParams.prm.OrnamentCursor := c;
+    ChangeList[ChangeCount - 1].OldParams.prm.OrnamentShownFrom := ShownFrom;
     HideCaret(Handle);
     RedrawOrnaments(0);
     ShowCaret(Handle)
@@ -2997,11 +2968,11 @@ type
 
  procedure DoNumber;
  var
-  i,l,o:integer;
+  c,i,l,o:integer;
  begin
   with Ornaments do
    begin
-    GetOrnParams(l,i);
+    GetOrnParams(l,i,c);
     if i >= l then exit;
     SongChanged := True;
     ValidateOrnament(OrnNum);
@@ -3013,7 +2984,8 @@ type
       else
        Items[i] := InputONumber;
       AddUndo(CAChangeOrnamentValue,o,Items[i]);
-      ChangeList[ChangeCount - 1].OldParams.prm.OrnamentCursor := i;
+      ChangeList[ChangeCount - 1].OldParams.prm.OrnamentCursor := c;
+      ChangeList[ChangeCount - 1].OldParams.prm.OrnamentShownFrom := ShownFrom;
      end;
     HideCaret(Handle);
     RedrawOrnaments(0);
@@ -3029,7 +3001,7 @@ type
   if nm > 96 then
    nm := n;
   Ornaments.InputONumber := nm;
-  DoNumber
+  DoNumber;
  end;
 
 begin
@@ -3039,75 +3011,95 @@ if Shift = [] then
 case Key of
 VK_NEXT:
  begin
-  Ornaments.CursorY := 15;
-  SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+  Ornaments.CursorY := OrnNRaw-1;
+  SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
  end;
 VK_PRIOR:
  begin
   Ornaments.CursorY := 0;
-  SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+  SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
  end;
 VK_HOME:
  if Ornaments.CursorX <> 0 then
   begin
    Ornaments.CursorX := 0;
-   SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+   SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
   end;
 VK_END:
- if Ornaments.CursorX <> 21 then
+ if Ornaments.CursorX <> (OrnNCol-1)*7 then
   begin
-   Ornaments.CursorX := 21;
-   SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+   Ornaments.CursorX := (OrnNCol-1)*7;
+   SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
   end;
 VK_DOWN:
  begin
-  if Ornaments.CursorY < 15 then
+  if Ornaments.CursorY < OrnNRaw-1 then
    begin
     Inc(Ornaments.CursorY);
-    SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+    SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
    end
-  else if Ornaments.CursorX < 21 then
+  else if Ornaments.CursorX < (OrnNCol-1)*7 then
    begin
     Ornaments.CursorY := 0;
     Inc(Ornaments.CursorX,7);
-    SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+    SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
    end
+  else if Ornaments.ShownFrom < MaxOrnLen - Ornaments.NOfLines then
+   begin
+    Inc(Ornaments.ShownFrom);
+    HideCaret(Ornaments.Handle);
+    Ornaments.RedrawOrnaments(0);
+    ShowCaret(Ornaments.Handle);
+   end;
  end;
 VK_UP:
  begin
   if Ornaments.CursorY > 0 then
    begin
     Dec(Ornaments.CursorY);
-    SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+    SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
    end
   else if Ornaments.CursorX > 0 then
    begin
-    Ornaments.CursorY := 15;
+    Ornaments.CursorY := OrnNRaw-1;
     Dec(Ornaments.CursorX,7);
-    SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+    SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
    end
+  else if Ornaments.ShownFrom > 0 then
+   begin
+    Dec(Ornaments.ShownFrom);
+    HideCaret(Ornaments.Handle);
+    Ornaments.RedrawOrnaments(0);
+    ShowCaret(Ornaments.Handle);
+   end;
  end;
 VK_LEFT:
  if Ornaments.CursorX > 0 then
   begin
    Dec(Ornaments.CursorX,7);
-   SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+   SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
+  end
+ else if Ornaments.ShownFrom > 0 then
+  begin
+   Dec(Ornaments.ShownFrom,OrnNRaw);
+   if Ornaments.ShownFrom < 0 then Ornaments.ShownFrom := 0;
+   HideCaret(Ornaments.Handle);
+   Ornaments.RedrawOrnaments(0);
+   ShowCaret(Ornaments.Handle);
   end;
 VK_RIGHT:
- if Ornaments.CursorX < 21 then
+ if Ornaments.CursorX < (OrnNCol-1)*7 then
   begin
    Inc(Ornaments.CursorX,7);
-   SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+   SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
+  end
+ else if Ornaments.ShownFrom < MaxOrnLen - Ornaments.NOfLines then
+  begin
+   Inc(Ornaments.ShownFrom,OrnNRaw);
+   if Ornaments.ShownFrom > MaxOrnLen - Ornaments.NOfLines then Ornaments.ShownFrom := MaxOrnLen - Ornaments.NOfLines;
+   HideCaret(Ornaments.Handle);
+   Ornaments.RedrawOrnaments(0);
+   ShowCaret(Ornaments.Handle);
   end;
 Ord(' '):
  DoToggleSpace;
@@ -3125,31 +3117,30 @@ else if Shift = [ssCtrl] then
 case Key of
 VK_NEXT,VK_END:
  begin
-  Ornaments.CursorY := 15;
-  Ornaments.CursorX := 21;
-  SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+  Ornaments.CursorY := OrnNRaw-1;
+  Ornaments.CursorX := (OrnNCol-1)*7;
+  SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
+  Ornaments.ShownFrom := MaxOrnLen - Ornaments.NOfLines;
+  HideCaret(Ornaments.Handle);
+  Ornaments.RedrawOrnaments(0);
+  ShowCaret(Ornaments.Handle);
  end;
 VK_PRIOR,VK_HOME:
  begin
   Ornaments.CursorY := 0;
   Ornaments.CursorX := 0;
-  SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
+  SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
+  Ornaments.ShownFrom := 0;
+  HideCaret(Ornaments.Handle);
+  Ornaments.RedrawOrnaments(0);
+  ShowCaret(Ornaments.Handle);
  end;
 end
 else if Shift = [ssShift] then
 case Key of
 $BB:
  DoTogglePlus
-end
-{else if Shift = [ssAlt] then
-case Key of
-VK_RIGHT:
- AddCurrentToSampTemplate;
-VK_LEFT:
- CopySampTemplateToCurrent
-end}
+end;
 end;
 
 procedure TMDIChild.TracksMoveCursorMouse(X,Y:integer;Sel,Mv,ButRight:boolean);
@@ -3241,14 +3232,14 @@ if Tracks.Focused then
   SetCaretPos(Tracks.CelW * (3 + Tracks.CursorX),
                         Tracks.CelH * Tracks.CursorY)
  end;
-ShowStat
+ShowStat;
 end;
 
 procedure TMDIChild.TracksMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
+if not Tracks.Focused then Windows.SetFocus(Tracks.Handle);
 TracksMoveCursorMouse(X,Y,GetKeyState(VK_SHIFT) and 128 <> 0,False,Shift = [ssRight]);
-if not Tracks.Focused then Windows.SetFocus(Tracks.Handle)
 end;
 
 procedure TTestLine.TestLineMouseDown(Sender: TObject; Button: TMouseButton;
@@ -3392,57 +3383,39 @@ end;
 procedure TMDIChild.OrnamentsMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 var
- x1,y1,i,l:integer;
+ x1,y1,i,c:integer;
 begin
 Ornaments.InputONumber := 0;
-x1 := X div Ornaments.CelW - 3;
+x1 := X div Ornaments.CelW;
 y1 := Y div Ornaments.CelH;
-if (y1 >= 0) and (y1 <= 15) and
-   (x1 >= 0) and not (x1 in [3..6,10..13,17..20,24]) then
- begin
-  if x1 in [1..2] then
-   x1 := 0
-  else if x1 in [8..9] then
-   x1 := 7
-  else if x1 in [15..16] then
-   x1 := 14
-  else if x1 in [22..23] then
-   x1 := 21;
-  Ornaments.CursorX := x1;
-  Ornaments.CursorY := y1
- end;
-if Shift = [ssRight] then
- begin
-  if x1 in [0,7,14,21] then
-   with Ornaments do
+if (y1 >= 0) and (y1 < OrnNRaw) and (x1 >= 3) and (x1 < OrnNCol*7-1) and
+   not ((x1 mod 7) in [0..2,6]) then
+ with Ornaments do
+  begin
+   i := x1 div 7; x1 := i * 7;
+   CursorX := x1;
+   CursorY := y1;
+   if (Shift = [ssRight]) and (ShownOrnament <> nil) then
     begin
-     if ShownOrnament = nil then
-      l := 1
-     else
-      l := ShownOrnament.Length;
-     i := (x1 div 7) * 16 + y1;
-     if i < l then
+     c := i * OrnNRaw + y1;
+     i := ShownFrom + c;
+     if (i < ShownOrnament.Length) and (ShownOrnament.Items[i] <> 0) then
       begin
        SongChanged := True;
-       ValidateOrnament(OrnNum);
        AddUndo(CAChangeOrnamentValue,ShownOrnament.Items[i],-ShownOrnament.Items[i]);
-       ChangeList[ChangeCount - 1].OldParams.prm.OrnamentCursor := i;
+       ChangeList[ChangeCount - 1].OldParams.prm.OrnamentCursor := c;
+       ChangeList[ChangeCount - 1].OldParams.prm.OrnamentShownFrom := ShownFrom;
        ShownOrnament.Items[i] := -ShownOrnament.Items[i];
-       if Focused then
-        HideCaret(Handle);
+       if Focused then HideCaret(Handle);
        RedrawOrnaments(0);
-       if Focused then
-        ShowCaret(Handle)
-      end
-    end
- end;
+       if Focused then ShowCaret(Handle);
+      end;
+    end;
+  end;
 if Ornaments.Focused then
- begin
-  SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),
-                        Ornaments.CelH * Ornaments.CursorY)
- end
+ SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY)
 else
- Windows.SetFocus(Ornaments.Handle)
+ Windows.SetFocus(Ornaments.Handle);
 end;
 
 procedure TMDIChild.DisposeUndo;
@@ -3469,8 +3442,6 @@ ChangeTop := ChangeCount
 end;
 
 procedure TMDIChild.FormDestroy(Sender: TObject);
-var
- i:integer;
 begin
 DisposeUndo(True);
 ChangeList := nil;
@@ -3479,29 +3450,24 @@ FreeAndNil(OrnamentTestLine);
 FreeAndNil(Samples);
 FreeAndNil(Ornaments);
 FreeAndNil(Tracks);
-for i := 1 to 31 do
- if VTMP.Samples[i] <> nil then Dispose(VTMP.Samples[i]);
-for i := 0 to 15 do
- if VTMP.Ornaments[i] <> nil then Dispose(VTMP.Ornaments[i]);
-for i := -1 to MaxPatNum do
- if VTMP.Patterns[i] <> nil then Dispose(VTMP.Patterns[i]);
-Dispose(VTMP)
+FreeVTMP(VTMP);
 end;
 
 procedure TMDIChild.SetFileName(Name:string);
 var
- i,n:integer;
+ i:integer;
 begin
 WinFileName := Name;
 Caption := IntToStr(WinNumber) + ': ' + ExtractFileName(Name) + ' (' + ExtractFilePath(Name) + ')';
-for i := 1 to MainForm.ComboBox1.Items.Count - 1 do
- if MainForm.ComboBox1.Items.Objects[i] = Self then
+for i := 1 to TSSel.ListBox1.Items.Count - 1 do
+ if TSSel.ListBox1.Items.Objects[i] = Self then
   begin
-   n := MainForm.ComboBox1.ItemIndex;
-   MainForm.ComboBox1.Items.Strings[i] := Caption;
-   MainForm.ComboBox1.ItemIndex := n;
+   TSSel.ListBox1.Items.Strings[i] := Caption;
    break
   end;
+for i := 0 to MainForm.MDIChildCount - 1 do
+ if TMDIChild(MainForm.MDIChildren[i]).TSWindow = Self then
+  TMDIChild(MainForm.MDIChildren[i]).TSBut.Caption := PrepareTSString(TMDIChild(MainForm.MDIChildren[i]).TSBut,Caption);
 end;
 
 function TMDIChild.LoadTrackerModule(Name:string;var VTMP2:PModule):boolean;
@@ -3515,23 +3481,18 @@ const
    'Bad pattern structure');
 var
  ZXP:TSpeccyModule;
- i,Tm:integer;
+ i,Tm,TSSize2:integer;
  Andsix:byte;
  ZXAddr:word;
- FileType:Available_Types;
- s,AuthN,SongN:string;
-begin
-Result := True;
-UndoWorking := True;
-SavedAsText := True;
-try
-if VTMP2 = nil then
+ AuthN,SongN:string;
+
+ function Convert(FType:Available_Types;VTMP:PModule;var VTMP2:PModule):boolean;
  begin
-  FileType := LoadAndDetect(@ZXP,Name,i,ZXAddr,Tm,Andsix,AuthN,SongN);
-  case FileType of
+  Result := True;
+  case FType of
   Unknown:
    begin
-    i := LoadModuleFromText(Name,VTMP);
+    i := LoadModuleFromText(Name,VTMP,VTMP2);
     if i <> 0 then
      begin
       Result := False;
@@ -3569,15 +3530,51 @@ if VTMP2 = nil then
   PT3File:
    begin
     PT32VTM(@ZXP,i,VTMP,VTMP2);
-    SavedAsText := False
+    SavedAsText := False;
    end;
   end;
+ end;
+
+var
+ FileType,FType2:Available_Types;
+ s:string;
+ f:file;
+ dummy:PModule;
+begin
+Result := True;
+UndoWorking := True;
+SavedAsText := True;
+try
+if VTMP2 = nil then
+ begin
+  FileType := LoadAndDetect(@ZXP,Name,i,FType2,TSSize2,ZXAddr,Tm,Andsix,AuthN,SongN);
+  Result := Convert(FileType,VTMP,VTMP2); if not Result then exit;
+  if (VTMP2 = nil) and (FType2 <> Unknown) and (TSSize2 <> 0) then
+   begin
+    FillChar(ZXP,65536,0);
+    AssignFile(f,Name);
+    Reset(f,1);
+    Seek(f,i);
+    BlockRead(f,ZXP,TSSize2,i);
+    CloseFile(f);
+    if i = TSSize2 then
+     begin
+      PrepareZXModule(@ZXP,FType2,TSSize2);
+      if FType2 <> Unknown then
+       begin
+        NewVTMP(VTMP2);
+        dummy := nil;
+        Convert(FType2,VTMP2,dummy);
+        if dummy <> nil then FreeVTMP(dummy);
+       end;
+     end;
+   end;
  end
 else
  begin
-  Dispose(VTMP.Patterns[-1]);
-  Dispose(VTMP);
+  FreeVTMP(VTMP);
   VTMP := VTMP2;
+  if LowerCase(ExtractFileExt(Name)) = '.pt3' then SavedAsText := False;
  end;
 SetFileName(Name);
 //if FileType = Unknown then exit;
@@ -3601,7 +3598,7 @@ else
   else
    UpDown5.Position := DefPatLen
  end;
-if AutoHLCheck.Checked then CalcHLStep;
+if AutoHL.Down then CalcHLStep;
 UpDown3.Position := VTMP.Initial_Delay;
 UpDown4.Position := VTMP.Ton_Table;
 Edit3.Text := VTMP.Title;
@@ -3637,7 +3634,7 @@ for i := 1 to 15 do
  if VTMP.Ornaments[i] <> nil then
   for Tm := VTMP.Ornaments[i].Length to MaxOrnLen-1 do
    VTMP.Ornaments[i].Items[Tm] := 0;
-for i := 0 to MaxPatNum do
+{for i := 0 to MaxPatNum do //already made in NewPattern();
  if VTMP.Patterns[i] <> nil then
   for Tm := VTMP.Patterns[i].Length to MaxPatLen-1 do
    begin
@@ -3646,7 +3643,7 @@ for i := 0 to MaxPatNum do
     VTMP.Patterns[i].Items[Tm].Channel[0] := EmptyChannelLine;
     VTMP.Patterns[i].Items[Tm].Channel[1] := EmptyChannelLine;
     VTMP.Patterns[i].Items[Tm].Channel[2] := EmptyChannelLine
-   end;
+   end;}
 Tracks.RedrawTracks(0);
 finally
  UndoWorking := False;
@@ -3691,7 +3688,7 @@ else
                          Tracks.CelH * Tracks.CursorY);
     ShowCaret(Tracks.Handle)
    end;
-ShowStat
+ShowStat;
 end;
 
 procedure TMDIChild.TracksMouseWheelUp(Sender: TObject; Shift: TShiftState;
@@ -3731,7 +3728,7 @@ if Tracks.ShownFrom > 0 then
                          Tracks.CelH * Tracks.CursorY);
     ShowCaret(Tracks.Handle)
    end;
-ShowStat
+ShowStat;
 end;
 
 procedure TMDIChild.SamplesMouseWheelDown(Sender: TObject; Shift: TShiftState;
@@ -3739,7 +3736,7 @@ procedure TMDIChild.SamplesMouseWheelDown(Sender: TObject; Shift: TShiftState;
 begin
 Samples.InputSNumber := 0;
 Handled := True;
-if Samples.ShownFrom < 64 - Samples.NOfLines then
+if Samples.ShownFrom < MaxSamLen - Samples.NOfLines then
    begin
     Inc(Samples.ShownFrom);
     HideCaret(Samples.Handle);
@@ -3784,7 +3781,7 @@ if Samples.ShownFrom > 0 then
    end
  else
    begin
-    Samples.ShownFrom := 64 - Samples.NOfLines;
+    Samples.ShownFrom := MaxSamLen - Samples.NOfLines;
     Samples.CursorY := Samples.NOfLines - 1;
     HideCaret(Samples.Handle);
     Samples.RedrawSamples(0);
@@ -4024,13 +4021,17 @@ if Pos >= 0 then
 end;
 
 procedure TMDIChild.SinchronizeModules;
-var
- w:TMDIChild;
 begin
-if (not IsPlaying or (PlayMode <> PMPlayModule)) and (MainForm.ComboBox1.ItemIndex > 0) then
+if IsSinchronizing then exit;
+if (not IsPlaying or (PlayMode <> PMPlayModule)) and
+   (TSWindow <> nil) and (TSWindow <> Self) then
  begin
-  w := TMDIChild(MainForm.ComboBox1.Items.Objects[MainForm.ComboBox1.ItemIndex]);
-  if w <> Self then w.GoToTime(PosBegin + LineInts);
+  TSWindow.IsSinchronizing := True;
+  try
+   TSWindow.GoToTime(PosBegin + LineInts);
+  finally
+   TSWindow.IsSinchronizing := False;
+  end;
  end;
 end;
 
@@ -4178,7 +4179,7 @@ if VTMP.Patterns[PatNum] = nil then
 else
  l := VTMP.Patterns[PatNum].Length;
 UpDown5.Position := l;
-if AutoHLCheck.Checked then CalcHLStep;
+if AutoHL.Down then CalcHLStep;
 Tracks.ShownFrom := 0;
 if Tracks.Focused then
  HideCaret(Tracks.Handle);
@@ -4287,7 +4288,7 @@ if NL <> VTMP.Patterns[PatNum].Length then
   SongChanged := True;
   AddUndo(CAChangePatternSize,VTMP.Patterns[PatNum].Length,NL);
   VTMP.Patterns[PatNum].Length := NL;
-  if AutoHLCheck.Checked then CalcHLStep;
+  if AutoHL.Down then CalcHLStep;
   if not UndoWorking then
    begin
     if Tracks.ShownFrom >= NL then Tracks.ShownFrom := NL - 1;
@@ -4487,7 +4488,7 @@ procedure TMDIChild.UpDown7ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
-AllowChange := NewValue in [1..64];
+AllowChange := NewValue in [1..MaxSamLen];
 if AllowChange then
  ChangeSampleLength(NewValue)
 end;
@@ -4602,11 +4603,9 @@ OrnNum := n;
 with OrnamentTestLine do
  begin
   VTMP.Patterns[-1].Items[0].Channel[0].Ornament := n;
-  if Focused then
-   HideCaret(Handle);
+  if Focused then HideCaret(Handle);
   RedrawTestLine(0);
-  if Focused then
-   ShowCaret(Handle)
+  if Focused then ShowCaret(Handle);
  end;
 Ornaments.ShownOrnament := VTMP.Ornaments[OrnNum];
 if VTMP.Ornaments[OrnNum] = nil then
@@ -4623,16 +4622,16 @@ if not UndoWorking then
  begin
   Ornaments.CursorX := 0;
   Ornaments.CursorY := 0;
- end; 
+  Ornaments.ShownFrom := 0;
+ end;
 if Ornaments.Focused then
  begin
   SetCaretPos(Ornaments.CelW * (3 + Ornaments.CursorX),Ornaments.CelH * Ornaments.CursorY);
-  HideCaret(Ornaments.Handle)
+  HideCaret(Ornaments.Handle);
  end;
 Ornaments.RedrawOrnaments(0);
-if Ornaments.Focused then
- ShowCaret(Ornaments.Handle);
-ShowOrnStats
+if Ornaments.Focused then ShowCaret(Ornaments.Handle);
+ShowOrnStats;
 end;
 
 procedure TMDIChild.ChangeOrnamentLength(NL:integer);
@@ -4893,9 +4892,8 @@ procedure TMDIChild.UpDown11ChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: Smallint;
   Direction: TUpDownDirection);
 begin
-AllowChange := NewValue in [1..64];
-if AllowChange then
- ChangeOrnamentLength(NewValue)
+AllowChange := NewValue in [1..MaxOrnLen];
+if AllowChange then ChangeOrnamentLength(NewValue);
 end;
 
 procedure TMDIChild.Edit13Exit(Sender: TObject);
@@ -5119,8 +5117,9 @@ else
   VTMP.Ornaments[OrnNum] := Orn;
   ChangeOrnament(OrnNum);
   ChangeList[ChangeCount - 1].NewParams.prm.OrnamentCursor :=
-   Ornaments.CursorY + Ornaments.CursorX div 7 * 16
- end
+   Ornaments.CursorY + Ornaments.CursorX div 7 * OrnNRaw;
+  ChangeList[ChangeCount - 1].NewParams.prm.OrnamentShownFrom := 0;
+ end;
 end;
 
 procedure TMDIChild.SpeedButton21Click(Sender: TObject);
@@ -5225,7 +5224,9 @@ AddUndo(CACopyOrnamentToOrnament,0,0);
 ChangeList[ChangeCount - 1].ComParams.CurrentOrnament := NewOrn;
 ChangeList[ChangeCount - 1].Ornament := VTMP.Ornaments[NewOrn];
 ChangeList[ChangeCount - 1].NewParams.prm.OrnamentCursor := 0;
+ChangeList[ChangeCount - 1].NewParams.prm.OrnamentShownFrom := 0;
 ChangeList[ChangeCount - 1].OldParams.prm.OrnamentCursor := 0;
+ChangeList[ChangeCount - 1].OldParams.prm.OrnamentShownFrom := 0;
 New(VTMP.Ornaments[NewOrn]);
 VTMP.Ornaments[NewOrn].Loop := VTMP.Ornaments[OrnNum].Loop;
 VTMP.Ornaments[NewOrn].Length := VTMP.Ornaments[OrnNum].Length;
@@ -5774,7 +5775,7 @@ end;
 
 procedure TMDIChild.AutoHLCheckClick(Sender: TObject);
 begin
-if AutoHLCheck.Checked then CalcHLStep
+if AutoHL.Down then CalcHLStep;
 end;
 
 procedure TMDIChild.CalcHLStep;
@@ -5798,7 +5799,7 @@ end;
 procedure TMDIChild.Edit17Exit(Sender: TObject);
 begin
 if not Edit17.Modified then exit;
-AutoHLCheck.Checked := False;
+AutoHL.Down := False;
 Edit17.Text := IntToStr(UpDown15.Position);
 ChangeHLStep(UpDown15.Position)
 end;
@@ -5815,7 +5816,7 @@ end;
 
 procedure TMDIChild.UpDown15Click(Sender: TObject; Button: TUDBtnType);
 begin
-AutoHLCheck.Checked := False
+AutoHL.Down := False;
 end;
 
 procedure TMDIChild.SetLoopPos(lp:integer);
@@ -5904,8 +5905,9 @@ with ChangeList[ChangeCount - 1] do
    end;
   CALoadOrnament,CAOrGen:
    begin
-    OldParams.prm.OrnamentCursor := Ornaments.CursorY + Ornaments.CursorX div 7 * 16;
-    ComParams.CurrentOrnament := OrnNum
+    OldParams.prm.OrnamentCursor := Ornaments.CursorY + Ornaments.CursorX div 7 * OrnNRaw;
+    OldParams.prm.OrnamentShownFrom := Ornaments.ShownFrom;
+    ComParams.CurrentOrnament := OrnNum;
    end;
   CALoadSample,CAChangeSampleValue:
    begin
@@ -5913,11 +5915,11 @@ with ChangeList[ChangeCount - 1] do
      begin
       SampleLineValues := PSampleTick(par1);
       Line := par2
-     end; 
+     end;
     OldParams.prm.SampleCursorX := Samples.CursorX;
     OldParams.prm.SampleCursorY := Samples.CursorY;
     OldParams.prm.SampleShownFrom := Samples.ShownFrom;
-    ComParams.CurrentSample := SamNum
+    ComParams.CurrentSample := SamNum;
    end;
   end;
  end;
@@ -6168,18 +6170,19 @@ for i := Steps downto 1 do
   CAChangeOrnamentValue:
    begin
     UpDown9.Position := ComParams.CurrentOrnament;
-    VTMP.Ornaments[ComParams.CurrentOrnament].Items[OldParams.prm.OrnamentCursor] := Pars.prm.Value;
+    VTMP.Ornaments[ComParams.CurrentOrnament].Items[OldParams.prm.OrnamentShownFrom + OldParams.prm.OrnamentCursor] := Pars.prm.Value;
     with Ornaments do
      begin
       if Focused then HideCaret(Handle);
-      CursorY := OldParams.prm.OrnamentCursor mod 16;
-      CursorX := OldParams.prm.OrnamentCursor div 16 * 7;
+      CursorY := OldParams.prm.OrnamentCursor mod OrnNRaw;
+      CursorX := OldParams.prm.OrnamentCursor div OrnNRaw * 7;
       SetCaretPos(CelW * (3 + CursorX),CelH * CursorY);
+      Ornaments.ShownFrom := OldParams.prm.OrnamentShownFrom;
       RedrawOrnaments(0);
       if Focused then ShowCaret(Handle) else
        begin
         PageControl1.ActivePageIndex := 2;
-        if CanFocus then Windows.SetFocus(Handle)
+        if CanFocus then Windows.SetFocus(Handle);
        end;
      end;
    end;
@@ -6189,8 +6192,9 @@ for i := Steps downto 1 do
     Pnt := Ornament;
     Ornament := VTMP.Ornaments[ComParams.CurrentOrnament];
     VTMP.Ornaments[ComParams.CurrentOrnament] := Pnt;
-    Ornaments.CursorY := Pars.prm.OrnamentCursor mod 16;
-    Ornaments.CursorX := Pars.prm.OrnamentCursor div 16 * 7;
+    Ornaments.CursorY := Pars.prm.OrnamentCursor mod OrnNRaw;
+    Ornaments.CursorX := Pars.prm.OrnamentCursor div OrnNRaw * 7;
+    Ornaments.ShownFrom := Pars.prm.OrnamentShownFrom;
     if UpDown9.Position = ComParams.CurrentOrnament then
      ChangeOrnament(ComParams.CurrentOrnament)
     else
@@ -6225,10 +6229,12 @@ end;
 
 procedure TMDIChild.SaveModuleAs;
 begin
-if WinFileName = '' then
- MainForm.SaveDialog1.FileName := 'VTIIModule' + IntToStr(WinNumber)
+if WinFileName <> '' then
+ MainForm.SaveDialog1.FileName := WinFileName
+else if (TSWindow <> nil) and (TSWindow.WinFileName <> '') then
+ MainForm.SaveDialog1.FileName := TSWindow.WinFileName
 else
- MainForm.SaveDialog1.FileName := WinFileName;
+ MainForm.SaveDialog1.FileName := 'VTIIModule' + IntToStr(WinNumber);
 MainForm.SaveDialog1.FilterIndex := Ord(not SavedAsText) + 1;
 while MainForm.SaveDialog1.Execute do
  begin
@@ -6264,20 +6270,55 @@ else
 end;
 
 procedure TMDIChild.FormActivate(Sender: TObject);
+begin
+MainForm.Caption := Caption + ' - Vortex Tracker II';
+end;
+
+function TMDIChild.PrepareTSString(TSBut:TSpeedButton;s:string):string;
+var
+ DC:HDC;
+ sz:tagSIZE;
+ nch:integer;
+begin
+Result := s;
+DC := GetDC(Handle);
+GetTextExtentExPoint(DC,PChar(s),Length(s),TSBut.ClientWidth,@nch,nil,Sz);
+ReleaseDC(Handle,DC);
+if nch < Length(s) then
+ begin
+  Result[nch] := '.';
+  Result[nch - 1] := '.';
+  Result[nch - 2] := '.';
+  SetLength(Result,nch);
+ end;
+end;
+
+procedure TMDIChild.TSButClick(Sender: TObject);
 var
  i:integer;
 begin
-//if MainForm.ComboBox1.Enabled then
- if MainForm.ComboBox1.ItemIndex > 0 then
-  if Self = TMDIChild(MainForm.ComboBox1.Items.Objects[MainForm.ComboBox1.ItemIndex]) then
-   for i := 1 to MainForm.ComboBox1.Items.Count - 1 do
-    if MainForm.ComboBox1.Items.Objects[i] = LastActiveWindow then
-     begin
-      MainForm.ComboBox1.ItemIndex := i;
-      break;
-     end;
-LastActiveWindow := Self;
-MainForm.Caption := Caption + ' - Vortex Tracker II';
+for i := 0 to TSSel.ListBox1.Count - 1 do
+ if TSSel.ListBox1.Items.Objects[i] = TSWindow then
+  begin
+   TSSel.ListBox1.ItemIndex := i;
+   break;
+  end;
+if (TSSel.ShowModal = mrOk) and (TSSel.ListBox1.ItemIndex >= 0) and
+  (TMDIChild(TSSel.ListBox1.Items.Objects[TSSel.ListBox1.ItemIndex]) <> Self) then
+ begin
+  TSBut.Caption := PrepareTSString(TSBut,TSSel.ListBox1.Items[TSSel.ListBox1.ItemIndex]);
+  if (TSWindow <> nil) and (TSWindow <> Self) then
+   begin
+    TSWindow.TSBut.Caption := PrepareTSString(TSWindow.TSBut,TSSel.ListBox1.Items[0]);
+    TSWindow.TSWindow := nil;
+   end;
+  TSWindow := TMDIChild(TSSel.ListBox1.Items.Objects[TSSel.ListBox1.ItemIndex]);
+  if (TSWindow <> nil) and (TSWindow <> Self) then
+   begin
+    TSWindow.TSBut.Caption := PrepareTSString(TSWindow.TSBut,Caption);
+    TSWindow.TSWindow := Self;
+   end;
+ end;
 end;
 
 end.

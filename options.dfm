@@ -341,7 +341,7 @@ object Form1: TForm1
         Top = 88
         Width = 257
         Height = 97
-        Caption = 'Features Level'
+        Caption = 'Features level'
         ItemIndex = 3
         Items.Strings = (
           'Pro Tracker 3.5'
@@ -608,7 +608,7 @@ object Form1: TForm1
     Top = 304
   end
   object ColorDialog1: TColorDialog
-    Left = 332
-    Top = 240
+    Left = 52
+    Top = 304
   end
 end
