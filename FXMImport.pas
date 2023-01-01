@@ -1,3 +1,11 @@
+{
+This is part of Vortex Tracker II project
+(c)2000-2008 S.V.Bulba
+Author Sergey Bulba
+E-mail: vorobey@mail.khstu.ru
+Support page: http://bulba.untergrund.net/
+}
+
 unit FXMImport;
 
 interface
@@ -119,7 +127,7 @@ begin
    Val(s,i,j);
    flg := (j = 0) and (i in [0,1,3,7,15,31])
   end;
- Button1.Enabled := Flg
+ Button1.Enabled := Flg;
 end;
 
 

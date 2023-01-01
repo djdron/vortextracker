@@ -1,9 +1,9 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2007 S.V.Bulba
+(c)2000-2008 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
-Support page: http://bulba.at.kz/
+Support page: http://bulba.untergrund.net/
 }
 
 unit AY;
@@ -1520,9 +1520,9 @@ VisTickMax := VisStep * VisPosMax;
 SetLength(PlayingGrid,VisPosMax);
 if R then
  begin
-  PlayingWindow[1].RerollToLine;
-  UnresetPlaying
- end
+  PlayingWindow[1].RerollToLine(1);
+  UnresetPlaying;
+ end;
 end;
 
 procedure SetSampleRate(f:integer);
@@ -1662,9 +1662,9 @@ else
  end;
 if R then
  begin
-  PlayingWindow[1].RerollToLine;
-  UnresetPlaying
- end
+  PlayingWindow[1].RerollToLine(1);
+  UnresetPlaying;
+ end;
 end;
 
 procedure SetAYFreq(f:integer);
@@ -1681,9 +1681,9 @@ AY_Tiks_In_Interrupt := round(AY_Freq / (Interrupt_Freq / 1000 * 8));
 CalcFiltKoefs;
 if R then
  begin
-  PlayingWindow[1].RerollToLine;
-  UnresetPlaying
- end
+  PlayingWindow[1].RerollToLine(1);
+  UnresetPlaying;
+ end;
 end;
 
 procedure CalcFiltKoefs;
@@ -1728,13 +1728,13 @@ if Filt_M <> M then
   SetLength(Filt_XR,M + 1);
   FillChar(Filt_XL[0],(Filt_M + 1) * 4,0);
   FillChar(Filt_XR[0],(Filt_M + 1) * 4,0);
-  Filt_I := 0
+  Filt_I := 0;
  end;
 if R then
  begin
-  PlayingWindow[1].RerollToLine;
-  UnresetPlaying
- end
+  PlayingWindow[1].RerollToLine(1);
+  UnresetPlaying;
+ end;
 end;
 
 end.

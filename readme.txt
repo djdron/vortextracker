@@ -1,8 +1,8 @@
-Vortex Tracker II v1.0 beta 17
+Vortex Tracker II v1.0 beta 18
 (c)2000-2007 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
-Support page: http://bulba.untergrund.net/ (http://bulba.at.kz/)
+Support page: http://bulba.untergrund.net/
 
 History
 -------
@@ -39,7 +39,7 @@ Vortex Tracker II can import ZX Spectrum music files (modules) of next types:
 
 VT II detects module type only by filename extension (mask), and no any
 additional checks are performed. These extensions are used in well-known player
-called Ay_Emul. Any other extensions are analized as text files.
+called Ay_Emul. Any other extensions are analyzed as text files.
 
 PT v3.7+ modules saved in TS-mode can be imported in VT II too, they are
 converted to two single PT3 in two windows. Previous not documented PT v3.6 TS-
@@ -55,7 +55,7 @@ You can play these files in different players-emulators (the most known is
 Win32 emulator Ay_Emul), on real ZX Spectrum in many players (Little Viewer,
 Quick Commander, Real Commander, BestView, Pusher, ZXAmp and so on) or by
 built-in playing routines. Also you can include YM-sound into your PC-programs
-(see Ay_Emul sources, YM-Engine or SquareTone at http://bulba.at.kz/).
+(see Ay_Emul sources, YM-Engine or SquareTone at http://bulba.untergrund.net/).
 
 During editing you can save work versions of module in text format. It allows
 to save all temporary not used ornaments, samples and patterns. Also, text
@@ -86,48 +86,57 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-05/13/2007:
+11/20/2008:
 
-1. TS-mode is turning on after loading TS-module. If only two windows are opened
-   they are tiling horizontally also.
-2. Added new TS-format loader (used in Ay_Emul 2.9 beta 2).
-3. Changed 2nd module pointing method for TS-mode. Now you can point one window
-   two another individually.
-4. Again redesign of pattern editor window (specially for Ch41ns4w).
+1. Tracks redrawing moved from additional to main thread via windows messages
+   for more safe and stable work (but without measured moving warranty).
+2. Specially for TAD new tool "Toggle samples" (Ctrl+M) was made (seek at Play
+   menu or on tool panel). Tool allows to mute sound of any samples to hear/mute
+   standalone parties of composition (drum, main theme, echo, etc).
+3. Due many requests channel numbers in Track Manager are literal now (A, B and
+   C). In type field can be input numbers from 0 to 2 as usually.
 
-05/18/2007:
+11/22/2008:
 
-5. During saving one of module in TS-mode, 2nd module is added to result file
-   too. In text format modules fallow one for another, so you can merge two
-   single modules without editor in command line:
+4. Specially for TAD added Shift+Backspace shortcut to do step backward if
+   AutoStep is on.
+5. Serious bug was found: if new typed value is equal to existing one, change
+   is not added to Undo, but numbers of line and channel stored somewhere (if
+   first change than can be access violation, if not first - in previous action,
+   that's not good too). Fixed.
 
-     copy Module1.txt+Module2.txt Module.txt.
+11/24/2008:
 
-   During saving PT3 16 bytes identifer is added at the end of result file. More
-   simplier to save it from editor, but you still do same in command line:
+6. Especially for TAD after changing pattern number or activating module window
+   its number is copied to Tracks Manager and Global Transposition windows.
+7. In input pattern size field you can press PageUp and PageDown to increase/
+   decrease pattern size with highlight step value (for TAD).
+8. You can select position in OrderList of 2nd window during playing in Turbo
+   Sound mode to restart playing from.
+9. Pop-up menu or keys / and * on numpad allows to compress/expand pattern size
+   by 2 times (specially for TAD). Just set new speed to keep tempo after
+   operation if you need.
 
-     copy/b Module1.pt3+Module2.pt3+ID Module.pt3
+11/25/2008:
 
-   where ID is next structure file:
-    +0 Str4 'PT3!'
-    +4 Word Module1.pt3 file size
-    +6 Str4 'PT3!'
-    +A Word Module2.pt3 file size
-    +C Str4 '02TS'
-6. AutoStep range is expanded to +-256.
-7. Fixed error: in no loop mode more short module of TS-pair plays first tick of
-   loop position before stopping.
-8. Fixed error: color text on some buttons was set to black instead of system
-   window text color (thanks to Roman Kuraev for bug-report)..
+10.Due Roman Kuraev request added new function Merge (Ctrl+Alt+V or pop-up menu)
+   to Paste from clipboard without erasing existing pattern data with empty
+   values. Can be useful for making echo or inserting 2nd party between notes of
+   main party.
+11.Copy of Tracks Manager is added to Undo, but all previous Undo actions is
+   cleared. Fixed.
+12.Due TAD request, all operations of Tracks Manager can exceed patterns size up
+   to maximum pattern length (256) if work lines number allows. This feature
+   allows you to increase pattern size after operation.
+13.Fixed old error in ZX player export: bad player relocation for some address
+   (for example, B1DD for TS-player) due carry ignoring when low byte of address
+   is bigger than some value.
 
-05/19/2007:
+11/26/2008:
 
-9. Added new TS-player for ZX exporting of TS-modules. Don't forget to load in
-   DE register address of second module.
-10.Max size of ornament is upped to 255 (old 64 lines limitations was only in
-   ZX Spectrum editor, not in players). New size limit allows to import long 
-   ornaments from ASC and PSC modules.
-11.PSC-files import is improved (see guitar.psc by Mast).
+14.For TAD editing 1st module in TS-mode makes available Save button (and query
+   for saving before closing) after switching to 2nd module even if it is not
+   edited yet.
 
 Known problems
 --------------
@@ -142,7 +151,7 @@ Next keys are used.
  Pattern editor keys
  ~~~~~~~~~~~~~~~~~~~
 
-1. In a note cel
+1. In a note cell
 
 1.1. NoteKeys:
 
@@ -168,7 +177,7 @@ So fortepiano keys are emulated with range more than two octaves.
 
 1.6. From 1 to 8 at NumPad - choose current octave number.
 
-During inputing numbers from NumPad NumLock must be turned on.
+During inputting numbers from NumPad NumLock must be turned on.
 
 2. Pattern navigation (cursor control)
 
@@ -184,7 +193,7 @@ During inputing numbers from NumPad NumLock must be turned on.
 
 2.6. Ctrl+Home, Ctrl+End - move to top of first or bottom of last column.
 
-2.7. Mouse clicks - move cursor to desired cel.
+2.7. Mouse clicks - move cursor to desired cell.
 
 2.8. Mouse wheel - scroll pattern up/down.
 
@@ -196,13 +205,13 @@ During inputing numbers from NumPad NumLock must be turned on.
 
 3.3. Moving mouse with pushed left button.
 
-3.4. Shift+mouse click - select from cursor to desired cel.
+3.4. Shift+mouse click - select from cursor to desired cell.
 
 3.5. Shift+mouse wheel - not reset/add to selection.
 
 4. Jumps from edit pattern to other objects
 
-4.1. Tab - jup from one window control to other in predefined order.
+4.1. Tab - jump from one window control to other in predefined order.
 
 4.2. Shift+Tab - same in reverse order.
 
@@ -219,6 +228,8 @@ and position list editors.
 
 5.4. Ctrl+Delete - clear pattern line values.
 
+5.5. Numpad - - delete each 2nd pattern line with moving and decreasing pattern
+     size.
 
 6. Inserting empty lines
 
@@ -226,33 +237,40 @@ and position list editors.
 
 6.2. Ctrl+I - insert empty pattern line (with moving).
 
+6.3. Numpad * - double pattern size with inserting empty pattern lines between
+     old lines.
 
 7. Working with selection
 
-7.1. Ctrl+C, Ctrl+Insert - copy selection to clipbord.
+7.1. Ctrl+C, Ctrl+Insert - copy selection to clipboard.
 
 7.2. Ctrl+X, Shift+Delete - same with clearing selection values.
 
 7.3. Ctrl+V, Shift+Insert - inserting from clipboard (to right and to down from
-cursor or from upper left corner of selection). In case of selection is defined,
-insertion not exceeds its bounds.
+     cursor or from upper left corner of selection). In case of selection is
+     defined, insertion not exceeds its bounds.
 
-7.4. Num + and Num - - transpose 1 semiton up and down.
+7.4. Ctrl+Alt+V - same as usual inserting from clipboard, but without replacing
+     non-empty values with empty ones (i.e. merging).
 
-7.5. Ctrl+Num + and Ctrl+Num - - transpose 1 octave up and down.
+7.5. Numpad + and Numpad - - transpose 1 semitone up and down.
+
+7.6. Ctrl+Numpad + and Ctrl+Numpad - - transpose 1 octave up and down.
 
 8. Test playing of pattern's part
 
-8.1. Any pushed key during inputing data - play current line.
+8.1. Any pushed key during inputting data - play current line.
 
 8.2. Pushed Enter key - play pattern from current cursor position until key
-is pushed. If any looping is on, pattern will be playing ciclically,
+is pushed. If any looping is on, pattern will be playing cyclically,
 
 9. Other
 
 9.1. 0 on NumPad - on/off Auto Envelope.
 
 9.2. Space - on/off Auto Step.
+
+9.3. Shift+Backspace - if Auto Step is on do step backward.
 
 Right mouse button can call pop-up menu, which duplicates some key combinations
 (useful if you are using keyboard without Numpad, like in notebooks).
@@ -307,7 +325,7 @@ type and current note.
 
 4.5. Ctrl+S - save module.
 
-4.6. Tab, Shift+Tab - ciclical jums between window controls (forward and
+4.6. Tab, Shift+Tab - cyclical jumps between window controls (forward and
 backward).
 
 4.7. Alt+BackSpace - undo last change.
@@ -401,14 +419,14 @@ Shift+'=', Numpad '+' - set '+' sign
 
 '-', Numpad '-' - set '-' sign
 
-Right mouse click to toggle sign of corresponding value.
+Use right mouse click to toggle sign of corresponding value.
 
 - In sample and ornament test fields navigation and editing same as in patterns
 editor.
 
 Maximum length of title and author strings is 32 chars.
 
-Highligt step for pattern lines can be adjusted in pattern window. If Auto is
+Highlight step for pattern lines can be adjusted in pattern window. If Auto is
 on, step is autoselected from 3,4 and 5 depending of pattern length.
 
 You can load VT II modules into ZX Spectrum Pro Tracker 3.69x-3.7x. It can load
@@ -454,25 +472,29 @@ AutoStep using
 During editing tracks step of autoscrolling can be set. It works after the most
 typical operations: typing note, sample, numbers, inserting/deleting/clearing
 lines and so on. Tracks can be autoscrolled up (positive step) and down
-(negative step). To fast swith autostep option use Space or Ctrl+R.
+(negative step). To fast switch autostep option use Space or Ctrl+R.
 
 You can use this feature for unusual tasks, like inserting same data from
 clipboard with given step, or fast changing patterns size in 2 times (both
 increasing and decreasing). In last case just set step to 2 or 1 and use Ctrl+I
-or Ctrl+BackSpace several times.
+or Ctrl+BackSpace several times (for last better use Compress/Expand commands of
+popup menu).
+
+Sometimes user does not remember that AutoStep is on, so, he can press
+Shift+Backspace to do step backward.
 
 Turbo-Sound mode
 ----------------
 From the end of 90s some people tried to popularize standards of two sound chips
 connection to ZX Spectrum. Known schemes are Quadro-AY, Turbo-AY and
 Turbo-Sound. One of way to use it is to play two different modules
-simultaneously (each through own chip). Vortex Tracker II allows to play any two
+simultaneously (each through own chip). Vortex Tracker II allows playing any two
 opened modules simultaneously. Active window module sounds through the first
 sound chip, and module selected in list of opened modules through the second
 chip (call list by pushing corresponding button of module window). By default,
 second chip is off ("2nd soundchip is disabled" button label appears).
 
-For more usability VT II sinchronizes tracks of two modules in both play and
+For more usability VT II synchronizes tracks of two modules in both play and
 edit tracks modes (including cursors position), activates 2nd window after
 reaching tracks editor cursor right or left position, during saving any of
 TS-pair module, 2nd is added to the end of result file, during loading
@@ -494,9 +516,9 @@ a Courier, Courier New and FixedSys, otherwise your tracks will be as trash.
 
 'Windows' tab sheet
 
-'Channels allocation' allows to set visual channels allocation in patterns
-editor. 'Tracks colors' allows to select colors of any track editor elements.
-All 'Windows' tab sheet settings are applied to already opened windows.
+'Channels allocation' allows setting visual channels allocation in patterns
+editor. 'Tracks colors' allows selecting colors of any track editor elements.
+All 'Windows' tab sheet settings are applied to already open windows.
 
 'Chip emulation' tab sheet
 
@@ -619,10 +641,10 @@ Saving with ZX Spectrum player. Supported formats: HOBETA with player ($c),
 HOBETA without player ($m), .AY of EMUL subtype, SCL and TAP. .AY-format not
 allows using 0 address. Player can be adjusted: you can disable looping of
 module, check 'Disable loop' for that. In SCL and TAP formats, player and module
-both are saved separately (in two differnt files). It is better than HOBETA,
+both are saved separately (in two different files). It is better than HOBETA,
 because variables area between player and module is not saved. Player features
 and instructions can be found in ZXPlayer.txt file. Source text of player can be
-found in archive with VTII sources, and also at http://bulba.at.kz/
+found in archive with VTII sources, and also at http://bulba.untergrund.net/
 
 Thanks to
 ---------
@@ -641,13 +663,13 @@ Thanks to
 - Denis Seleznev for icon pictures.
 - Spectre for help in debugging and wishes about ZX PT3-player.
 - Ivan Roshin for help in writing new ZX PT3-player.
-- Jecktor for addapting PT3-player sources to XAS.
+- Jecktor for adapting PT3-player sources to XAS.
 - HalfElf for using in xLook Far Manager plug-in.
 - Karbofos for testing, suggestions and test modules.
 - Ch41ns4w for wishes about TS-mode and about design.
 - Znahar for another branch of VT II with good ideas.
-- TAD for sugestions, bug-reports and test modules.
-- MMCM for sugestions.
+- TAD for suggestions, bug-reports and test modules.
+- MMCM for suggestions.
 
 Thanks to musicians using VT II:
 Shiru Otaku
@@ -667,6 +689,8 @@ TAD
 Znahar
 Nik-O
 Orson
+Lee du-Caine aka dC Audio
+4Mat
 and you ;)
 
 Distribution
@@ -680,4 +704,4 @@ somewhere in your projects, where you include all or part of the sources and
 
 Sergey Bulba
 
-24 of August 2002 - 20 of May 2007
+24 of August 2002 - 26 of November 2008

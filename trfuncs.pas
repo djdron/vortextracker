@@ -1,9 +1,9 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2007 S.V.Bulba
+(c)2000-2008 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
-Support page: http://bulba.at.kz/
+Support page: http://bulba.untergrund.net/
 }
 
 unit trfuncs;
@@ -94,7 +94,14 @@ type
   PSample = ^TSample;
   TSample = packed record
    Length,Loop:byte;
+   Enabled:boolean;
    Items:array[0..MaxSamLen-1] of TSampleTick;
+  end;
+
+  TAdditionalCommand = packed record
+   Number:byte;
+   Delay:byte;
+   Parameter:byte;
   end;
 
   TChannelLine = packed record
@@ -103,11 +110,7 @@ type
    Ornament:byte; {0..15}
    Volume:shortint; {1-15 - vol, 0 - prev vol}
    Envelope:byte; {1-14 - R13, 15 - Envelope off, 0 - prev}
-   Additional_Command: packed record
-    Number:byte;
-    Delay:byte;
-    Parameter:byte;
-   end
+   Additional_Command:TAdditionalCommand;
   end;
 
   PPattern = ^TPattern;
@@ -117,7 +120,7 @@ type
     Noise:byte;
     Envelope:word;
     Channel:array[0..2]of TChannelLine;
-   end
+   end;
   end;
 
   PModule = ^TModule;
@@ -574,6 +577,7 @@ var
  var
   j:byte;
   w:word;
+  gt,gn,ge:boolean;
  begin
   with PlVars[CurChip].ParamsOfChan[ChNum],VTM.IsChans[ChNum] do
    begin
@@ -698,16 +702,21 @@ var
        end
      end;
     if PlVars[CurChip].CurrentPattern = -1 then exit;
-    if not VTM.IsChans[ChNum].Global_Ton then
-     TempMixer := TempMixer or 4;
-    if not VTM.IsChans[ChNum].Global_Noise then
-     TempMixer := TempMixer or 32;
-    if not VTM.IsChans[ChNum].Global_Envelope then
-     Amplitude := Amplitude and 15;
-    if (not VTM.IsChans[ChNum].Global_Ton or not VTM.IsChans[ChNum].Global_Noise)
-       and (Amplitude and 16 = 0) and (TempMixer and 36 = 36) then
-     Amplitude := 0
-   end
+    gt := VTM.IsChans[ChNum].Global_Ton;
+    gn := VTM.IsChans[ChNum].Global_Noise;
+    ge := VTM.IsChans[ChNum].Global_Envelope;
+    if (VTM.Samples[Sample] <> nil) and not VTM.Samples[Sample].Enabled then
+     begin
+      gt := False;
+      gn := False;
+      ge := False;
+     end;
+    if not gt then TempMixer := TempMixer or 4;
+    if not gn then TempMixer := TempMixer or 32;
+    if not ge then Amplitude := Amplitude and 15;
+    if (not gt or not gn) and (Amplitude and 16 = 0) and (TempMixer and 36 = 36) then
+     Amplitude := 0;
+   end;
 end;
 
 var
@@ -994,6 +1003,7 @@ begin
 if VTM.Samples[sam] = nil then
  begin
   New(VTM.Samples[sam]);
+  VTM.Samples[sam].Enabled := True;
   VTM.Samples[sam].Loop := 0;
   VTM.Samples[sam].Length := 1;
   VTM.Samples[sam].Items[0].Add_to_Ton := 0;
@@ -1007,8 +1017,8 @@ if VTM.Samples[sam] = nil then
   VTM.Samples[sam].Items[0].Mixer_Ton := False;
   VTM.Samples[sam].Items[0].Mixer_Noise := False;
   for i := 1 to MaxSamLen-1 do
-   VTM.Samples[sam].Items[i] := MainForm.SampleLineTemplates[MainForm.CurrentSampleLineTemplate]
- end
+   VTM.Samples[sam].Items[i] := MainForm.SampleLineTemplates[MainForm.CurrentSampleLineTemplate];
+ end;
 end;
 
 function LoadSampleDataTxt;
@@ -1485,9 +1495,9 @@ var
      begin
       Dispose(Sam);
       Result := 5;
-      exit
+      exit;
      end;
-    VTM.Samples[i] := Sam
+    VTM.Samples[i] := Sam;
    end
   else if (Length(TxtString) > Length('[PATTERN')) and
      (UpperCase(Copy(TxtString,1,Length('[PATTERN'))) = '[PATTERN') then
@@ -8326,10 +8336,10 @@ else
      if (Number = 11) and (Parameter <> 0) then
       begin
        PosDelay := Parameter;
-       break
+       break;
       end;
-   Inc(Result,PosDelay)
-  end
+   Inc(Result,PosDelay);
+  end;
 end;
 
 procedure GetTimeParams;
@@ -8379,6 +8389,7 @@ procedure FreeVTMP(var VTMP:PModule);
 var
  i:integer;
 begin
+if VTMP = nil then exit;
 for i := 1 to 31 do
  if VTMP.Samples[i] <> nil then Dispose(VTMP.Samples[i]);
 for i := 0 to 15 do

@@ -1,9 +1,9 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2007 S.V.Bulba
+(c)2000-2008 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
-Support page: http://bulba.at.kz/
+Support page: http://bulba.untergrund.net/
 }
 
 unit Main;
@@ -28,12 +28,12 @@ const
 //Version related constants
  VersionString = '1.0';
  IsBeta = ' beta';
- BetaNumber = ' 17';
+ BetaNumber = ' 18';
 
  FullVersString:string = 'Vortex Tracker II v' + VersionString + IsBeta + BetaNumber;
  HalfVersString:string = 'Version ' + VersionString + IsBeta + BetaNumber;
 
-//Register paths
+//Registry paths
  MyRegPath1:string = 'SOFTWARE\Sergey Vladimirovich Bulba';
  MyRegPath2:string = 'Vortex Tracker II';
  MyRegPath3:string = VersionString + IsBeta;
@@ -183,6 +183,13 @@ type
     Window2: TMenuItem;
     Play5: TMenuItem;
     rack1: TMenuItem;
+    N8: TMenuItem;
+    Togglesamples1: TMenuItem;
+    ToolButton25: TToolButton;
+    N9: TMenuItem;
+    ExpandTwice1: TMenuItem;
+    Compresspattern1: TMenuItem;
+    Merge1: TMenuItem;
     procedure AddWindowListItem(Child:TMDIChild);
     procedure DeleteWindowListItem(Child:TMDIChild);
     procedure FileNew1Execute(Sender: TObject);
@@ -275,6 +282,10 @@ type
     procedure TransposeDown12Execute(Sender: TObject);
     procedure PopupMenu3Click(Sender: TObject);
     procedure SetBar(BarNum:integer;Value:boolean);
+    procedure Togglesamples1Click(Sender: TObject);
+    procedure ExpandTwice1Click(Sender: TObject);
+    procedure Compresspattern1Click(Sender: TObject);
+    procedure Merge1Click(Sender: TObject);
   private
     { Private declarations }
     procedure CreateMDIChild(const Name: string);
@@ -303,7 +314,7 @@ implementation
 
 {$R *.DFM}
 
-uses About, options, TrkMng, GlbTrn, ExportZX, selectts;
+uses About, options, TrkMng, GlbTrn, ExportZX, selectts, TglSams;
 
 type
  TStr4 = array[0..3] of char;
@@ -366,11 +377,10 @@ var
   VTMP2:PModule;
   i:integer;
 begin
-  VTMP2 := nil;
-  for i := 0 to 1 do
+VTMP2 := nil;
+for i := 0 to 1 do
   begin
    Inc(WinCount);
-   { create a new MDI child window }
    Child := TMDIChild.Create(Application);
    Child.WinNumber := WinCount;
    Child.Caption := IntToStr(WinCount) + ': new module';
@@ -381,14 +391,14 @@ begin
    if Ok then Caption := Child.Caption + ' - Vortex Tracker II';
    if not Ok or (VTMP2 = nil) then break;
   end;
-  if Ok and (VTMP2 <> nil) then
-   begin
-    Child.TSBut.Caption := Child.PrepareTSString(Child.TSBut,TSSel.ListBox1.Items[MDIChildCount - 1]);
-    Child.TSWindow := TMDIChild(TSSel.ListBox1.Items.Objects[MDIChildCount - 1]);
-    Child.TSWindow.TSBut.Caption := Child.TSWindow.PrepareTSString(Child.TSWindow.TSBut,TSSel.ListBox1.Items[MDIChildCount]);
-    Child.TSWindow.TSWindow := TMDIChild(TSSel.ListBox1.Items.Objects[MDIChildCount]);
-    if MDIChildCount = 2 then WindowTileVertical1.Execute;
-   end;
+if Ok and (VTMP2 <> nil) then
+ begin
+  Child.TSBut.Caption := Child.PrepareTSString(Child.TSBut,TSSel.ListBox1.Items[MDIChildCount - 1]);
+  Child.TSWindow := TMDIChild(TSSel.ListBox1.Items.Objects[MDIChildCount - 1]);
+  Child.TSWindow.TSBut.Caption := Child.TSWindow.PrepareTSString(Child.TSWindow.TSBut,TSSel.ListBox1.Items[MDIChildCount]);
+  Child.TSWindow.TSWindow := TMDIChild(TSSel.ListBox1.Items.Objects[MDIChildCount]);
+  if MDIChildCount = 2 then WindowTileVertical1.Execute;
+ end;
 end;
 
 procedure TMainForm.FileNew1Execute(Sender: TObject);
@@ -767,7 +777,9 @@ end;
 procedure TMainForm.FileSave1Update(Sender: TObject);
 begin
 FileSave1.Enabled := (MDIChildCount <> 0) and
-                        TMDIChild(ActiveMDIChild).SongChanged
+ (TMDIChild(ActiveMDIChild).SongChanged or
+  ((TMDIChild(ActiveMDIChild).TSWindow <> nil) and
+    TMDIChild(ActiveMDIChild).TSWindow.SongChanged));
 end;
 
 procedure TMainForm.FileSaveAs1Update(Sender: TObject);
@@ -850,8 +862,8 @@ DisableControls;
 CheckSecondWindow;
 PlayingWindow[1].Tracks.RemoveSelection(0,False);
 //PlayingWindow[1].RerollToPos(PlayingWindow[1].PositionNumber);
-PlayingWindow[1].RerollToLine;
-StartWOThread
+PlayingWindow[1].RerollToLine(1);
+StartWOThread;
 end;
 
 procedure TMainForm.PlayPatExecute(Sender: TObject);
@@ -888,29 +900,23 @@ end;
 
 procedure TMainForm.Stop1Execute(Sender: TObject);
 begin
-if MDIChildCount = 0 then exit;
+if (MDIChildCount = 0) or not IsPlaying then exit;
 StopPlaying;
 RestoreControls;
 PlayingWindow[1].Tracks.RemoveSelection(0,True);
 if (TMDIChild(ActiveMDIChild) = PlayingWindow[1]) and
    (PlayingWindow[1].PageControl1.ActivePageIndex = 0) then
  PlayingWindow[1].Tracks.SetFocus;
+if NumberOfSoundChips < 2 then exit;
 if (TMDIChild(ActiveMDIChild) = PlayingWindow[2]) and
    (PlayingWindow[2].PageControl1.ActivePageIndex = 0) then
  PlayingWindow[2].Tracks.SetFocus;
 end;
 
 procedure TMainForm.FormClose(Sender: TObject; var Action: TCloseAction);
-var
- i:integer;
 begin
 StopPlaying;
-
-//bug in Delphi VCL, close manually
-for i := 0 to MDIChildCount - 1 do
- TMDIChild(MDIChildren[i]).Close;
-
-SaveOptions
+SaveOptions;
 end;
 
 procedure TMainForm.SetLoopPosExecute(Sender: TObject);
@@ -1050,7 +1056,7 @@ end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
-CloseHandle(ResetMutex)
+CloseHandle(ResetMutex);
 end;
 
 procedure TMainForm.ToggleLoopingExecute(Sender: TObject);
@@ -1341,6 +1347,11 @@ CurrentSampleLineTemplate := -1;
 SetSampleTemplate(0)
 end;
 
+procedure TMainForm.Togglesamples1Click(Sender: TObject);
+begin
+ToglSams.Visible := not ToglSams.Visible;
+end;
+
 procedure TMainForm.Tracksmanager1Click(Sender: TObject);
 begin
 TrMng.Visible := not TrMng.Visible;
@@ -1348,7 +1359,7 @@ end;
 
 procedure TMainForm.Globaltransposition1Click(Sender: TObject);
 begin
-GlbTrans.Visible := not GlbTrans.Visible; 
+GlbTrans.Visible := not GlbTrans.Visible;
 end;
 
 procedure TMainForm.TrackBar1Change(Sender: TObject);
@@ -1757,13 +1768,13 @@ CurrentWindow := TMDIChild(ActiveMDIChild);
 if not VTM2PT3(@PT3_1,CurrentWindow.VTMP,ZXModSize1) then
  begin
   Application.MessageBox(ErrMsg,PAnsiChar(CurrentWindow.Caption));
-  exit
+  exit;
  end;
 ZXModSize2 := 0;
 if (CurrentWindow.TSWindow <> nil) and not VTM2PT3(@PT3_2,CurrentWindow.TSWindow.VTMP,ZXModSize2) then
  begin
   Application.MessageBox(ErrMsg,PAnsiChar(CurrentWindow.TSWindow.Caption));
-  exit
+  exit;
  end;
 if CurrentWindow.TSWindow = nil then
  i := FindResource(HInstance,'ZXAYPLAYER','ZXAY')
@@ -1808,7 +1819,7 @@ if t <> 1 then
   if ZXModSize1 + ZXModSize2 + zxplsz + zxdtsz > 65536 then
    begin
     Application.MessageBox('Size of module with player exceeds 65536 RAM size.','Cannot export');
-    exit
+    exit;
    end;
   Inc(integer(p),2);
   SetLength(pl,zxplsz);
@@ -1817,19 +1828,21 @@ if t <> 1 then
   while p^ < zxplsz - 1 do
    begin
     Inc(WordPtr(@pl[p^])^,ZXCompAddr);
-    Inc(integer(p),2)
+    Inc(integer(p),2);
    end;
   Inc(integer(p),2);
   while p^ < zxplsz do
    begin
     Inc(BytePtr(@pl[p^])^,ZXCompAddr);
-    Inc(integer(p),2)
+    Inc(integer(p),2);
    end;
   Inc(integer(p),2);
   while p^ < zxplsz do
    begin
-    Inc(BytePtr(@pl[p^])^,ZXCompAddr shr 8);
-    Inc(integer(p),2)
+    i := p^;
+    Inc(integer(p),2);
+    BytePtr(@pl[i])^ := (p^ + ZXCompAddr) shr 8;
+    Inc(integer(p),2);
    end;
   if ExpDlg.LoopChk.Checked then pl[10] := pl[10] or 1;
  end;
@@ -2152,7 +2165,7 @@ if R then
   if not R then
    R := TMDIChild(MainForm.ActiveMDIChild).Tracks = A
  end;
-EditPaste1.Enabled := R
+EditPaste1.Enabled := R;
 end;
 
 function GetCopyControl(var CT:integer;var WC:TWinControl):boolean;
@@ -2204,7 +2217,7 @@ begin
 if GetCopyControl(CtrlType,WC) then
  case CtrlType of
  0: (WC as TCustomEdit).PasteFromClipboard;
- 1: (WC as TTracks).PasteFromClipboard;
+ 1: (WC as TTracks).PasteFromClipboard(False);
  end;
 end;
 
@@ -2262,7 +2275,7 @@ end;
 procedure TMainForm.TransposeColumns(WorkWin:TMDIChild;Pat:integer;Env:boolean;Chans:TChansArrayBool;LFrom,LTo,Semitones:integer;MakeUndo:boolean);
 var
  stk:real;
- i,e,PLen:integer;
+ i,e{,PLen}:integer;
  f:boolean;
  OldPat:PPattern;
 begin
@@ -2272,8 +2285,10 @@ with WorkWin do
   if VTMP.Patterns[Pat] = nil then exit;
   f := Env or Chans[0] or Chans[1] or Chans[2];
   if not f then exit;
-  PLen := VTMP.Patterns[Pat].Length;
-  if LTo >= PLen then LTo := PLen - 1;
+//  PLen := VTMP.Patterns[Pat].Length;
+//  if LTo >= PLen then LTo := PLen - 1;
+  //Work with all pattern lines even if it greater then pattern length
+  if LTo >= MaxPatLen then LTo := MaxPatLen - 1;
   if LFrom > LTo then exit;
   SongChanged := True;
   if MakeUndo then
@@ -2303,8 +2318,8 @@ with WorkWin do
   if MakeUndo then
    begin
     AddUndo(CATransposePattern,Pat,0);
-    ChangeList[ChangeCount - 1].Pattern := OldPat
-   end; 
+    ChangeList[ChangeCount - 1].Pattern := OldPat;
+   end;
   if PatNum = Pat then
    begin
     if Tracks.Focused then HideCaret(Tracks.Handle);
@@ -2431,6 +2446,7 @@ case BarNum of
   ToolButton15.Visible := Value;
   ToolButton17.Visible := Value;
   ToolButton16.Visible := Value;
+  ToolButton25.Visible := Value;
  end;
 5:
  begin
@@ -2457,6 +2473,98 @@ end;
 procedure TMainForm.PopupMenu3Click(Sender: TObject);
 begin
 SetBar((Sender as TMenuItem).Tag, not (Sender as TMenuItem).Checked);
+end;
+
+procedure TMainForm.ExpandTwice1Click(Sender: TObject);
+var
+ PL,NL,i:integer;
+ OldPat:PPattern;
+begin
+if MDIChildCount = 0 then exit;
+with TMDIChild(ActiveMDIChild) do
+ begin
+  PL := DefPatLen;
+  if (VTMP.Patterns[PatNum] <> nil) then
+   PL := VTMP.Patterns[PatNum].Length;
+  NL := PL * 2;
+  if NL <= MaxPatLen then
+   begin
+    SongChanged := True;
+    ValidatePattern2(PatNum);
+    New(OldPat); OldPat^ := VTMP.Patterns[PatNum]^;
+    AddUndo(CAExpandCompressPattern,0,0);
+    ChangeList[ChangeCount - 1].Pattern := OldPat;
+    VTMP.Patterns[PatNum].Length := NL; UpDown5.Position := NL;
+    for i := PL - 1 downto 0 do
+     begin
+      with VTMP.Patterns[PatNum].Items[i*2+1] do
+       begin
+        Envelope := 0;
+        Noise := 0;
+        Channel[0] := EmptyChannelLine;
+        Channel[1] := EmptyChannelLine;
+        Channel[2] := EmptyChannelLine;
+       end;
+      VTMP.Patterns[PatNum].Items[i*2] := VTMP.Patterns[PatNum].Items[i];
+{      with VTMP.Patterns[PatNum].Items[i*2] do
+       begin
+        Envelope := VTMP.Patterns[PatNum].Items[i].Envelope;
+        Noise := VTMP.Patterns[PatNum].Items[i].Noise;
+        Channel[0] := VTMP.Patterns[PatNum].Items[i].Channel[0];
+        Channel[1] := VTMP.Patterns[PatNum].Items[i].Channel[1];
+        Channel[2] := VTMP.Patterns[PatNum].Items[i].Channel[2];
+       end;}
+     end;
+    CheckTracksAfterSizeChanged(NL);
+   end
+  else
+   ShowMessage('To expand pattern size twice original size must be ' +
+    IntToStr(MaxPatLen div 2) + ' or smaller.');
+ end;
+end;
+
+procedure TMainForm.Compresspattern1Click(Sender: TObject);
+var
+ PL,NL,i:integer;
+ OldPat:PPattern;
+begin
+if MDIChildCount = 0 then exit;
+with TMDIChild(ActiveMDIChild) do
+ begin
+  PL := DefPatLen;
+  if (VTMP.Patterns[PatNum] <> nil) then
+   PL := VTMP.Patterns[PatNum].Length;
+  NL := PL div 2;
+  if NL > 0 then
+   begin
+    SongChanged := True;
+    ValidatePattern2(PatNum);
+    New(OldPat); OldPat^ := VTMP.Patterns[PatNum]^;
+    AddUndo(CAExpandCompressPattern,0,0);
+    ChangeList[ChangeCount - 1].Pattern := OldPat;
+    VTMP.Patterns[PatNum].Length := NL; UpDown5.Position := NL;
+    for i := 1 to NL - 1 do
+     VTMP.Patterns[PatNum].Items[i] := VTMP.Patterns[PatNum].Items[i*2];
+    for i := NL to MaxPatLen - 1 do
+     with VTMP.Patterns[PatNum].Items[i] do
+      begin
+       Envelope := 0;
+       Noise := 0;
+       Channel[0] := EmptyChannelLine;
+       Channel[1] := EmptyChannelLine;
+       Channel[2] := EmptyChannelLine;
+      end;
+    CheckTracksAfterSizeChanged(NL);
+   end
+  else
+   ShowMessage('To compress pattern size twice original size must be 2 or bigger.');
+ end;
+end;
+
+procedure TMainForm.Merge1Click(Sender: TObject);
+begin
+if MDIChildCount = 0 then exit;
+TMDIChild(ActiveMDIChild).Tracks.PasteFromClipboard(True);
 end;
 
 end.

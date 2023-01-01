@@ -96,7 +96,9 @@ object TrMng: TTrMng
       Height = 21
       Hint = 'Channel number: 0 - A; 1 - B; 2 - C'
       TabOrder = 4
-      Text = '0'
+      Text = 'A'
+      OnKeyDown = Edit6_7KeyDown
+      OnKeyPress = Edit6_7KeyPress
     end
     object UpDown6: TUpDown
       Left = 41
@@ -104,9 +106,9 @@ object TrMng: TTrMng
       Width = 15
       Height = 21
       Hint = 'Channel number: 0 - A; 1 - B; 2 - C'
-      Associate = Edit6
       Max = 2
       TabOrder = 5
+      OnChangingEx = UpDown6_7ChangingEx
     end
   end
   object GroupBox2: TGroupBox
@@ -161,7 +163,9 @@ object TrMng: TTrMng
       Height = 21
       Hint = 'Channel number: 0 - A; 1 - B; 2 - C'
       TabOrder = 4
-      Text = '0'
+      Text = 'A'
+      OnKeyDown = Edit6_7KeyDown
+      OnKeyPress = Edit6_7KeyPress
     end
     object UpDown7: TUpDown
       Left = 41
@@ -169,9 +173,9 @@ object TrMng: TTrMng
       Width = 15
       Height = 21
       Hint = 'Channel number: 0 - A; 1 - B; 2 - C'
-      Associate = Edit7
       Max = 2
       TabOrder = 5
+      OnChangingEx = UpDown6_7ChangingEx
     end
   end
   object GroupBox3: TGroupBox

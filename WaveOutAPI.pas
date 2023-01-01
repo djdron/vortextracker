@@ -1,9 +1,9 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2007 S.V.Bulba
+(c)2000-2008 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
-Support page: http://bulba.at.kz/
+Support page: http://bulba.untergrund.net/
 }
 
 unit WaveOutAPI;
@@ -96,8 +96,9 @@ while WaitForSingleObject(TSEventH,0) <> WAIT_OBJECT_0 do
     if MMTIME1.sample <> 0 then //if woReseted then don't redraw
      begin
       CurVisPos := MMTIME1.sample mod VisTickMax div VisStep;
-      SendMessage(MainForm.Handle,UM_REDRAWTRACKS,
-                   PlayingGrid[CurVisPos].M1,PlayingGrid[CurVisPos].M2)
+      //SendMessage directly call message function (no thread-safe}
+      {SendMessage}PostMessage(MainForm.Handle,UM_REDRAWTRACKS,
+                   PlayingGrid[CurVisPos].M1,PlayingGrid[CurVisPos].M2);
      end;
     Inc(t,20 - GetTickCount);
     if integer(t) < 0 then
@@ -107,7 +108,7 @@ while WaitForSingleObject(TSEventH,0) <> WAIT_OBJECT_0 do
   else
    Sleep(20)
  end;
-Result := STILL_ACTIVE - 1
+Result := STILL_ACTIVE - 1;
 end;
 
 procedure StartTrackSlider;
@@ -255,7 +256,7 @@ try
 except
  PostMessage(MainForm.Handle,UM_PLAYINGOFF,0,0);
  ShowException(ExceptObject, ExceptAddr);
- exit
+ exit;
 end;
 WaitForSingleObject(WOEventH,INFINITE);
 try
@@ -279,7 +280,7 @@ except
  PostMessage(MainForm.Handle,UM_PLAYINGOFF,0,0);
  ShowException(ExceptObject, ExceptAddr);
  WOCheck(waveOutClose(HWO));
- exit
+ exit;
 end;
 
 StartTrackSlider;
@@ -357,19 +358,19 @@ NOfTicks := 0;
 for i := 1 to NumberOfSoundChips do
  begin
   ResetAYChipEmulation(i);
-  Real_End[i] := False
+  Real_End[i] := False;
  end;
 Real_End_All := False;
 if Optimization_For_Quality and IsFilt then
  begin
   FillChar(Filt_XL[0],(Filt_M + 1) * 4,0);
   FillChar(Filt_XR[0],(Filt_M + 1) * 4,0);
-  Filt_I := 0
+  Filt_I := 0;
  end;
 for i := NumberOfSoundChips downto 1 do
  begin
   Module_SetPointer(PlayingWindow[i].VTMP,i);
-  InitTrackerParameters(All)
+  InitTrackerParameters(All);
  end;
 end;
 
