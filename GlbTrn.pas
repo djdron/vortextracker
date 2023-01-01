@@ -48,7 +48,7 @@ var
 
 implementation
 
-uses Main, Childwin;
+uses Main, Childwin, trfuncs;
 
 {$R *.DFM}
 
@@ -120,7 +120,7 @@ with MChld do
                 round(VTMP.Patterns[Pat].Items[i].Envelope * stk);
   if PatNum = Pat then
    Tracks.RedrawTracks(0)
- end
+ end;
 end;
 
 procedure TGlbTrans.Button1Click(Sender: TObject);
@@ -136,10 +136,21 @@ st := UpDown8.Position;
 if st = 0 then exit;
 stk := exp(-st / 12 * ln(2));
 if RadioButton1.Checked then
- for i := 0 to 84 do
-  Trans(i)
+ begin
+  if MessageDlg('This operation cannot be undo. Are you sure you want to continue?',mtConfirmation,[mbYes,mbNo],0) = mrYes then
+   begin
+    MChld.DisposeUndo(True);
+    for i := 0 to MaxPatNum do Trans(i)
+   end;
+ end
 else
- Trans(UpDown1.Position)
+ begin
+  if MChld.VTMP.Patterns[UpDown1.Position] = nil then exit;
+  MChld.AddUndo(CATransposePattern,UpDown1.Position,0);
+  New(MChld.ChangeList[MChld.ChangeCount - 1].Pattern);
+  MChld.ChangeList[MChld.ChangeCount - 1].Pattern^ := MChld.VTMP.Patterns[UpDown1.Position]^;
+  Trans(UpDown1.Position)
+ end;
 end;
 
 end.

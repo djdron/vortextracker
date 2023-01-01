@@ -10,7 +10,7 @@ program VT;
 
 uses
   Forms,
-  Main in 'MAIN.PAS' {MainForm},
+  Main in 'main.pas' {MainForm},
   Childwin in 'CHILDWIN.PAS' {MDIChild},
   About in 'about.pas' {AboutBox},
   trfuncs in 'trfuncs.pas',
@@ -19,7 +19,8 @@ uses
   options in 'options.pas' {Form1},
   TrkMng in 'TrkMng.pas' {TrMng},
   GlbTrn in 'GlbTrn.pas' {GlbTrans},
-  ExportZX in 'ExportZX.pas' {ExpDlg};
+  ExportZX in 'ExportZX.pas' {ExpDlg},
+  FXMImport in 'FXMImport.pas' {FXMParams};
 
 {$R *.RES}
 {$R SNDH\SNDH.RES}
@@ -34,5 +35,7 @@ begin
   Application.CreateForm(TTrMng, TrMng);
   Application.CreateForm(TGlbTrans, GlbTrans);
   Application.CreateForm(TExpDlg, ExpDlg);
+  Application.CreateForm(TFXMParams, FXMParams);
+  MainForm.CheckCommandLine;
   Application.Run;
 end.

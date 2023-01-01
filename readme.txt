@@ -1,4 +1,4 @@
-Vortex Tracker II v1.0 beta 10
+Vortex Tracker II v1.0 beta 11
 (c)2000-2005 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
@@ -33,7 +33,9 @@ Vortex Tracker II can import ZX Spectrum music files (modules) of next types:
  8) compiled ASC Sound Master modules (*.asc);
  9) compiled Sound Tracker and Super Sonic modules (*.stc);
  10) compiled Sound Tracker Pro modules (*.stp);
- 11) compiled SQ-Tracker modules (*.sqt).
+ 11) compiled SQ-Tracker modules (*.sqt);
+ 12) Amadeus (Fuxoft AY Language) modules (*.fxm, *.ay).
+
 
 VT II detects module type only by filename extension (mask), and no any
 additional checks are performed. These extensions are used in well-known player
@@ -72,32 +74,33 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-12/19/2004:
+04/23/2005:
 
-1. New Vortex Tracker II v1.0 PT3 player for ZX Spectrum Release 6 is supported.
+1. Added Amadeus (Fuxoft AY Language) modules import. Both FXM and ZXAYAMAD are
+   supported. The most modules require manual editing, but sounds good and
+   without it.
 
-01/02/2005:
+04/24/2005:
 
-2. Max length of pattern is 100 lines now. It is compatible with all players
-   (on ZX, PC and ST). Don't recompile such modules in original ZX Spectrum
-   PT3 editors (there are 64 lines max).
+2. Memory for patterns/samples/ornaments are static now, i.e. you can decrease
+   and increase its length without losting last lines previous values.
+3. Fixed error: fault when trying to play empty (default) pattern by F7/F8.
+4. Patterns/samples/ornaments length can be changed during playing now.
 
-01/03/2005:
+04/26/2005:
 
-3. Undesired area selection during autostep was removed.
-4. Highligt step for tracks' lines can be adjusted now. If Auto is on, step is
-   autoselected from 3,4 and 5 depending of pattern length (specially for
-   Key-Jee).
+5. Maximal length of pattern is 256 lines now. To keep 2 columns line numeration
+   it is hexadecimal now.
 
-01/04/2005:
+05/01/2005:
 
-5. Added checking of module size during saving (compiling) PT3 format. If size
-   is greater than 65536, error message will appear. If it is, save module in
-   text format and than try to solve the problem. Alone Coder proposes to split
-   it to several small modules and then play it one by other. So, you can load
-   module in several windows, remove some data and save them with different
-   names.
-6. Added checking of block size during export to ZX-formats.
+6. Undo/Redo functions are added. Try to test and send me bugreports or wishes.
+
+05/04/2005:
+
+7. Due HalfElf's request, added ability to load modules into editor from command
+   line. Several files must be divided by spaces, and filenames with spaces must
+   be placed to doublequotes.
 
 Known problems
 --------------
@@ -274,6 +277,9 @@ type and current note.
 
 4.6. Tab, Shift+Tab - ciclical jums between window controls (forward and
 backward).
+
+4.7. Alt+BackSpace - undo last change.
+
 
  Positions list editor keys
  ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -561,6 +567,7 @@ Thanks to
 - Spectre for help in debugging and wishes about ZX PT3-player.
 - Ivan Roshin for help in writing new ZX PT3-player.
 - Jecktor for addapting PT3-player sources to XAS.
+- HalfElf for using in xLook Far Manager plug-in.
 
 Thanks to musicians using VT II:
 Shiru Otaku
@@ -570,6 +577,7 @@ Alone Coder
 Siril
 z00m
 Asi
+Rolemusic
 and you ;)
 
 
@@ -584,4 +592,4 @@ somewhere in your projects, where you include all or part of the sources and
 
 Sergey Bulba
 
-24 of August 2002 - 4 of January 2005
+24 of August 2002 - 6 of May 2005

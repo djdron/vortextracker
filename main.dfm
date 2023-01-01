@@ -1,8 +1,8 @@
 object MainForm: TMainForm
-  Left = 116
-  Top = 109
-  Width = 586
-  Height = 334
+  Left = 105
+  Top = 106
+  Width = 608
+  Height = 383
   Caption = 'Vortex Tracker II'
   Color = clAppWorkSpace
   Font.Charset = DEFAULT_CHARSET
@@ -13,7 +13,7 @@ object MainForm: TMainForm
   FormStyle = fsMDIForm
   Menu = MainMenu1
   OldCreateOrder = True
-  Position = poDefault
+  Position = poDefaultPosOnly
   Visible = True
   WindowMenu = Window1
   OnClose = FormClose
@@ -23,9 +23,9 @@ object MainForm: TMainForm
   TextHeight = 13
   object StatusBar: TStatusBar
     Left = 0
-    Top = 261
-    Width = 578
-    Height = 19
+    Top = 309
+    Width = 600
+    Height = 20
     AutoHint = True
     Panels = <>
     SimplePanel = True
@@ -33,7 +33,7 @@ object MainForm: TMainForm
   object ToolBar2: TToolBar
     Left = 0
     Top = 0
-    Width = 578
+    Width = 600
     Height = 30
     BorderWidth = 1
     Color = clBtnFace
@@ -90,23 +90,41 @@ object MainForm: TMainForm
       ImageIndex = 3
       Style = tbsSeparator
     end
-    object ToolButton8: TToolButton
+    object ToolButton23: TToolButton
       Left = 159
+      Top = 2
+      Action = Undo
+    end
+    object ToolButton24: TToolButton
+      Left = 182
+      Top = 2
+      Action = Redo
+    end
+    object ToolButton22: TToolButton
+      Left = 205
+      Top = 2
+      Width = 8
+      Caption = 'ToolButton22'
+      ImageIndex = 40
+      Style = tbsSeparator
+    end
+    object ToolButton8: TToolButton
+      Left = 213
       Top = 2
       Action = WindowCascade1
     end
     object ToolButton10: TToolButton
-      Left = 182
+      Left = 236
       Top = 2
       Action = WindowTileHorizontal1
     end
     object ToolButton11: TToolButton
-      Left = 205
+      Left = 259
       Top = 2
       Action = WindowTileVertical1
     end
     object ToolButton12: TToolButton
-      Left = 228
+      Left = 282
       Top = 2
       Width = 8
       Caption = 'ToolButton12'
@@ -114,32 +132,32 @@ object MainForm: TMainForm
       Style = tbsDivider
     end
     object ToolButton14: TToolButton
-      Left = 236
+      Left = 290
       Top = 2
       Action = Stop1
     end
     object ToolButton18: TToolButton
-      Left = 259
+      Left = 313
       Top = 2
       Action = PlayFromPos1
     end
     object ToolButton13: TToolButton
-      Left = 282
+      Left = 336
       Top = 2
       Action = Play1
     end
     object ToolButton20: TToolButton
-      Left = 305
+      Left = 359
       Top = 2
       Action = PlayPatFromLine
     end
     object ToolButton21: TToolButton
-      Left = 328
+      Left = 382
       Top = 2
       Action = PlayPat
     end
     object ToolButton15: TToolButton
-      Left = 351
+      Left = 405
       Top = 2
       Action = ToggleLooping
       AllowAllUp = True
@@ -147,7 +165,7 @@ object MainForm: TMainForm
       Style = tbsCheck
     end
     object ToolButton17: TToolButton
-      Left = 374
+      Left = 428
       Top = 2
       Action = ToggleLoopingAll
       AllowAllUp = True
@@ -155,7 +173,7 @@ object MainForm: TMainForm
       Style = tbsCheck
     end
     object ToolButton16: TToolButton
-      Left = 397
+      Left = 451
       Top = 2
       Width = 8
       Caption = 'ToolButton16'
@@ -163,7 +181,7 @@ object MainForm: TMainForm
       Style = tbsDivider
     end
     object SpeedButton1: TSpeedButton
-      Left = 405
+      Left = 459
       Top = 2
       Width = 23
       Height = 22
@@ -176,7 +194,7 @@ object MainForm: TMainForm
       ParentFont = False
     end
     object SpeedButton2: TSpeedButton
-      Left = 428
+      Left = 482
       Top = 2
       Width = 33
       Height = 22
@@ -189,7 +207,7 @@ object MainForm: TMainForm
       ParentFont = False
     end
     object ToolButton19: TToolButton
-      Left = 461
+      Left = 515
       Top = 2
       Width = 8
       Caption = 'ToolButton19'
@@ -197,7 +215,7 @@ object MainForm: TMainForm
       Style = tbsDivider
     end
     object TrackBar1: TTrackBar
-      Left = 469
+      Left = 523
       Top = 2
       Width = 75
       Height = 22
@@ -324,6 +342,12 @@ object MainForm: TMainForm
       object PasteItem: TMenuItem
         Action = EditPaste1
       end
+      object Undo1: TMenuItem
+        Action = Undo
+      end
+      object Redo1: TMenuItem
+        Action = Redo
+      end
       object N4: TMenuItem
         Caption = '-'
       end
@@ -370,13 +394,14 @@ object MainForm: TMainForm
     DefaultExt = 'PT3'
     Filter = 
       'All supported files|*.txt;*.pt3;*.pt2;*.stc;*.stp;*.sqt;*.asc;*.' +
-      'psc;*.fls;*.pt1;*.gtr;*.ftc|Pro Tracker 3.xx files (PT3)|*.pt3|P' +
-      'ro Tracker 2.xx files (PT2)|*.pt2|Sound Tracker 1.x compiled fil' +
-      'es (STC)|*.stc|Sound Tracker Pro compiled files (STP)|*.stp|SQ-T' +
-      'racker compiled files (SQT)|*.sqt|ASC Sound Master compiled file' +
-      's (ASC)|*.asc|Pro Sound Creator files (PSC)|*.psc|Flash Tracker ' +
-      'files (FLS)|*.fls|Pro Tracker 1.xx files (PT1)|*.pt1|Global Trac' +
-      'ker 1.x (GTR)|*.gtr|Fast Tracker (FTC)|*.ftc'
+      'psc;*.fls;*.pt1;*.gtr;*.ftc;*.fxm;*.ay|Pro Tracker 3.xx files (P' +
+      'T3)|*.pt3|Pro Tracker 2.xx files (PT2)|*.pt2|Sound Tracker 1.x c' +
+      'ompiled files (STC)|*.stc|Sound Tracker Pro compiled files (STP)' +
+      '|*.stp|SQ-Tracker compiled files (SQT)|*.sqt|ASC Sound Master co' +
+      'mpiled files (ASC)|*.asc|Pro Sound Creator files (PSC)|*.psc|Fla' +
+      'sh Tracker files (FLS)|*.fls|Pro Tracker 1.xx files (PT1)|*.pt1|' +
+      'Global Tracker 1.x (GTR)|*.gtr|Fast Tracker (FTC)|*.ftc|Fuxoft'#39's' +
+      ' AY Language (FXM, AY AMAD)|*.fxm;*.ay'
     Options = [ofHideReadOnly, ofAllowMultiSelect, ofPathMustExist, ofEnableSizing]
     Title = 'Open module(s):'
     Left = 8
@@ -588,6 +613,23 @@ object MainForm: TMainForm
       ShortCut = 118
       OnExecute = PlayPatFromLineExecute
       OnUpdate = PlayPatFromLineUpdate
+    end
+    object Undo: TAction
+      Category = 'Edit'
+      Caption = 'Undo'
+      Hint = 'Undo|Undo last change'
+      ImageIndex = 3
+      ShortCut = 32776
+      OnExecute = UndoExecute
+      OnUpdate = UndoUpdate
+    end
+    object Redo: TAction
+      Category = 'Edit'
+      Caption = 'Redo'
+      Hint = 'Redo|Redo last undo'
+      ImageIndex = 4
+      OnExecute = RedoExecute
+      OnUpdate = RedoUpdate
     end
   end
   object ImageList1: TImageList

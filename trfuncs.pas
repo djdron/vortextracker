@@ -18,13 +18,17 @@ type
 const
   StdChns:TChansArray = (0,1,2); //ABC (for export to text/clipboard)
 
-  MaxPatLen = 100; //Pro Tracker 3.xx allows 64 max :(
+  MaxPatLen = 256; //Pro Tracker 3.xx allows 64 max :(
 
   DefPatLen = 64;
 
   MaxPatNum = 84; //Alone Coder had made Pro Tracker 3.6x with 46 patterns
                   //and with player, which supports up to 85 patterns
   MaxNumOfPats = MaxPatNum + 1;
+
+  MaxOrnLen = 64; //can be up to 255
+
+  MaxSamLen = 64; //not bigger than 64 (players limitation)
 
   Correct3xxxInterpretation:boolean = True; //Allows Vortex Tracker II
         //rightly do the situation like
@@ -64,10 +68,11 @@ type
 
   POrnament = ^TOrnament;
   TOrnament = record
-   Items:array of shortint;
+   Items:array[0..MaxOrnLen-1] of shortint;
    Length,Loop:integer;
   end;
 
+  PSampleTick = ^TSampleTick;
   TSampleTick = record
     Add_to_Ton:smallint;
     Ton_Accumulation:boolean;
@@ -83,7 +88,7 @@ type
   PSample = ^TSample;
   TSample = packed record
    Length,Loop:byte;
-   Items:array of TSampleTick;
+   Items:array[0..MaxSamLen-1] of TSampleTick;
   end;
 
   TChannelLine = packed record
@@ -102,7 +107,7 @@ type
   PPattern = ^TPattern;
   TPattern = record
    Length:integer;
-   Items:array of record
+   Items:array[0..MaxPatLen-1] of record
     Noise:byte;
     Envelope:word;
     Channel:array[0..2]of TChannelLine;
@@ -209,6 +214,30 @@ type
        end);
   end;
 
+//AY-file header and structures
+ TAYFileHeader = packed record
+   FileID,TypeID:longword;
+   FileVersion,PlayerVersion:byte;
+   PSpecialPlayer,PAuthor,PMisc:smallint;
+   NumOfSongs,FirstSong:byte;
+   PSongsStructure:smallint;
+ end;
+ TSongStructure = packed record
+   PSongName,PSongData:smallint;
+ end;
+ TSongData = packed record
+   ChanA,ChanB,ChanC,Noise:byte;
+   SongLength:word;
+   FadeLength:word;
+   HiReg,LoReg:byte;
+   PPoints,PAddresses:smallint;
+ end;
+ TPoints = packed record
+   Stek,Init,Inter:word;
+   Adr1,Len1,Offs1,Adr2,Len2,Offs2,Zero:word;
+ end;
+
+
 const
   EmptySampleTick:TSampleTick =
   (Add_to_Ton:0;Ton_Accumulation:False;Amplitude:0;Amplitude_Sliding:False;
@@ -312,10 +341,10 @@ procedure InitTrackerParameters(All:boolean);
 
 
 procedure ValidatePattern(pat:integer;VTM:PModule);
-function LoadPatternDataTxt(pat:integer;VTM:PModule):integer;
-function LoadSampleDataTxt(sam:integer;VTM:PModule):string;
+function LoadPatternDataTxt(OnePat:PPattern):integer;
+function LoadSampleDataTxt(Sam:PSample):string;
 procedure ValidateSample(sam:integer;VTM:PModule);
-function RecognizeOrnamentString(const orst:string;n:integer;VTM:PModule):boolean;
+function RecognizeOrnamentString(const orst:string;Orn:POrnament):boolean;
 function LoadModuleFromText(FN:string;VTM:PModule):integer;
 function PT22VTM(PT2:PSpeccyModule;VTM:PModule):boolean;
 function PT12VTM(PT1:PSpeccyModule;VTM:PModule):boolean;
@@ -327,6 +356,8 @@ function PSC2VTM(PSC:PSpeccyModule;VTM:PModule):boolean;
 function FLS2VTM(FLS:PSpeccyModule;VTM:PModule):boolean;
 function GTR2VTM(GTR:PSpeccyModule;VTM:PModule):boolean;
 function FTC2VTM(FTC:PSpeccyModule;VTM:PModule):boolean;
+function FXM2VTM(FXM:PSpeccyModule;ZXAddr,Tm,amad_andsix:integer;
+                  SongN,AuthN:string;VTM:PModule):boolean;
 
 function IntsToTime(i:integer):string;
 function Int2ToStr(i:integer):string;
@@ -349,7 +380,9 @@ function VTM2PT3(PT3:PSpeccyModule;VTM:PModule;
  PT3 - указатель, где будет сформирован PT3
  в Module_Size возвращается размер данного PT3}
 
-function LoadAndDetect(ZXP:PSpeccyModule;FileName:string; var Length:integer):Available_Types;
+function LoadAndDetect(ZXP:PSpeccyModule;FileName:string; var Length:integer;
+                          var ZXAddr:word; var Tm:integer; var Andsix:byte;
+                          var AuthorName,SongName:string):Available_Types;
 function GetModuleTime(VTM:PModule):integer;
 function GetPositionTime(VTM:PModule;Pos:integer;var PosDelay:integer):integer;
 function GetPositionTimeEx(VTM:PModule;Pos,PosDelay,Line:integer):integer;
@@ -424,7 +457,7 @@ const
 
 implementation
 
-uses AY,WaveOutAPI;
+uses AY,WaveOutAPI,FXMImport,Main;
 
 var
  VTM:PModule;
@@ -881,7 +914,6 @@ end;
 function RecognizeOrnamentString;
 var
  lp,l,i,j,sl:integer;
- Tmp:array[0..63] of integer;
 begin
 Result := False;
 lp := 0;
@@ -903,37 +935,32 @@ repeat
      Inc(i)
     until (i > sl) or not (orst[i] in ['0'..'9']);
     try
-     Tmp[l] := StrToInt(Copy(orst,j,i - j))
+     Orn.Items[l] := StrToInt(Copy(orst,j,i - j))
     except
      exit
     end;
     Inc(l)
    end
-until i > sl;
+until (i > sl) or (l >= MaxOrnLen);
 Result := l <> 0;
 if Result then
  begin
-  if VTM.Ornaments[n] = nil then
-   New(VTM.Ornaments[n]);
-  with VTM.Ornaments[n]^ do
-   begin
-    Loop := lp;
-    Length := l;
-    SetLength(Items,l);
-    for i := 0 to l - 1 do
-     Items[i] := Tmp[i];
-   end
- end
+  Orn.Length := l;
+  Orn.Loop := lp;
+  for i := l to MaxOrnLen - 1 do
+   Orn.Items[i] := 0
+ end;
 end;
 
 procedure ValidateSample;
+var
+ i:integer;
 begin
 if VTM.Samples[sam] = nil then
  begin
   New(VTM.Samples[sam]);
   VTM.Samples[sam].Loop := 0;
   VTM.Samples[sam].Length := 1;
-  SetLength(VTM.Samples[sam].Items,1);
   VTM.Samples[sam].Items[0].Add_to_Ton := 0;
   VTM.Samples[sam].Items[0].Ton_Accumulation := False;
   VTM.Samples[sam].Items[0].Amplitude := 0;
@@ -943,7 +970,9 @@ if VTM.Samples[sam] = nil then
   VTM.Samples[sam].Items[0].Envelope_or_Noise_Accumulation := False;
   VTM.Samples[sam].Items[0].Add_to_Envelope_or_Noise := 0;
   VTM.Samples[sam].Items[0].Mixer_Ton := False;
-  VTM.Samples[sam].Items[0].Mixer_Noise := False
+  VTM.Samples[sam].Items[0].Mixer_Noise := False;
+  for i := 1 to MaxSamLen-1 do
+   VTM.Samples[sam].Items[i] := MainForm.SampleLineTemplates[MainForm.CurrentSampleLineTemplate]
  end
 end;
 
@@ -951,7 +980,6 @@ function LoadSampleDataTxt;
 var
  s:string;
  i,sg,nm,lp,len:integer;
- OneSam:array[0..63] of TSampleTick;
 
  function GetNum:boolean;
  begin
@@ -984,42 +1012,42 @@ var
  if s = '' then exit;
  Result := True;
  i := 1;
- OneSam[len] := EmptySampleTick;
+ Sam.Items[len] := EmptySampleTick;
  while (i <= Length(s)) and not (s[i] in ['t','T']) do Inc(i);
  if i > Length(s) then exit;
- OneSam[len].Mixer_Ton := s[i] = 'T';
+ Sam.Items[len].Mixer_Ton := s[i] = 'T';
  Inc(i);
  while (i <= Length(s)) and not (s[i] in ['n','N']) do Inc(i);
  if i > Length(s) then exit;
- OneSam[len].Mixer_Noise := s[i] = 'N';
+ Sam.Items[len].Mixer_Noise := s[i] = 'N';
  Inc(i);
  while (i <= Length(s)) and not (s[i] in ['e','E']) do Inc(i);
  if i > Length(s) then exit;
- OneSam[len].Envelope_Enabled := s[i] = 'E';
+ Sam.Items[len].Envelope_Enabled := s[i] = 'E';
  Inc(i);
  if not GetNum then exit;
- OneSam[len].Add_to_Ton := nm;
+ Sam.Items[len].Add_to_Ton := nm;
  while (i <= Length(s)) and not (s[i] in ['_','^']) do Inc(i);
  if i > Length(s) then exit;
- OneSam[len].Ton_Accumulation := s[i] = '^';
+ Sam.Items[len].Ton_Accumulation := s[i] = '^';
  Inc(i);
  if not GetNum then exit;
- OneSam[len].Add_to_Envelope_or_Noise := nm and $1F;
- if OneSam[len].Add_to_Envelope_or_Noise and $10 <> 0 then
-  OneSam[len].Add_to_Envelope_or_Noise :=
-   OneSam[len].Add_to_Envelope_or_Noise or shortint($f0);
+ Sam.Items[len].Add_to_Envelope_or_Noise := nm and $1F;
+ if Sam.Items[len].Add_to_Envelope_or_Noise and $10 <> 0 then
+  Sam.Items[len].Add_to_Envelope_or_Noise :=
+   Sam.Items[len].Add_to_Envelope_or_Noise or shortint($f0);
  while (i <= Length(s)) and not (s[i] in ['_','^']) do Inc(i);
  if i > Length(s) then exit;
- OneSam[len].Envelope_or_Noise_Accumulation := s[i] = '^';
+ Sam.Items[len].Envelope_or_Noise_Accumulation := s[i] = '^';
  Inc(i);
  if not GetNum then exit;
- OneSam[len].Amplitude := nm and 15;
+ Sam.Items[len].Amplitude := nm and 15;
  while (i <= Length(s)) and not (s[i] in ['_','+','-']) do Inc(i);
  if i > Length(s) then exit;
  if s[i] in ['+','-'] then
   begin
-   OneSam[len].Amplitude_Sliding := True;
-   OneSam[len].Amplitude_Slide_Up := s[i] = '+'
+   Sam.Items[len].Amplitude_Sliding := True;
+   Sam.Items[len].Amplitude_Slide_Up := s[i] = '+'
   end;
  Inc(i);
  while (i <= Length(s)) and not (s[i] in ['l','L']) do Inc(i);
@@ -1040,7 +1068,7 @@ begin
      exit
     end;
    Inc(len);
-   if Len = 64 then break
+   if len = MaxSamLen then break
   end;
  if len = 0 then
   begin
@@ -1050,12 +1078,10 @@ begin
  else
   begin
    TxtString := s;
-   ValidateSample(sam,VTM);
-   VTM.Samples[sam].Loop := lp;
-   VTM.Samples[sam].Length := len;
-   SetLength(VTM.Samples[sam].Items,len);
-   for lp := 0 to len - 1 do
-    VTM.Samples[sam].Items[lp] := OneSam[lp];
+   Sam.Loop := lp;
+   Sam.Length := len;
+   for len := len to MaxSamLen - 1 do
+    Sam.Items[len] := EmptySampleTick
   end
 end;
 
@@ -1067,8 +1093,7 @@ if VTM.Patterns[pat] = nil then
  begin
   New(VTM.Patterns[pat]);
   VTM.Patterns[pat].Length := DefPatLen;
-  SetLength(VTM.Patterns[pat].Items,DefPatLen);
-  for i := 0 to DefPatLen - 1 do
+  for i := 0 to MaxPatLen - 1 do
    begin
     VTM.Patterns[pat].Items[i].Noise := 0;
     VTM.Patterns[pat].Items[i].Envelope := 0;
@@ -1141,12 +1166,7 @@ end;
 function LoadPatternDataTxt;
 var
  s:string;
- i,len:integer;
- OnePat:array[0..MaxPatLen-1] of record
-  Noise:byte;
-  Envelope:word;
-  Channels:array[0..2] of TChannelLine;
- end;
+ len:integer;
 
  function RecognizePatternString:boolean;
  var
@@ -1155,27 +1175,27 @@ var
   Result := False;
   if Length(s) <> 49 then exit;
   if not SGetNumber(Copy(s,1,4),65535,i) then exit;
-  OnePat[len].Envelope := i;
+  OnePat.Items[len].Envelope := i;
   if not SGetNumber(Copy(s,6,2),31,i) then exit;
-  OnePat[len].Noise := i;
+  OnePat.Items[len].Noise := i;
   for i := 0 to 2 do
    begin
     if not SGetNote(Copy(s,9 + i*14,3),j) then exit;
-    OnePat[len].Channels[i].Note := j;
+    OnePat.Items[len].Channel[i].Note := j;
     if not SGetNumber(Copy(s,13 + i*14,1),31,j) then exit;
-    OnePat[len].Channels[i].Sample := j;
+    OnePat.Items[len].Channel[i].Sample := j;
     if not SGetNumber(Copy(s,14 + i*14,1),15,j) then exit;
-    OnePat[len].Channels[i].Envelope := j;
+    OnePat.Items[len].Channel[i].Envelope := j;
     if not SGetNumber(Copy(s,15 + i*14,1),15,j) then exit;
-    OnePat[len].Channels[i].Ornament := j;
+    OnePat.Items[len].Channel[i].Ornament := j;
     if not SGetNumber(Copy(s,16 + i*14,1),15,j) then exit;
-    OnePat[len].Channels[i].Volume := j;
+    OnePat.Items[len].Channel[i].Volume := j;
     if not SGetNumber(Copy(s,18 + i*14,1),15,j) then exit;
-    OnePat[len].Channels[i].Additional_Command.Number := j;
+    OnePat.Items[len].Channel[i].Additional_Command.Number := j;
     if not SGetNumber(Copy(s,19 + i*14,1),15,j) then exit;
-    OnePat[len].Channels[i].Additional_Command.Delay := j;
+    OnePat.Items[len].Channel[i].Additional_Command.Delay := j;
     if not SGetNumber(Copy(s,20 + i*14,2),255,j) then exit;
-    OnePat[len].Channels[i].Additional_Command.Parameter := j
+    OnePat.Items[len].Channel[i].Additional_Command.Parameter := j
    end;
   Result := True
  end;
@@ -1202,17 +1222,15 @@ begin
  else
   begin
    TxtString := s;
-   ValidatePattern(pat,VTM);
-   VTM.Patterns[pat].Length := len;
-   SetLength(VTM.Patterns[pat].Items,len);
-   for i := 0 to len - 1 do
+   OnePat.Length := len;
+   for len := len to MaxPatLen - 1 do
     begin
-     VTM.Patterns[pat].Items[i].Noise := OnePat[i].Noise;
-     VTM.Patterns[pat].Items[i].Envelope := OnePat[i].Envelope;
-     VTM.Patterns[pat].Items[i].Channel[0] := OnePat[i].Channels[0];
-     VTM.Patterns[pat].Items[i].Channel[1] := OnePat[i].Channels[1];
-     VTM.Patterns[pat].Items[i].Channel[2] := OnePat[i].Channels[2]
-    end
+     OnePat.Items[len].Noise := 0;
+     OnePat.Items[len].Envelope := 0;
+     OnePat.Items[len].Channel[0] := EmptyChannelLine;
+     OnePat.Items[len].Channel[1] := EmptyChannelLine;
+     OnePat.Items[len].Channel[2] := EmptyChannelLine;
+    end;
   end
 end;
 
@@ -1220,6 +1238,9 @@ function LoadModuleFromText;
 var
  s,s1:string;
  i,j,er,lp:integer;
+ Pat:PPattern;
+ Orn:POrnament;
+ Sam:PSample;
 begin
 Result := 0;
 AssignFile(TxtFile,FN);
@@ -1355,7 +1376,7 @@ try
           Result := 2;
           exit
          end;
-        if (not (j in [0..84])) or (VTM.Positions.Length > 255) then
+        if (not (j in [0..MaxPatNum])) or (VTM.Positions.Length > 255) then
          begin
           Result := 3;
           exit
@@ -1398,11 +1419,14 @@ try
       Result := 4;
       exit
      end;
-    if not RecognizeOrnamentString(s1,i,VTM) then
+    New(Orn);
+    if not RecognizeOrnamentString(s1,Orn) then
      begin
       Result := 2;
+      Dispose(Orn);
       exit
      end;
+    VTM.Ornaments[i] := Orn; 
     if not GetString(TxtString) then exit
    end
   else if (Length(TxtString) > Length('[SAMPLE')) and
@@ -1427,12 +1451,15 @@ try
       Result := 3;
       exit
      end;
-    s := LoadSampleDataTxt(i,VTM);
+    New(Sam);
+    s := LoadSampleDataTxt(Sam);
     if s <> '' then
      begin
+      Dispose(Sam);
       Result := 5;
       exit
-     end
+     end;
+    VTM.Samples[i] := Sam
    end
   else if (Length(TxtString) > Length('[PATTERN')) and
      (UpperCase(Copy(TxtString,1,Length('[PATTERN'))) = '[PATTERN') then
@@ -1451,13 +1478,19 @@ try
       Result := 2;
       exit
      end;
-    if not (i in [0..84]) then
+    if not (i in [0..MaxPatNum]) then
      begin
       Result := 3;
       exit
      end;
-    Result := LoadPatternDataTxt(i,VTM);
-    if Result <> 0 then exit;
+    New(Pat); 
+    Result := LoadPatternDataTxt(Pat);
+    if Result <> 0 then
+     begin
+      Dispose(Pat);
+      exit;
+     end;
+    VTM.Patterns[i] := Pat
    end
   else if not GetString(TxtString) then break
  until TxtString = ''
@@ -1651,7 +1684,6 @@ for i := 1 to 15 do
    New(VTM.Ornaments[i]);
    VTM.Ornaments[i].Loop := PT3.Index[PT3.PT3_OrnamentPointers[i]];
    VTM.Ornaments[i].Length := PT3.Index[PT3.PT3_OrnamentPointers[i] + 1];
-   SetLength(VTM.Ornaments[i].Items,VTM.Ornaments[i].Length);
    for j := 0 to VTM.Ornaments[i].Length - 1 do
     VTM.Ornaments[i].Items[j] := PT3.Index[PT3.PT3_OrnamentPointers[i] + 2 + j];
   end;
@@ -1666,7 +1698,6 @@ for i := 1 to 31 do
     New(VTM.Samples[i]);
     VTM.Samples[i].Loop := PT3.Index[PT3.PT3_SamplePointers[i]];
     VTM.Samples[i].Length := PT3.Index[PT3.PT3_SamplePointers[i] + 1];
-    SetLength(VTM.Samples[i].Items,VTM.Samples[i].Length);
     for j := 0 to VTM.Samples[i].Length - 1 do
      begin
       VTM.Samples[i].Items[j].Add_to_Ton :=
@@ -1723,8 +1754,7 @@ while (Pos < 256) and (PT3.Index[Pos + $c9] <> 255) do
     NsBase := 0;
     while (i < MaxPatLen) and not quit do
      begin
-      SetLength(VTM.Patterns[j].Items,i + 1);
-      VTM.Patterns[j].Items[i].Envelope:=0;
+      VTM.Patterns[j].Items[i].Envelope := 0;
       for k := 0 to 2 do
        begin
         VTM.Patterns[j].Items[i].Channel[k].Note := -1;
@@ -1732,7 +1762,9 @@ while (Pos < 256) and (PT3.Index[Pos + $c9] <> 255) do
         VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       for k := 0 to 2 do
        begin
@@ -1919,7 +1951,7 @@ function GetPatternLineString;
 var
  j1,j:integer;
 begin
-  Result := Int2ToStr(n) + '|';
+  Result := IntToHex(n,2) + '|';
   if PatPtr = nil then
    Result := Result + '....|..|--- .... ....|--- .... ....|--- .... ....'
   else
@@ -2684,7 +2716,6 @@ for i := 1 to 15 do
     VTM.Ornaments[i].Length := 64;
    if VTM.Ornaments[i].Loop >= VTM.Ornaments[i].Length then
     VTM.Ornaments[i].Loop := VTM.Ornaments[i].Length - 1;
-   SetLength(VTM.Ornaments[i].Items,VTM.Ornaments[i].Length);
    for j := 0 to VTM.Ornaments[i].Length - 1 do
     VTM.Ornaments[i].Items[j] := PT2.Index[PT2.PT2_OrnamentPointers[i] + 2 + j]
   end
@@ -2704,7 +2735,6 @@ for i := 1 to 31 do
      VTM.Samples[i].Length := 64;
     if VTM.Samples[i].Loop >= VTM.Samples[i].Length then
      VTM.Samples[i].Loop := VTM.Samples[i].Length - 1;
-    SetLength(VTM.Samples[i].Items,VTM.Samples[i].Length);
     for j := 0 to VTM.Samples[i].Length - 1 do
      begin
       VTM.Samples[i].Items[j].Add_to_Ton :=
@@ -2757,7 +2787,6 @@ while (Pos < 256) and (PT2.PT2_PositionList[Pos] < 128) do
     NsBase := 0;
     while (i < MaxPatLen) and not quit do
      begin
-      SetLength(VTM.Patterns[j].Items,i + 1);
       VTM.Patterns[j].Items[i].Envelope := 0;
       for k := 0 to 2 do
        begin
@@ -2766,7 +2795,9 @@ while (Pos < 256) and (PT2.PT2_PositionList[Pos] < 128) do
         VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       for k := 0 to 2 do
        begin
@@ -2953,7 +2984,6 @@ while Pos <= STC.Index[STC.ST_PositionsPointer] do
     Move(STC.Index[STC.ST_PatternsPointer + k*7 + 1],ChPtr,6);
     while (i < MaxPatLen) and not quit do
      begin
-      SetLength(VTM.Patterns[j].Items,i + 1);
       VTM.Patterns[j].Items[i].Envelope := 0;
       VTM.Patterns[j].Items[i].Noise := 0;
       for k := 0 to 2 do
@@ -2963,7 +2993,9 @@ while Pos <= STC.Index[STC.ST_PositionsPointer] do
         VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       for k := 0 to 2 do
        begin
@@ -3022,7 +3054,6 @@ for i := 0 to 15 do
         VTM.Ornaments[j].Loop := 32
        end
      end;
-    SetLength(VTM.Ornaments[j].Items,VTM.Ornaments[j].Length);
     for k := 0 to 31 do
      VTM.Ornaments[j].Items[k] :=
                         STC.Index[STC.ST_OrnamentsPointer + $21*i + 1 + k];
@@ -3060,7 +3091,6 @@ for i := 0 to 15 do
         VTM.Samples[j].Loop :=  32
        end
      end;
-    SetLength(VTM.Samples[j].Items,VTM.Samples[j].Length);
     for k := 0 to 31 do
      begin
       VTM.Samples[j].Items[k] := EmptySampleTick;
@@ -3309,7 +3339,6 @@ while Pos < STP.Index[STP.STP_PositionsPointer] do
     Move(STP.Index[STP.STP_PatternsPointer + CPat.Numb*6],ChPtr,6);
     while (i < MaxPatLen) and not quit do
      begin
-      SetLength(VTM.Patterns[j].Items,i + 1);
       VTM.Patterns[j].Items[i].Envelope := 0;
       VTM.Patterns[j].Items[i].Noise := 0;
       for k := 0 to 2 do
@@ -3319,7 +3348,9 @@ while Pos < STP.Index[STP.STP_PositionsPointer] do
         VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       for k := 0 to 2 do
        begin
@@ -3355,7 +3386,6 @@ for i := 1 to 15 do
     j := WordPtr(@STP.Index[STP.STP_OrnamentsPointer + i*2])^;
     VTM.Ornaments[i].Loop := STP.Index[j]; Inc(j);
     VTM.Ornaments[i].Length := STP.Index[j];
-    SetLength(VTM.Ornaments[i].Items,VTM.Ornaments[i].Length);
     for k := 0 to VTM.Ornaments[i].Length - 1 do
      begin
       Inc(j);
@@ -3372,7 +3402,6 @@ for i := 1 to 15 do
     j := WordPtr(@STP.Index[STP.STP_SamplesPointer + (i-1) * 2])^;
     VTM.Samples[i].Loop := STP.Index[j]; Inc(j);
     VTM.Samples[i].Length := STP.Index[j]; Inc(j);
-    SetLength(VTM.Samples[i].Items,VTM.Samples[i].Length);
     for k := 0 to VTM.Samples[i].Length - 1 do
      begin
       VTM.Samples[i].Items[k] := EmptySampleTick;
@@ -3396,7 +3425,6 @@ for i := 1 to 15 do
      begin
       VTM.Samples[i].Loop := VTM.Samples[i].Length;
       Inc(VTM.Samples[i].Length);
-      SetLength(VTM.Samples[i].Items,VTM.Samples[i].Length);
       VTM.Samples[i].Items[VTM.Samples[i].Loop] := EmptySampleTick
      end
   end
@@ -3830,7 +3858,6 @@ while (Pos < 256) and (SQT.Index[SQT.SQT_PositionsPointer + Pos*7] <> 0) do
       PrevNote[k] := 0;
       ix21[k] := 0
      end;
-    SetLength(VTM.Patterns[j].Items,c);
     VTM.Patterns[j].Length := c;
     CVol[0] := CPat.Chn[0].Vol;
     VTM.Patterns[j].Items[0].Channel[0].Volume := 15 - CVol[0];
@@ -3856,7 +3883,9 @@ while (Pos < 256) and (SQT.Index[SQT.SQT_PositionsPointer + Pos*7] <> 0) do
         if i <> 0 then
          VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       for k := 2 downto 0 do
        PatternInterpreter(j,i,k);
@@ -3936,7 +3965,6 @@ for i := 1 to 31 do
        end
      end;
     Inc(j);
-    SetLength(VTM.Ornaments[l].Items,VTM.Ornaments[l].Length);
     for k := 0 to 31 do
      VTM.Ornaments[l].Items[k] := SQT.Index[j + k];
     for k := 32 to VTM.Ornaments[l].Length - 1 do
@@ -3973,7 +4001,6 @@ for i := 1 to 31 do
       VTM.Samples[i].Length := 33
      end;
     Inc(j);
-    SetLength(VTM.Samples[i].Items,VTM.Samples[i].Length);
     for k := 0 to 31 do
      begin
       VTM.Samples[i].Items[k] := EmptySampleTick;
@@ -4335,7 +4362,6 @@ while Pos < ASC.ASC1_Number_Of_Positions do
     Inc(ChPtr[2],ASC.ASC1_PatternsPointers);
     while (i < MaxPatLen) and not quit do
      begin
-      SetLength(VTM.Patterns[j].Items,i + 1);
       VTM.Patterns[j].Items[i].Envelope := 0;
       for k := 0 to 2 do
        begin
@@ -4344,7 +4370,9 @@ while Pos < ASC.ASC1_Number_Of_Positions do
         VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       if CDelay = 0 then CDelay := 256;
       for k := 0 to 2 do
@@ -4500,7 +4528,6 @@ for i := 0 to 31 do
         jl := j
        end;
       Inc(k);
-      SetLength(VTM.Ornaments[l].Items,k);
       VTM.Ornaments[l].Items[k - 1] := n;
       Inc(j,2);
       if k = 64 then break
@@ -4523,7 +4550,6 @@ for i := 0 to 31 do
     repeat
      if shortint(ASC.Index[j]) < 0 then
       VTM.Samples[l].Loop := k;
-     SetLength(VTM.Samples[l].Items,k + 1);
      VTM.Samples[l].Items[k] := EmptySampleTick;
      VTM.Samples[l].Items[k].Ton_Accumulation := True;
      VTM.Samples[l].Items[k].Add_to_Ton := shortint(ASC.Index[j + 1]);
@@ -4554,7 +4580,6 @@ for i := 0 to 31 do
      begin
       VTM.Samples[l].Loop := k;
       Inc(k);
-      SetLength(VTM.Samples[l].Items,k);
       VTM.Samples[l].Items[k - 1] := EmptySampleTick
      end;
     VTM.Samples[l].Length := k
@@ -4875,7 +4900,6 @@ while Pos < 256 do
       SkipCounter[k] := 1;
      end;
     VTM.Patterns[j].Length := nl;
-    SetLength(VTM.Patterns[j].Items,nl);
     while i < nl do
      begin
       VTM.Patterns[j].Items[i].Envelope := 0;
@@ -4886,7 +4910,9 @@ while Pos < 256 do
         VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       if CDelay = 0 then CDelay := 256;
       for k := 0 to 2 do
@@ -5051,7 +5077,6 @@ for i := 0 to 31 do
         jl := j
        end;
       Inc(k);
-      SetLength(VTM.Ornaments[l].Items,k);
       VTM.Ornaments[l].Items[k - 1] := n;
       Inc(j,2);
       if k = 64 then break
@@ -5078,7 +5103,6 @@ for i := 0 to 31 do
     repeat
      if shortint(PSC.Index[j + 4]) >= 0 then
       VTM.Samples[l].Loop := k;
-     SetLength(VTM.Samples[l].Items,k + 1);
      VTM.Samples[l].Items[k] := EmptySampleTick;
      VTM.Samples[l].Items[k].Ton_Accumulation := True;
      VTM.Samples[l].Items[k].Add_to_Ton := WordPtr(@PSC.Index[j])^;
@@ -5109,7 +5133,6 @@ for i := 0 to 31 do
      begin
       VTM.Samples[l].Loop := k;
       Inc(k);
-      SetLength(VTM.Samples[l].Items,k);
       VTM.Samples[l].Items[k - 1] := EmptySampleTick
      end;
     VTM.Samples[l].Length := k
@@ -5119,10 +5142,15 @@ end;
 
 function LoadAndDetect;
 var
- i,i1,i2,j,k:integer;
+ i,i1,i2,j,k,CurPos,Offset:integer;
  f:file;
  s:string;
  pwrd:WordPtr;
+ AYFileHeader:TAYFileHeader;
+ SongStructure:TSongStructure;
+ Ch:char;
+ Byt:byte;
+ Wrd:word;
 begin
 Result := Unknown;
 s := LowerCase(ExtractFileExt(FileName));
@@ -5146,15 +5174,75 @@ else if s = '.gtr' then
  Result := GTRFile
 else if s = '.ftc' then
  Result := FTCFile
+else if (s = '.fxm') or (s = '.ay') then
+ Result := FXMFile
 else if s = '.pt3' then
  Result := PT3File
 else
- exit; 
+ exit;
 FillChar(ZXP^,65536,0);
 AssignFile(f,FileName);
 Reset(f,1);
-BlockRead(f,ZXP^,65536,Length);
-CloseFile(f);
+try
+if Result <> FXMFile then
+ BlockRead(f,ZXP^,65536,Length)
+else
+ if s = '.fxm' then
+  begin
+   Tm := 0;
+   Andsix := 31;
+   SongName := ''; AuthorName := '';
+   Seek(f,4);
+   BlockRead(f,ZXAddr,2,i);
+   if i <> 2 then
+    begin
+     Result := Unknown;
+     exit
+    end;
+   BlockRead(f,ZXP.Index[ZXAddr],65536 - ZXAddr,Length)
+  end
+ else
+  begin
+   Result := Unknown;
+   BlockRead(f,AYFileHeader,SizeOf(AYFileHeader));
+   if AYFileHeader.FileID <> $5941585A then exit;
+   if AYFileHeader.TypeID <> $44414D41 then exit;
+   Seek(f,SmallInt(IntelWord(AYFileHeader.PAuthor)) + 12);
+   AuthorName := '';
+   repeat
+    BlockRead(f,Ch,1);
+    if Ch <> #0 then AuthorName := AuthorName + Ch;
+   until Ch = #0;
+   AuthorName := Trim(AuthorName);
+   if System.Length(AuthorName) > 32 then SetLength(AuthorName,32);
+
+   Seek(f,SmallInt(IntelWord(AYFileHeader.PSongsStructure)) + 18);
+   //only first module
+     BlockRead(f,SongStructure,4);
+     CurPos := FilePos(f);
+     Seek(f,SmallInt(IntelWord(SongStructure.PSongName)) + CurPos - 4);
+     SongName := '';
+     repeat
+      BlockRead(f,Ch,1);
+      if Ch <> #0 then SongName := SongName + Ch;
+     until Ch = #0;
+     SongName := Trim(SongName);
+     if System.Length(SongName) > 32 then SetLength(SongName,32);
+     Offset := SmallInt(IntelWord(SongStructure.PSongData)) + CurPos - 2;
+     Seek(f,Offset);
+     BlockRead(f,ZXAddr,2);
+     ZXAddr := IntelWord(ZXAddr);
+     BlockRead(f,Andsix,1);
+     BlockRead(f,Byt,1);
+     BlockRead(f,Wrd,2);
+     Tm := Byt * IntelWord(Wrd);
+     Seek(f,Offset + 14);
+     BlockRead(f,ZXP.Index[ZXAddr],65536 - ZXAddr,Length);
+     Result := FXMFile
+  end
+finally
+ CloseFile(f);
+end; 
 case Result of
 FLSFile:
  begin
@@ -5365,7 +5453,6 @@ while (Pos < 256) and (FLS.Index[Pos + FLS.FLS_PositionsPointer + 1] <> 0) do
     Move(FLS.FLS_PatternsPointers[j],ChPtr,6);
     while (i < MaxPatLen) and not quit do
      begin
-      SetLength(VTM.Patterns[j].Items,i + 1);
       VTM.Patterns[j].Items[i].Envelope := 0;
       VTM.Patterns[j].Items[i].Noise := 0;
       for k := 0 to 2 do
@@ -5375,7 +5462,9 @@ while (Pos < 256) and (FLS.Index[Pos + FLS.FLS_PositionsPointer + 1] <> 0) do
         VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       for k := 0 to 2 do
        begin
@@ -5429,7 +5518,6 @@ for i := 1 to 15 do
         VTM.Ornaments[i].Loop := 32
        end
      end;
-    SetLength(VTM.Ornaments[i].Items,VTM.Ornaments[i].Length);
     j := WordPtr(@FLS.Index[FLS.FLS_OrnamentsPointer + (i - 1) * 2])^;
     for k := 0 to 31 do
      VTM.Ornaments[i].Items[k] := FLS.Index[j + k];
@@ -5465,7 +5553,6 @@ for i := 1 to 16 do
        VTM.Samples[i].Loop := 32
       end
     end;
-   SetLength(VTM.Samples[i].Items,VTM.Samples[i].Length);
    j := WordPtr(@FLS.Index[j + 2])^;
    for k := 0 to 31 do
     begin
@@ -5632,7 +5719,6 @@ while Pos < PT1.PT1_NumberOfPositions do
     Move(PT1.Index[PT1.PT1_PatternsPointer + j*6],ChPtr,6);
     while (i < MaxPatLen) and not quit do
      begin
-      SetLength(VTM.Patterns[j].Items,i + 1);
       VTM.Patterns[j].Items[i].Envelope := 0;
       VTM.Patterns[j].Items[i].Noise := 0;
       for k := 0 to 2 do
@@ -5642,7 +5728,9 @@ while Pos < PT1.PT1_NumberOfPositions do
         VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       for k := 0 to 2 do
        begin
@@ -5682,7 +5770,6 @@ for i := 1 to 15 do
       VTM.Ornaments[i].Length := PT1.Index[j];
       VTM.Ornaments[i].Loop := PT1.Index[j + 1];
      end;
-    SetLength(VTM.Ornaments[i].Items,VTM.Ornaments[i].Length);
     j := PT1.PT1_OrnamentsPointers[i];
     for k := 0 to VTM.Ornaments[i].Length - 1 do
      VTM.Ornaments[i].Items[k] := PT1.Index[j + k]
@@ -5696,7 +5783,6 @@ for i := 1 to 16 do
    j := PT1.PT1_SamplesPointers[i - 1];
    VTM.Samples[i].Length := PT1.Index[j];
    VTM.Samples[i].Loop := PT1.Index[j + 1];
-   SetLength(VTM.Samples[i].Items,VTM.Samples[i].Length);
    Inc(j,2);
    for k := 0 to VTM.Samples[i].Length - 1 do
     begin
@@ -5851,7 +5937,6 @@ while Pos < GTR.GTR_NumberOfPositions do
     Move(GTR.GTR_PatternsPointers[j],ChPtr,6);
     while (i < MaxPatLen) and not quit do
      begin
-      SetLength(VTM.Patterns[j].Items,i + 1);
       VTM.Patterns[j].Items[i].Envelope := 0;
       VTM.Patterns[j].Items[i].Noise := 0;
       for k := 0 to 2 do
@@ -5861,7 +5946,9 @@ while Pos < GTR.GTR_NumberOfPositions do
         VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       for k := 0 to 2 do
        begin
@@ -5892,7 +5979,6 @@ for i := 1 to 15 do
     j := GTR.GTR_OrnamentsPointers[i];
     VTM.Ornaments[i].Loop := GTR.Index[j];
     VTM.Ornaments[i].Length := GTR.Index[j + 1];
-    SetLength(VTM.Ornaments[i].Items,VTM.Ornaments[i].Length);
     Inc(j,2);
     for k := 0 to VTM.Ornaments[i].Length - 1 do
      VTM.Ornaments[i].Items[k] := GTR.Index[j + k]
@@ -5906,7 +5992,6 @@ for i := 1 to 16 do
    j := GTR.GTR_SamplesPointers[i - 1];
    VTM.Samples[i].Loop := GTR.Index[j] div 4;
    VTM.Samples[i].Length := GTR.Index[j + 1]  div 4;
-   SetLength(VTM.Samples[i].Items,VTM.Samples[i].Length);
    Inc(j,2);
    for k := 0 to VTM.Samples[i].Length - 1 do
     begin
@@ -6155,7 +6240,6 @@ while (Pos < 256) and (FTC.FTC_Positions[Pos].Pattern <> 255) do
     Move(FTC.Index[FTC.FTC_PatternsPointer + 6 * CPat.Numb],ChPtr,6);
     while (i < MaxPatLen) and not quit do
      begin
-      SetLength(VTM.Patterns[j].Items,i + 1);
       VTM.Patterns[j].Items[i].Envelope := 0;
       for k := 0 to 2 do
        begin
@@ -6164,7 +6248,9 @@ while (Pos < 256) and (FTC.FTC_Positions[Pos].Pattern <> 255) do
         VTM.Patterns[j].Items[i].Channel[k].Ornament := 0;
         VTM.Patterns[j].Items[i].Channel[k].Volume := 0;
         VTM.Patterns[j].Items[i].Channel[k].Envelope := 0;
-        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Number := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Delay := 0;
+        VTM.Patterns[j].Items[i].Channel[k].Additional_Command.Parameter := 0
        end;
       for k := 0 to 2 do
        begin
@@ -6291,7 +6377,6 @@ for i := 0 to 32 do
         nb := tmp
        end;
       Inc(k);
-      SetLength(VTM.Ornaments[l].Items,k);
       VTM.Ornaments[l].Items[k - 1] := n;
       Inc(j,2);
       if k = 64 then break
@@ -6311,7 +6396,6 @@ for i := 0 to 31 do
     j := FTC.FTC_SamplesPointers[i] + 3;
     VTM.Samples[l].Loop := FTC.Index[j - 2];
     VTM.Samples[l].Length := FTC.Index[j - 1] + 1;
-    SetLength(VTM.Samples[l].Items,VTM.Samples[l].Length);
     for k := 0 to VTM.Samples[l].Length - 1 do
      begin
       VTM.Samples[l].Items[k] := EmptySampleTick;
@@ -6354,6 +6438,1310 @@ for i := 0 to 31 do
      end
    end
  end
+end;
+
+function FXM2VTM;
+type
+ FXM_Stek = packed array of word;
+var
+ ChParams:array [0..2] of record
+  Address_In_Pattern:word;
+  Stek:FXM_Stek;
+  Note,PrevNote,Note_Skip_Counter,PrevOrn,PrevSam:byte;
+  Transposit:shortint;
+  CurTick:integer;
+  SamplePointer,OrnamentPointer:word;
+  FXM_Mixer:byte;
+  b0e,b1e:boolean;
+ end;
+ Instruments:array of record
+  SamplePtr,OrnPtr:word;
+  Mixer,SamNum,OrnNum:byte;
+ end;
+ MaxInstr:integer;
+
+ SkipFreqs:array[1..255] of integer;
+ i,j,k,l,ov,tmp,Tick,Delay,CurDelay,DelayCnt,SkipCounter,Pat,Line,Line2,MinSkip,MinChan,VPLen:integer;
+ VirtualPattern:array of record
+  Noise:byte;
+  Envelope:word;
+  Channel:array[0..2]of TChannelLine;
+ end;
+
+ VirtualSample:array[0..63] of record
+  ST:TSampleTick;
+  CAddr:word;
+ end;
+ VirtualOrnament:array[0..63] of record
+  OT:shortint;
+  CAddr:word;
+ end;
+
+ flg:boolean;
+ Noise_Base,Ns:byte;
+ SamCnt,SLoop,OLoop,OLen,SLen,Vol,MaxOrn,MaxSam:integer;
+ SamAddr,OrnAddr:word;
+ Lp,PatSz,NtCorr:integer;
+
+ procedure GetTime;
+
+ function FXM_Loop_Found(j11,j22,j33:word):boolean;
+ var
+  j1,j2,j3:longword;
+  a1,a2,a3:byte;
+  f71,f72,f73:boolean;
+  f61,f62,f63:boolean;
+  fxms1,fxms2,fxms3:array of word;
+  k:integer;
+  tr:integer;
+ begin
+       j1 := WordPtr(@FXM.Index[ZXAddr])^;
+       j2 := WordPtr(@FXM.Index[ZXAddr + 2])^;
+       j3 := WordPtr(@FXM.Index[ZXAddr + 4])^;
+       a1 := 1; a2 := 1; a3:= 1;
+       f71 := False; f72 := False; f73 := False;
+       f61 := False; f62 := False; f63 := False;
+       tr := 0;
+       repeat
+        if (j1 = j11) and (j2 = j22) and (j3 = j33) then
+         begin
+          Result := True;
+          Lp := tr;
+          exit
+         end;
+        Dec(a1);
+        if a1 = 0 then
+         begin
+          f71 := False;
+          f61 := False;
+          repeat
+           case FXM.Index[j1] of
+           0..$7F,$8F..$FF:
+            begin
+             inc(j1);
+             a1 := FXM.Index[j1];
+             inc(j1);
+             break
+            end;
+           $80:
+            begin
+             j1 := WordPtr(@FXM.Index[j1 + 1])^;
+             f71 := True
+            end;
+           $81:
+            begin
+             k := Length(fxms1);
+             SetLength(fxms1,k + 1);
+             fxms1[k] := j1 + 3;
+             j1 := WordPtr(@FXM.Index[j1 + 1])^
+            end;
+           $82:
+            begin
+             if (j1 = j11) and (j2 = j22) and (j3 = j33) then
+              begin
+               Result := True;
+               Lp := tr;
+               exit
+              end;
+             k := Length(fxms1);
+             SetLength(fxms1,k + 2);
+             inc(j1);
+             fxms1[k] := FXM.Index[j1];
+             inc(j1);
+             fxms1[k + 1] := j1
+            end;
+           $83:
+            begin
+             k := Length(fxms1);
+             dec(fxms1[k - 2]);
+             if fxms1[k - 2] and 255 <> 0 then
+              begin
+               j1 := fxms1[k - 1];
+               f61 := True
+              end
+             else
+              begin
+               SetLength(fxms1,k - 2);
+               inc(j1)
+              end
+            end;
+           $84,$85,$88,$8D,$8E:
+            inc(j1,2);
+           $86,$87,$8C:
+            inc(j1,3);
+           $89:
+            begin
+             k := Length(fxms1);
+             j1 := fxms1[k - 1];
+             SetLength(fxms1,k - 1)
+            end;
+           $8A,$8B:
+            inc(j1);
+           end;
+          until False;
+         end;
+        Dec(a2);
+        if a2 = 0 then
+         begin
+          f72 := False;
+          f62 := False;
+          repeat
+           case FXM.Index[j2] of
+           0..$7F,$8F..$FF:
+            begin
+             inc(j2);
+             a2 := FXM.Index[j2];
+             inc(j2);
+             break
+            end;
+           $80:
+            begin
+             j2 := WordPtr(@FXM.Index[j2 + 1])^;
+             f72 := True
+            end;
+           $81:
+            begin
+             k := Length(fxms2);
+             SetLength(fxms2,k + 1);
+             fxms2[k] := j2 + 3;
+             j2 := WordPtr(@FXM.Index[j2 + 1])^
+            end;
+           $82:
+            begin
+             if (j1 = j11) and (j2 = j22) and (j3 = j33) then
+              begin
+               Result := True;
+               Lp := tr;
+               exit
+              end;
+             k := Length(fxms2);
+             SetLength(fxms2,k + 2);
+             inc(j2);
+             fxms2[k] := FXM.Index[j2];
+             inc(j2);
+             fxms2[k + 1] := j2
+            end;
+           $83:
+            begin
+             k := Length(fxms2);
+             dec(fxms2[k - 2]);
+             if fxms2[k - 2] and 255 <> 0 then
+              begin
+               j2 := fxms2[k - 1];
+               f62 := True
+              end
+             else
+              begin
+               SetLength(fxms2,k - 2);
+               inc(j2)
+              end
+            end;
+           $84,$85,$88,$8D,$8E:
+            inc(j2,2);
+           $86,$87,$8C:
+            inc(j2,3);
+           $89:
+            begin
+             k := Length(fxms2);
+             j2 := fxms2[k - 1];
+             SetLength(fxms2,k - 1)
+            end;
+           $8A,$8B:
+            inc(j2)
+           end;
+          until False;
+         end;
+        Dec(a3);
+        if a3 = 0 then
+         begin
+          f73 := False;
+          f63 := False;
+          repeat
+           case FXM.Index[j3] of
+           0..$7F,$8F..$FF:
+            begin
+             inc(j3);
+             a3 := FXM.Index[j3];
+             inc(j3);
+             break
+            end;
+           $80:
+            begin
+             j3 := WordPtr(@FXM.Index[j3 + 1])^;
+             f73 := True
+            end;
+           $81:
+            begin
+             k := Length(fxms3);
+             SetLength(fxms3,k + 1);
+             fxms3[k] := j3 + 3;
+             j3 := WordPtr(@FXM.Index[j3 + 1])^
+            end;
+           $82:
+            begin
+             if (j1 = j11) and (j2 = j22) and (j3 = j33) then
+              begin
+               Result := True;
+               Lp := tr;
+               exit
+              end;
+             k := Length(fxms3);
+             SetLength(fxms3,k + 2);
+             inc(j3);
+             fxms3[k] := FXM.Index[j3];
+             inc(j3);
+             fxms3[k + 1] := j3
+            end;
+           $83:
+            begin
+             k := Length(fxms3);
+             dec(fxms3[k - 2]);
+             if fxms3[k - 2] and 255 <> 0 then
+              begin
+               j3 := fxms3[k - 1];
+               f63 := True
+              end
+             else
+              begin
+               SetLength(fxms3,k - 2);
+               inc(j3)
+              end
+            end;
+           $84,$85,$88,$8D,$8E:
+            inc(j3,2);
+           $86,$87,$8C:
+            inc(j3,3);
+           $89:
+            begin
+             k := Length(fxms3);
+             j3 := fxms3[k - 1];
+             SetLength(fxms3,k - 1)
+            end;
+           $8A,$8B:
+            inc(j3);
+           end;
+          until False;
+         end;
+        inc(tr);
+       until ((f71 and (f72 or f62) and (f73 or f63)) or
+             ((f71 or f61) and f72 and (f73 or f63)) or
+             ((f71 or f61) and (f72 or f62) and f73));
+  Result := False
+ end;
+
+ var
+  j1,j2,j3:longword;
+  a1,a2,a3:shortint;
+  f71,f72,f73,
+  f61,f62,f63:boolean;
+  j11,j22,j33:word;
+  fxms1,fxms2,fxms3:array of word;
+
+ begin
+   with FXM^ do
+    begin
+     j1 := WordPtr(@Index[ZXAddr])^;
+     j2 := WordPtr(@Index[ZXAddr + 2])^;
+     j3 := WordPtr(@Index[ZXAddr + 4])^;
+     a1 := 1; a2 := 1; a3:= 1;
+     f71 := False; f72 := False; f73 := False;
+     f61 := False; f62 := False; f63 := False;
+     repeat
+      Dec(a1);
+      if a1 = 0 then
+       begin
+        f71 := False;
+        f61 := False;
+        repeat
+         case Index[j1] of
+         0..$7F,$8F..$FF:
+          begin
+           Inc(j1);
+           a1 := Index[j1];
+           Inc(j1);
+           break
+          end;
+         $80:
+          begin
+           j1 := WordPtr(@Index[j1 + 1])^;
+           j11 := j1;
+           f71 := True
+          end;
+         $81:
+          begin
+           k := System.Length(fxms1);
+           SetLength(fxms1,k + 1);
+           fxms1[k] := j1 + 3;
+           j1 := WordPtr(@Index[j1 + 1])^
+          end;
+         $82:
+          begin
+           k := System.Length(fxms1);
+           SetLength(fxms1,k + 2);
+           Inc(j1);
+           fxms1[k] := Index[j1];
+           Inc(j1);
+           fxms1[k + 1] := j1
+          end;
+         $83:
+          begin
+           k := System.Length(fxms1);
+           Dec(fxms1[k - 2]);
+           if fxms1[k - 2] and 255 <> 0 then
+            begin
+             j1 := fxms1[k - 1];
+             j11 := j1 - 2;
+             f61 := True
+            end
+           else
+            begin
+             SetLength(fxms1,k - 2);
+             Inc(j1)
+            end
+          end;
+         $84,$85,$88,$8D,$8E:
+          Inc(j1,2);
+         $86,$87,$8C:
+          Inc(j1,3);
+         $89:
+          begin
+           k := System.Length(fxms1);
+           j1 := fxms1[k - 1];
+           SetLength(fxms1,k - 1)
+          end;
+         $8A,$8B:
+          Inc(j1)
+         end;
+        until False;
+       end;
+      Dec(a2);
+      if a2 = 0 then
+       begin
+        f72 := False;
+        f62 := False;
+        repeat
+         case Index[j2] of
+         0..$7F,$8F..$FF:
+          begin
+           Inc(j2);
+           a2 := Index[j2];
+           Inc(j2);
+           break
+          end;
+         $80:
+          begin
+           j2 := WordPtr(@Index[j2 + 1])^;
+           j22 := j2;
+           f72 := True
+          end;
+         $81:
+          begin
+           k := System.Length(fxms2);
+           SetLength(fxms2,k + 1);
+           fxms2[k] := j2 + 3;
+           j2 := WordPtr(@Index[j2 + 1])^
+          end;
+         $82:
+          begin
+           k := System.Length(fxms2);
+           SetLength(fxms2,k + 2);
+           Inc(j2);
+           fxms2[k] := Index[j2];
+           Inc(j2);
+           fxms2[k + 1] := j2
+          end;
+         $83:
+          begin
+           k := System.Length(fxms2);
+           Dec(fxms2[k - 2]);
+           if fxms2[k - 2] and 255 <> 0 then
+            begin
+             j2 := fxms2[k - 1];
+             j22 := j2 - 2;
+             f62 := True
+            end
+           else
+            begin
+             SetLength(fxms2,k - 2);
+             Inc(j2)
+            end
+          end;
+         $84,$85,$88,$8D,$8E:
+          Inc(j2,2);
+         $86,$87,$8C:
+          Inc(j2,3);
+         $89:
+          begin
+           k := System.Length(fxms2);
+           j2 := fxms2[k - 1];
+           SetLength(fxms2,k - 1)
+          end;
+         $8A,$8B:
+          Inc(j2)
+         end;
+        until False;
+       end;
+      Dec(a3);
+      if a3 = 0 then
+       begin
+        f73 := False;
+        f63 := False;
+        repeat
+         case Index[j3] of
+         0..$7F,$8F..$FF:
+          begin
+           Inc(j3);
+           a3 := Index[j3];
+           Inc(j3);
+           break
+          end;
+         $80:
+          begin
+           j3 := WordPtr(@Index[j3 + 1])^;
+           j33 := j3;
+           f73 := True
+          end;
+         $81:
+          begin
+           k := System.Length(fxms3);
+           SetLength(fxms3,k + 1);
+           fxms3[k] := j3 + 3;
+           j3 := WordPtr(@Index[j3 + 1])^
+          end;
+         $82:
+          begin
+           k := System.Length(fxms3);
+           SetLength(fxms3,k + 2);
+           Inc(j3);
+           fxms3[k] := Index[j3];
+           Inc(j3);
+           fxms3[k + 1] := j3
+          end;
+         $83:
+          begin
+           k := System.Length(fxms3);
+           Dec(fxms3[k - 2]);
+           if fxms3[k - 2] and 255 <> 0 then
+            begin
+             j3 := fxms3[k - 1];
+             j33 := j3 - 2;
+             f63 := True
+            end
+           else
+            begin
+             SetLength(fxms3,k - 2);
+             Inc(j3)
+            end
+          end;
+         $84,$85,$88,$8D,$8E:
+          Inc(j3,2);
+         $86,$87,$8C:
+          Inc(j3,3);
+         $89:
+          begin
+           k := System.Length(fxms3);
+           j3 := fxms3[k - 1];
+           SetLength(fxms3,k - 1)
+          end;
+         $8A,$8B:
+          Inc(j3)
+         end;
+        until False
+       end;
+      Inc(tm);
+      if tm > 180000 then
+       begin
+        tm := -14999;
+        break
+       end
+     until ((f71 and (f72 or f62) and (f73 or f63)) or
+            ((f71 or f61) and f72 and (f73 or f63)) or
+            ((f71 or f61) and (f72 or f62) and f73)
+           ) and FXM_Loop_Found(j11,j22,j33);
+     Dec(tm)
+    end
+
+ end;
+
+ function PatternInterpreter(Chan:integer):boolean;
+ var
+  b:byte;
+  i:integer;
+ begin
+  with ChParams[Chan] do
+   begin
+    Dec(Note_Skip_Counter);
+    if Note_Skip_Counter <> 0 then
+     begin
+      Result := False;
+      exit //GetRegisters(Chan)
+     end
+    else
+     repeat
+      with FXM^ do
+       case Index[Address_In_Pattern] of
+       0..$7F:
+        begin
+         if Index[Address_In_Pattern] <> 0 then
+          begin
+           Note := Index[Address_In_Pattern] - 1 + Transposit;
+//           if Note > $53 then b := $53 else b := Note;
+           b := Note + NtCorr;
+           if shortint(b) < 0 then  b := 0 else
+           if b > 95 then b := 95;
+//           Ton := FXM_Table[b];
+//           b3e := False
+          end
+         else
+          b := 254;
+         if not b1e or (b = 254) or (PrevNote <> b) then
+          begin
+           PrevNote := b;
+           VirtualPattern[Line].Channel[Chan].Note := b
+          end; 
+         Inc(Address_In_Pattern);
+         Note_Skip_Counter := Index[Address_In_Pattern];
+         Inc(Address_In_Pattern);
+
+         for i := 0 to MaxInstr do
+          with Instruments[i] do
+           if (SamplePtr = SamplePointer) and (OrnPtr = OrnamentPointer) and
+              (Mixer = FXM_Mixer) then
+            begin
+             if SamNum <> PrevSam then
+              begin
+               PrevSam := SamNum;
+               VirtualPattern[Line].Channel[Chan].Sample := SamNum;
+               VirtualPattern[Line].Channel[Chan].Note := b
+              end;
+             if OrnNum <> PrevOrn then
+              begin
+               PrevOrn := OrnNum;
+               VirtualPattern[Line].Channel[Chan].Ornament := OrnNum;
+               if OrnNum = 0 then VirtualPattern[Line].Channel[Chan].Envelope := 15
+              end;
+             break
+            end;
+
+
+//         Point_In_Ornament := OrnamentPointer;
+         if not b1e then
+          begin
+           b1e := b0e;
+
+{           Point_In_Sample := SamplePointer;
+           Volume := Index[Point_In_Sample];
+           Inc(Point_In_Sample);
+           Sample_Tik_Counter := Index[Point_In_Sample];
+           Inc(Point_In_Sample);
+           RealGetRegisters(Chan)}
+          end
+{         else
+          GetRegisters(Chan)};
+         Result := True;
+         exit
+        end;
+       $80:
+        Address_In_Pattern := WordPtr(@Index[Address_In_Pattern + 1])^;
+       $81:
+        begin
+         i := Length(Stek);
+         SetLength(Stek,i + 1);
+         Stek[i] := Address_In_Pattern + 3;
+         Address_In_Pattern := WordPtr(@Index[Address_In_Pattern + 1])^
+        end;
+       $82:
+        begin
+         i := Length(Stek);
+         SetLength(Stek,i + 2);
+         Inc(Address_In_Pattern);
+         Stek[i] := Index[Address_In_Pattern];
+         Inc(Address_In_Pattern);
+         Stek[i + 1] := Address_In_Pattern
+        end;
+       $83:
+        begin
+         i := Length(Stek);
+         Dec(Stek[i - 2]);
+         if Stek[i - 2] and 255 <> 0 then
+          Address_In_Pattern := Stek[i - 1]
+         else
+          begin
+           SetLength(Stek,i - 2);
+           Inc(Address_In_Pattern)
+          end
+        end;
+       $84:
+        begin
+         Inc(Address_In_Pattern);
+         Noise_Base := Index[Address_In_Pattern];
+         Inc(Address_In_Pattern)
+        end;
+       $85:
+        begin
+         Inc(Address_In_Pattern);
+         FXM_Mixer := Index[Address_In_Pattern] and 9;
+         Inc(Address_In_Pattern)
+        end;
+       $86:
+        begin
+         Inc(Address_In_Pattern);
+         OrnamentPointer := WordPtr(@Index[Address_In_Pattern])^;
+         Inc(Address_In_Pattern,2)
+        end;
+       $87:
+        begin
+         Inc(Address_In_Pattern);
+         SamplePointer := WordPtr(@Index[Address_In_Pattern])^;
+         Inc(Address_In_Pattern,2)
+        end;
+       $88:
+        begin
+         Inc(Address_In_Pattern);
+         Transposit := Index[Address_In_Pattern];
+         Inc(Address_In_Pattern)
+        end;
+       $89:
+        begin
+         i := Length(Stek);
+         Address_In_Pattern := Stek[i - 1];
+         SetLength(Stek,i - 1)
+        end;
+       $8A:
+        begin
+         Inc(Address_In_Pattern);
+         b0e := True;
+         b1e := False
+        end;
+       $8B:
+        begin
+         Inc(Address_In_Pattern);
+         b0e := False;
+         b1e := False
+        end;
+       $8C:
+        Inc(Address_In_Pattern,3);
+       $8D:
+        begin
+         Inc(Address_In_Pattern);
+         Noise_Base :=
+         (Noise_Base + Index[Address_In_Pattern])
+                                  and amad_andsix;
+         Inc(Address_In_Pattern)
+        end;
+       $8E:
+        begin
+         Inc(Address_In_Pattern);
+         Transposit := Transposit + Index[Address_In_Pattern];
+         Inc(Address_In_Pattern)
+        end;
+       $8F:
+        begin
+         i := Length(Stek);
+         SetLength(Stek,i + 1);
+         Stek[i] := Transposit;
+         Inc(Address_In_Pattern)
+        end;
+       $90:
+        begin
+         i := Length(Stek);
+         Transposit := Stek[i - 1];
+         SetLength(Stek,i - 1);
+         Inc(Address_In_Pattern)
+        end
+       else
+        Inc(Address_In_Pattern)
+       end
+     until False
+   end
+ end;
+
+ procedure ClearPat;
+ var
+  i,j:integer;
+ begin
+  New(VTM.Patterns[Pat]);
+  VTM.Patterns[Pat].Length := PatSz;
+  for i := 0 to PatSz - 1 do
+   begin
+    VTM.Patterns[Pat].Items[i].Envelope := 0;
+    VTM.Patterns[Pat].Items[i].Noise := 0;
+    for j := 0 to 2 do
+     begin
+      VTM.Patterns[Pat].Items[i].Channel[j].Note := -1;
+      VTM.Patterns[Pat].Items[i].Channel[j].Sample := 0;
+      VTM.Patterns[Pat].Items[i].Channel[j].Ornament := 0;
+      VTM.Patterns[Pat].Items[i].Channel[j].Volume := 0;
+      VTM.Patterns[Pat].Items[i].Channel[j].Envelope := 0;
+      VTM.Patterns[Pat].Items[i].Channel[j].Additional_Command.Number := 0;
+      VTM.Patterns[Pat].Items[i].Channel[j].Additional_Command.Delay := 0;
+      VTM.Patterns[Pat].Items[i].Channel[j].Additional_Command.Parameter := 0
+     end
+   end
+ end;
+
+begin
+Result := True;
+
+Lp := 0;
+PatSz := 64;
+
+if Tm = 0 then GetTime;
+
+tmp := 0;
+if Tm < 0 then
+ begin
+  Tm := - Tm;
+  tmp := 1
+ end; 
+
+for i := 0 to 2 do
+ with ChParams[i] do
+  begin
+   Address_In_Pattern := WordPtr(@FXM.Index[ZXAddr + i*2])^;
+   SetLength(Stek,0);
+   FXM_Mixer := 8;
+   Transposit := 0;
+   SamplePointer := 0; OrnamentPointer := 0
+  end;
+SetLength(Instruments,1);
+with Instruments[0] do
+ begin
+  SamplePtr := 0; OrnPtr := 0; Mixer := 8; SamNum := 0; OrnNum := 0
+ end;
+MaxInstr := 0;
+
+for i := 1 to 255 do SkipFreqs[i] := 0;
+    NtCorr := -1;
+    Tick := 0;
+    repeat
+     for j := 0 to 2 do
+     repeat
+      with FXM^,ChParams[j] do
+       case Index[Address_In_Pattern] of
+       0..$7F:
+        begin
+         if Index[Address_In_Pattern] - 1 + Transposit = 0 then NtCorr := 0;
+         Inc(Address_In_Pattern);
+         i := Index[Address_In_Pattern];
+         if i <> 0 then inc(SkipFreqs[i]);
+         Inc(Address_In_Pattern);
+
+         flg := false;
+         for i := 0 to MaxInstr do
+          with Instruments[i] do
+           if (SamplePtr = SamplePointer) and (OrnPtr = OrnamentPointer) and
+              (Mixer = FXM_Mixer) then
+            begin
+             flg := true;
+             break
+            end;
+         if not flg then
+          begin
+           inc(MaxInstr);
+           SetLength(Instruments,MaxInstr + 1);
+           with Instruments[MaxInstr] do
+            begin
+             SamplePtr := SamplePointer;
+             OrnPtr := OrnamentPointer;
+             Mixer := FXM_Mixer;
+             SamNum := 0;
+             OrnNum := 0
+            end
+          end;
+
+         break
+        end;
+       $80:
+        Address_In_Pattern := WordPtr(@Index[Address_In_Pattern + 1])^;
+       $81:
+        begin
+         i := Length(Stek);
+         SetLength(Stek,i + 1);
+         Stek[i] := Address_In_Pattern + 3;
+         Address_In_Pattern := WordPtr(@Index[Address_In_Pattern + 1])^
+        end;
+       $82:
+        begin
+         i := Length(Stek);
+         SetLength(Stek,i + 2);
+         Inc(Address_In_Pattern);
+         Stek[i] := Index[Address_In_Pattern];
+         Inc(Address_In_Pattern);
+         Stek[i + 1] := Address_In_Pattern
+        end;
+       $83:
+        begin
+         i := Length(Stek);
+         Dec(Stek[i - 2]);
+         if Stek[i - 2] and 255 <> 0 then
+          Address_In_Pattern := Stek[i - 1]
+         else
+          begin
+           SetLength(Stek,i - 2);
+           Inc(Address_In_Pattern)
+          end
+        end;
+       $84:
+        begin
+         Inc(Address_In_Pattern);
+//         PlParams.FXM.Noise_Base := Index[Address_In_Pattern];
+         Inc(Address_In_Pattern)
+        end;
+       $85:
+        begin
+         Inc(Address_In_Pattern);
+         FXM_Mixer := Index[Address_In_Pattern] and 9;
+         Inc(Address_In_Pattern)
+        end;
+       $86:
+        begin
+         Inc(Address_In_Pattern);
+         OrnamentPointer := WordPtr(@Index[Address_In_Pattern])^;
+         Inc(Address_In_Pattern,2)
+        end;
+       $87:
+        begin
+         Inc(Address_In_Pattern);
+         SamplePointer := WordPtr(@Index[Address_In_Pattern])^;
+         Inc(Address_In_Pattern,2)
+        end;
+       $88:
+        begin
+         Inc(Address_In_Pattern);
+         Transposit := Index[Address_In_Pattern];
+         Inc(Address_In_Pattern)
+        end;
+       $89:
+        begin
+         i := Length(Stek);
+         Address_In_Pattern := Stek[i - 1];
+         SetLength(Stek,i - 1)
+        end;
+       $8A:
+        begin
+         Inc(Address_In_Pattern);
+//         b0e := True;
+//         b1e := False
+        end;
+       $8B:
+        begin
+         Inc(Address_In_Pattern);
+//         b0e := False;
+//         b1e := False
+        end;
+       $8C:
+        Inc(Address_In_Pattern,3);
+       $8D:
+        begin
+         Inc(Address_In_Pattern);
+{         PlParams.FXM.Noise_Base :=
+         (PlParams.FXM.Noise_Base + Index[Address_In_Pattern])
+                                  and PlParams.FXM.amad_andsix;
+ }        Inc(Address_In_Pattern)
+        end;
+       $8E:
+        begin
+         Inc(Address_In_Pattern);
+         Transposit := Transposit + Index[Address_In_Pattern];
+         Inc(Address_In_Pattern)
+        end;
+       $8F:
+        begin
+         i := Length(Stek);
+         SetLength(Stek,i + 1);
+         Stek[i] := Transposit;
+         Inc(Address_In_Pattern)
+        end;
+       $90:
+        begin
+         i := Length(Stek);
+         Transposit := Stek[i - 1];
+         SetLength(Stek,i - 1);
+         Inc(Address_In_Pattern)
+        end
+       else
+        Inc(Address_In_Pattern)
+       end
+     until False;
+     inc(Tick);
+    until Tick = Tm;
+
+Delay := 1;
+Tick := SkipFreqs[1];
+for i := 2 to 255 do
+ if SkipFreqs[i] > Tick then
+  begin
+   Delay := i;
+   Tick := SkipFreqs[i]
+  end;
+
+with FXMParams do
+ begin
+  if tmp = 0 then
+   begin
+    Edit1.Text := IntToStr(Tm);
+    Edit2.Text := IntToStr(Lp)
+   end
+  else
+   begin
+    Edit1.Clear;
+    Edit2.Clear
+   end;
+  Edit3.Text := IntToStr(Delay);
+  Edit4.Text := IntToStr(PatSz);
+  Edit5.Text := IntToStr(NtCorr);
+  Edit6.Text := IntToStr(amad_andsix);
+  if ShowModal <> 0 then
+   begin
+    Tm := StrToInt(Trim(Edit1.Text));
+    Lp := StrToInt(Trim(Edit2.Text));
+    Delay := StrToInt(Trim(Edit3.Text));
+    PatSz := StrToInt(Trim(Edit4.Text));
+    NtCorr := StrToInt(Trim(Edit5.Text));
+    amad_andsix := StrToInt(Trim(Edit6.Text))
+   end
+ end;
+
+
+
+MaxSam := 0; MaxOrn := 0;
+for i := 1 to MaxInstr do
+ begin
+  j := 0; flg := false; SamCnt := 1;
+  SLoop := 255; OLoop := 255; OLen := 0; SLen := 0;
+  Vol := 0; ov := 0;
+  tmp := Instruments[i].Mixer;
+  SamAddr := Instruments[i].SamplePtr;
+  OrnAddr := Instruments[i].OrnPtr;
+  while j < 64 do
+   begin
+    VirtualSample[j].CAddr := SamAddr;
+    VirtualSample[j].ST := EmptySampleTick;
+    VirtualSample[j].ST.Ton_Accumulation := True;
+    VirtualOrnament[j].CAddr := OrnAddr;
+    if SamAddr <> 0 then
+    begin
+    Dec(SamCnt);
+    if SamCnt = 0 then
+     begin
+      repeat
+       with FXM^ do
+        case Index[SamAddr] of
+        0..$1D:
+         begin
+          Vol := Index[SamAddr];
+          VirtualSample[j].ST.Amplitude := Vol;
+          Inc(SamAddr);
+          SamCnt := Index[SamAddr];
+          Inc(SamAddr);
+          break
+         end;
+        $80:
+         begin
+          SamAddr := WordPtr(@Index[SamAddr + 1])^;
+          SLen := j;
+          for k := 0 to j - 1 do
+           if VirtualSample[k].CAddr = SamAddr then
+            begin
+             SLoop := k;
+             break
+            end
+         end
+        else
+         begin
+          Vol := Index[SamAddr] - $32;
+          VirtualSample[j].ST.Amplitude := Vol;
+          Inc(SamAddr);
+          SamCnt := 1;
+          break
+         end;
+        end
+      until False;
+     end
+    else
+     VirtualSample[j].ST.Amplitude := Vol;
+    end
+    else
+     VirtualSample[j].ST.Amplitude := 0;
+    if OrnAddr <> 0 then
+     begin
+      repeat
+       with FXM^ do
+        case Index[OrnAddr] of
+        $80:
+         begin
+          OrnAddr := WordPtr(@Index[OrnAddr + 1])^;
+          OLen := j;
+          for k := 0 to j - 1 do
+           if VirtualOrnament[k].CAddr = OrnAddr then
+            begin
+             OLoop := k;
+             break
+            end
+         end;
+        $82:
+         begin
+          Inc(OrnAddr);
+          flg := True
+         end;
+        $83:
+         begin
+          Inc(OrnAddr);
+          flg := False
+         end;
+        $84:
+         begin
+          Inc(OrnAddr);
+          tmp := tmp xor 9;
+         end
+        else
+         begin
+          if flg then
+           begin
+            inc(ov,shortint(Index[OrnAddr]));
+            VirtualOrnament[j].OT := ov
+           end 
+          else
+           begin
+            VirtualOrnament[j].OT := ov;
+            VirtualSample[j].ST.Add_to_Ton := shortint(Index[OrnAddr])
+           end;
+          Inc(OrnAddr);
+          break
+         end
+        end;
+      until False
+     end
+    else
+     begin
+      VirtualOrnament[j].OT := 0;
+      VirtualSample[j].ST.Add_to_Ton := 0
+     end;
+    VirtualSample[j].ST.Mixer_Ton := (tmp and 1) = 0;
+    VirtualSample[j].ST.Mixer_Noise := (tmp and 8) = 0;
+    inc(j)
+   end;
+  if SLen = 0 then SLen := 64;
+  if SLoop = 255 then
+   begin
+    SLoop := SLen - 1;
+    VirtualSample[SLoop].ST.Ton_Accumulation := False
+   end;
+  if OLen = 0 then OLen := 64;
+  if OLoop = 255 then OLoop := OLen - 1;
+  flg := false;
+  for j := 0 to OLen - 1 do
+   if VirtualOrnament[j].OT <> 0 then
+    begin
+     flg := true;
+     break
+    end;
+  if flg then
+   begin
+    flg := false;
+    for k := 1 to MaxOrn do
+     begin
+      flg := (VTM.Ornaments[k].Length = OLen) and
+             (VTM.Ornaments[k].Loop = OLoop);
+      if flg then
+       for j := 0 to OLen - 1 do
+        begin
+         flg := VTM.Ornaments[k].Items[j] = VirtualOrnament[j].OT;
+         if not flg then break
+        end;
+      if flg then
+       begin
+        Instruments[i].OrnNum := k;
+        break
+       end;
+     end;
+    if not flg and (MaxOrn < 15) then
+     begin
+      inc(MaxOrn);
+      Instruments[i].OrnNum := MaxOrn;
+      New(VTM.Ornaments[MaxOrn]);
+      VTM.Ornaments[MaxOrn].Loop := OLoop;
+      VTM.Ornaments[MaxOrn].Length := OLen;
+      for j := 0 to OLen - 1 do
+       VTM.Ornaments[MaxOrn].Items[j] := VirtualOrnament[j].OT
+     end;
+   end;
+  flg := false;
+  for k := 1 to MaxSam do
+   begin
+    flg := (VTM.Samples[k].Length = SLen) and
+           (VTM.Samples[k].Loop = SLoop);
+    if flg then
+     for j := 0 to SLen - 1 do
+      begin
+       flg := (VTM.Samples[k].Items[j].Add_to_Ton = VirtualSample[j].ST.Add_to_Ton) and
+           (VTM.Samples[k].Items[j].Amplitude = VirtualSample[j].ST.Amplitude) and
+           (VTM.Samples[k].Items[j].Mixer_Ton = VirtualSample[j].ST.Mixer_Ton) and
+           (VTM.Samples[k].Items[j].Mixer_Noise = VirtualSample[j].ST.Mixer_Noise);
+       if not flg then break
+      end;
+    if flg then
+     begin
+      Instruments[i].SamNum := k;
+      break
+     end;
+   end;
+  if not flg and (MaxSam < 31) then
+   begin
+    inc(MaxSam);
+    Instruments[i].SamNum := MaxSam;
+    New(VTM.Samples[MaxSam]);
+    VTM.Samples[MaxSam].Loop := SLoop;
+    VTM.Samples[MaxSam].Length := SLen;
+    for j := 0 to SLen - 1 do
+     VTM.Samples[MaxSam].Items[j] := VirtualSample[j].ST
+   end;
+ end;
+
+VTM.Initial_Delay := Delay;
+VTM.Ton_Table := 1;
+VTM.Title := SongN;
+VTM.Author := AuthN;
+
+VPLen := Delay*PatSz;
+
+SetLength(VirtualPattern,VPLen);
+
+Noise_Base := 0;
+
+for i := 0 to 2 do
+ with ChParams[i] do
+  begin
+   Address_In_Pattern := WordPtr(@FXM.Index[ZXAddr + i*2])^;
+   Transposit := 0;
+   Note_Skip_Counter := 1;
+   PrevOrn := 255; PrevSam := 255;
+   SamplePointer := 0; OrnamentPointer := 0;
+   FXM_Mixer := 8;
+   PrevNote := 255;
+   b0e := False; b1e := False;
+   SetLength(Stek,0)
+  end;
+
+Pat := -1;
+Line2 := PatSz;
+CurDelay := Delay;
+Tick := 0;
+
+while Pat < MaxNumOfPats do
+ begin
+  if Tick >= Tm then
+   begin
+    VTM.Patterns[Pat].Length := Line2;
+    inc(Pat);
+    break
+   end;
+  for i := 0 to VPLen - 1 do
+   begin
+    VirtualPattern[i].Envelope := 0;
+    for j := 0 to 2 do
+     begin
+      VirtualPattern[i].Channel[j].Note := -1;
+      VirtualPattern[i].Channel[j].Sample := 0;
+      VirtualPattern[i].Channel[j].Ornament := 0;
+      VirtualPattern[i].Channel[j].Volume := 0;
+      VirtualPattern[i].Channel[j].Envelope := 0;
+      VirtualPattern[i].Channel[j].Additional_Command.Number := 0
+     end
+   end;
+
+Line := 0;
+while Line < VPLen do
+ begin
+  for j := 0 to 2 do PatternInterpreter(j);
+  VirtualPattern[Line].Noise := Noise_Base;
+  inc(Line)
+ end;
+
+Line := 0;
+while (Pat < MaxNumOfPats) and (Line < VPLen) and (Tick < Tm) do
+ begin
+  while Line2 >= PatSz do
+   begin
+    dec(Line2,PatSz);
+    inc(Pat);
+    if Pat >= MaxNumOfPats then break;
+    ClearPat
+   end;
+  if (Tick <> 0) and (Line2 <> 0) and (Tick = Lp) then
+   begin
+    VTM.Patterns[Pat].Length := Line2;
+    Line2 := 0;
+    inc(Pat);
+    if Pat >= MaxNumOfPats then break;
+    VTM.Positions.Loop := Pat;
+    ClearPat
+   end;
+  if Pat >= MaxNumOfPats then break;
+  for j := 0 to 2 do
+   begin
+    VTM.Patterns[Pat].Items[Line2].Channel[j].Note := VirtualPattern[Line].Channel[j].Note;
+    VTM.Patterns[Pat].Items[Line2].Channel[j].Sample := VirtualPattern[Line].Channel[j].Sample;
+    VTM.Patterns[Pat].Items[Line2].Channel[j].Ornament := VirtualPattern[Line].Channel[j].Ornament;
+    VTM.Patterns[Pat].Items[Line2].Channel[j].Envelope := VirtualPattern[Line].Channel[j].Envelope;
+   end;
+  Ns := VirtualPattern[Line].Noise;
+  VTM.Patterns[Pat].Items[Line2].Noise := Ns;
+  MinSkip := 0;
+  repeat
+   inc(Line);
+   inc(Tick);
+   inc(MinSkip);
+   flg := Line >= VPLen;
+   if not flg then
+    for j := 0 to 2 do if VirtualPattern[Line].Channel[j].Note <> - 1 then
+     begin
+      flg := true;
+      break
+     end;
+   if not flg then
+    for j := 0 to 2 do if VirtualPattern[Line].Channel[j].Envelope = 15 then
+     begin
+      flg := true;
+      break
+     end;
+   if not flg then
+    for j := 0 to 2 do if VirtualPattern[Line].Channel[j].Ornament <> 0 then
+     begin
+      flg := true;
+      break
+     end;
+   if not flg then
+    flg := VirtualPattern[Line].Noise <> Ns
+  until flg;
+  if Delay > MinSkip then
+   i := MinSkip
+  else
+   begin
+    i := Tick mod Delay;
+    if i = 0 then i := Delay;
+    dec(Line,MinSkip - i);
+    dec(Tick,MinSkip - i);
+   end;
+  if (i <> CurDelay) or (Line2 = 0) then
+   begin
+    CurDelay := i;
+    VTM.Patterns[Pat].Items[Line2].Channel[0].Additional_Command.Number := 11;
+    VTM.Patterns[Pat].Items[Line2].Channel[0].Additional_Command.Parameter := i
+   end;
+  inc(Line2)
+ end;
+ end;
+
+VTM.Positions.Length := Pat;
+for i := 0 to Pat - 1 do
+ begin
+  VTM.Positions.Value[i] := i;
+ end;
+
+Result := Delay = 0;
+
 end;
 
 function GetModuleTime;

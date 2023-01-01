@@ -86,6 +86,8 @@ procedure TTrMng.TracksOp;
 var
  FPLen,TPLen,i,j:integer;
  cl:TChannelLine;
+ OldPat:PPattern;
+ Flg:boolean;
 begin
 if MainForm.MDIChildCount = 0 then exit;
 with TMDIChild(MainForm.ActiveMDIChild) do
@@ -93,12 +95,19 @@ with TMDIChild(MainForm.ActiveMDIChild) do
   if (VTMP.Patterns[FPat] = nil) and (VTMP.Patterns[TPat] = nil) then exit;
   ValidatePattern2(FPat);
   ValidatePattern2(TPat);
+  if TrOp = 0 then
+   begin
+    New(OldPat); OldPat^ := VTMP.Patterns[TPat]^;
+   end
+  else if MessageDlg('This operation cannot be undo. Are you sure you want to continue?',mtConfirmation,[mbYes,mbNo],0) <> mrYes then exit;
+  DisposeUndo(True);
   FPLen := VTMP.Patterns[FPat].Length;
   TPLen := VTMP.Patterns[TPat].Length;
+  Flg := False;
   for i := 0 to TrMng.UpDown5.Position - 1 do
    begin
     if (i + FLin >= FPLen) or (i + TLin >= TPLen) then break;
-    SongChanged := True;
+    Flg := True;
     if TrMng.CheckBox1.Checked then
      begin
       j := VTMP.Patterns[FPat].Items[i + FLin].Envelope;
@@ -149,8 +158,18 @@ with TMDIChild(MainForm.ActiveMDIChild) do
       end
     end
    end;
-  if (PatNum = TPat) or (PatNum =FPat) then
-   Tracks.RedrawTracks(0)
+  if Flg then
+   begin
+    SongChanged := True;
+    if TrOp = 0 then
+     begin
+      AddUndo(CATracksManagerCopy,TPat,0);
+      ChangeList[ChangeCount - 1].Pattern := OldPat
+     end 
+   end
+  else if TrOp = 0 then
+   Dispose(OldPat);
+  if (PatNum = TPat) or (PatNum = FPat) then Tracks.RedrawTracks(0)
  end
 end;
 
@@ -183,19 +202,22 @@ procedure TTrMng.Transp;
 var
  PLen,i,st,j:integer;
  stk:real;
+ OldPat:PPattern;
+ Flg:boolean;
 begin
 if MainForm.MDIChildCount = 0 then exit;
 with TMDIChild(MainForm.ActiveMDIChild) do
  begin
   if VTMP.Patterns[Pat] = nil then exit;
-  st := TrMng.UpDown8.Position;
-  if st = 0 then exit;
+  st := TrMng.UpDown8.Position; if st = 0 then exit;
+  New(OldPat); OldPat^ := VTMP.Patterns[Pat]^;
   stk := exp(-st / 12 * ln(2));
   PLen := VTMP.Patterns[Pat].Length;
+  Flg := False;
   for i := 0 to TrMng.UpDown5.Position - 1 do
    begin
     if i + Lin >= PLen then break;
-    SongChanged := True;
+    Flg := True;
     if TrMng.CheckBox1.Checked then
      VTMP.Patterns[Pat].Items[i + Lin].Envelope := round(VTMP.Patterns[Pat].Items[i + Lin].Envelope * stk);
     if VTMP.Patterns[Pat].Items[i + Lin].Channel[Chn].Note >= 0 then
@@ -208,8 +230,15 @@ with TMDIChild(MainForm.ActiveMDIChild) do
       VTMP.Patterns[Pat].Items[i + Lin].Channel[Chn].Note := j
      end
    end;
-  if PatNum = Pat then
-   Tracks.RedrawTracks(0)
+  if Flg then
+   begin
+    SongChanged := True;
+    AddUndo(CATransposePattern,Pat,0);
+    ChangeList[ChangeCount - 1].Pattern := OldPat
+   end
+  else
+   Dispose(OldPat); 
+  if PatNum = Pat then Tracks.RedrawTracks(0)
  end
 end;
 

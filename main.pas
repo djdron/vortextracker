@@ -28,7 +28,7 @@ const
 //Version related constants
  VersionString = '1.0';
  IsBeta = ' beta';
- BetaNumber = ' 10';
+ BetaNumber = ' 11';
 
  FullVersString:string = 'Vortex Tracker II v' + VersionString + IsBeta + BetaNumber;
  HalfVersString:string = 'Version ' + VersionString + IsBeta + BetaNumber;
@@ -148,6 +148,13 @@ type
     EditCopy1: TAction;
     EditCut1: TAction;
     EditPaste1: TAction;
+    ToolButton22: TToolButton;
+    ToolButton23: TToolButton;
+    ToolButton24: TToolButton;
+    Undo: TAction;
+    Redo: TAction;
+    Undo1: TMenuItem;
+    Redo1: TMenuItem;
     procedure FileNew1Execute(Sender: TObject);
     procedure FileOpen1Execute(Sender: TObject);
     procedure HelpAbout1Execute(Sender: TObject);
@@ -217,6 +224,11 @@ type
     procedure EditCopy1Execute(Sender: TObject);
     procedure EditPaste1Update(Sender: TObject);
     procedure EditPaste1Execute(Sender: TObject);
+    procedure UndoUpdate(Sender: TObject);
+    procedure UndoExecute(Sender: TObject);
+    procedure RedoUpdate(Sender: TObject);
+    procedure RedoExecute(Sender: TObject);
+    procedure CheckCommandLine;
   private
     { Private declarations }
     procedure CreateMDIChild(const Name: string);
@@ -234,6 +246,8 @@ type
     GlobalVolume,GlobalVolumeMax:integer;
   end;
 
+function IntelWord(a:word):word;
+ 
 var
   MainForm: TMainForm;
   Priority:dword = NORMAL_PRIORITY_CLASS;
@@ -382,29 +396,11 @@ end;
 procedure TMainForm.umredrawtracks;
 var
  pat,ps:integer;
- sel:TGridRect;
 begin
 if not IsPlaying then exit;
 ps := smallint(Msg.WParam and 65535);
 pat := Msg.WParam shr 16;
-if ps >= 0 then
- if PlayingWindow.StringGrid1.Selection.Left <> ps then
-  begin
-   if ps >= PlayingWindow.StringGrid1.LeftCol +
-                                 PlayingWindow.StringGrid1.VisibleColCount then
-    PlayingWindow.StringGrid1.LeftCol := ps + 1 -
-                                 PlayingWindow.StringGrid1.VisibleColCount
-   else if ps < PlayingWindow.StringGrid1.LeftCol then
-    PlayingWindow.StringGrid1.LeftCol := ps;
-   sel.Left := ps;
-   sel.Right := ps;
-   sel.Top := 0;
-   sel.Bottom := 0;
-   PlayingWindow.StringGrid1.Selection := Sel;
-   PlayingWindow.InputPNumber := 0;
-   PlayingWindow.PositionNumber := ps;
-   PlayingWindow.CalculatePos0
-  end;
+if ps >= 0 then PlayingWindow.SelectPosition2(ps);
 if (PlayingWindow.Tracks.ShownPattern <> PlayingWindow.VTMP.Patterns[pat])
    or (PlayingWindow.Tracks.ShownFrom <> Msg.LParam) then
  begin
@@ -682,6 +678,7 @@ if IsPlaying then
  end;
 PlayMode := PMPlayPattern;
 DisableControls;
+PlayingWindow.ValidatePattern2(PlayingWindow.PatNum);
 PlayingWindow.Tracks.RemoveSelection(0,False);
 Module_SetPointer(PlayingWindow.VTMP);
 Module_SetDelay(PlayingWindow.VTMP.Initial_Delay);
@@ -699,6 +696,7 @@ if IsPlaying then
   StopPlaying;
   RestoreControls
  end;
+TMDIChild(ActiveMDIChild).ValidatePattern2(TMDIChild(ActiveMDIChild).PatNum);
 TMDIChild(ActiveMDIChild).RestartPlayingPatternLine(False)
 end;
 
@@ -724,17 +722,10 @@ begin
 if MDIChildCount = 0 then exit;
 with TMDIChild(ActiveMDIChild) do
  begin
- if (StringGrid1.Selection.Left < VTMP.Positions.Length) and
-    (StringGrid1.Selection.Left <> VTMP.Positions.Loop) then
-  begin
-   SongChanged := True;
-   StringGrid1.Cells[VTMP.Positions.Loop,0] :=
-        IntToStr(VTMP.Positions.Value[VTMP.Positions.Loop]);
-   VTMP.Positions.Loop := StringGrid1.Selection.Left;
-   StringGrid1.Cells[VTMP.Positions.Loop,0] :=
-        'L' + IntToStr(VTMP.Positions.Value[VTMP.Positions.Loop]);
-  end;
- InputPNumber := 0
+  if (StringGrid1.Selection.Left < VTMP.Positions.Length) and
+     (StringGrid1.Selection.Left <> VTMP.Positions.Loop) then
+   SetLoopPos(StringGrid1.Selection.Left);
+  InputPNumber := 0
  end
 end;
 
@@ -759,6 +750,10 @@ with TMDIChild(ActiveMDIChild) do
     (VTMP.Positions.Length < 256) then
   begin
    SongChanged := True;
+   AddUndo(CAInsertPosition,0,0);
+   ChangeList[ChangeCount - 1].CurrentPosition := StringGrid1.Selection.Left;
+   New(ChangeList[ChangeCount - 1].PositionList);
+   ChangeList[ChangeCount - 1].PositionList^ := VTMP.Positions;
    i := VTMP.Positions.Length - StringGrid1.Selection.Left;
    Inc(VTMP.Positions.Length);
    if StringGrid1.Selection.Left <= VTMP.Positions.Loop then
@@ -801,6 +796,10 @@ with TMDIChild(ActiveMDIChild) do
  if StringGrid1.Selection.Left < VTMP.Positions.Length then
   begin
    SongChanged := True;
+   AddUndo(CADeletePosition,0,0);
+   ChangeList[ChangeCount - 1].CurrentPosition := StringGrid1.Selection.Left;
+   New(ChangeList[ChangeCount - 1].PositionList);
+   ChangeList[ChangeCount - 1].PositionList^ := VTMP.Positions;
    i := VTMP.Positions.Length - StringGrid1.Selection.Left - 1;
    Dec(VTMP.Positions.Length);
    if StringGrid1.Selection.Left < VTMP.Positions.Loop then
@@ -1031,19 +1030,21 @@ Form1.PlayStarts;
 PlayingWindow := TMDIChild(ActiveMDIChild);
 PlayingWindow.Edit2.Enabled := False;
 PlayingWindow.UpDown1.Enabled := False;
-PlayingWindow.Edit8.Enabled := False;
-PlayingWindow.UpDown5.Enabled := False;
-PlayingWindow.Edit9.Enabled := False;
-PlayingWindow.UpDown7.Enabled := False;
-PlayingWindow.Edit13.Enabled := False;
-PlayingWindow.UpDown11.Enabled := False;
 PlayingWindow.Tracks.Enabled := False;
-PlayingWindow.CopyOrnBut.Enabled := False;
-PlayingWindow.CopySamBut.Enabled := False;
-PlayingWindow.SpeedButton26.Enabled := False;
-PlayingWindow.SpeedButton25.Enabled := False;
-PlayingWindow.SpeedButton19.Enabled := False;
-PlayingWindow.SpeedButton21.Enabled := False
+{delete!}
+//PlayingWindow.Edit8.Enabled := False;
+//PlayingWindow.UpDown5.Enabled := False;
+//PlayingWindow.Edit9.Enabled := False;
+//PlayingWindow.UpDown7.Enabled := False;
+//PlayingWindow.Edit13.Enabled := False;
+//PlayingWindow.UpDown11.Enabled := False;
+//PlayingWindow.CopyOrnBut.Enabled := False;
+//PlayingWindow.CopySamBut.Enabled := False;
+//PlayingWindow.SpeedButton26.Enabled := False;
+//PlayingWindow.SpeedButton25.Enabled := False;
+//PlayingWindow.SpeedButton19.Enabled := False;
+//PlayingWindow.SpeedButton21.Enabled := False
+{delete!}
 end;
 
 procedure TMainForm.RestoreControls;
@@ -1051,21 +1052,23 @@ begin
 Form1.PlayStops;
 PlayingWindow.Edit2.Enabled := True;
 PlayingWindow.UpDown1.Enabled := True;
-PlayingWindow.Edit8.Enabled := True;
-PlayingWindow.UpDown5.Enabled := True;
-PlayingWindow.Edit9.Enabled := True;
-PlayingWindow.UpDown7.Enabled := True;
-PlayingWindow.Edit13.Enabled := True;
-PlayingWindow.UpDown11.Enabled := True;
 if PlayMode in [PMPlayModule,PMPlayPattern] then
  PlayingWindow.Tracks.CursorY := PlayingWindow.Tracks.N1OfLines;
 PlayingWindow.Tracks.Enabled := True;
-PlayingWindow.CopyOrnBut.Enabled := True;
-PlayingWindow.CopySamBut.Enabled := True;
-PlayingWindow.SpeedButton26.Enabled := True;
-PlayingWindow.SpeedButton25.Enabled := True;
-PlayingWindow.SpeedButton19.Enabled := True;
-PlayingWindow.SpeedButton21.Enabled := True
+{delete!}
+//PlayingWindow.Edit8.Enabled := True;
+//PlayingWindow.UpDown5.Enabled := True;
+//PlayingWindow.Edit9.Enabled := True;
+//PlayingWindow.UpDown7.Enabled := True;
+//PlayingWindow.Edit13.Enabled := True;
+//PlayingWindow.UpDown11.Enabled := True;
+//PlayingWindow.CopyOrnBut.Enabled := True;
+//PlayingWindow.CopySamBut.Enabled := True;
+//PlayingWindow.SpeedButton26.Enabled := True;
+//PlayingWindow.SpeedButton25.Enabled := True;
+//PlayingWindow.SpeedButton19.Enabled := True;
+//PlayingWindow.SpeedButton21.Enabled := True
+{delete!}
 end;
 
 procedure TMainForm.SetIntFreqEx;
@@ -1412,31 +1415,6 @@ if SaveDialogSNDH.Execute then
 end;
 
 procedure TMainForm.SaveforZXMenuClick(Sender: TObject);
-type
-
-//AY-file header and structures
- TAYFileHeader = packed record
-   FileID,TypeID:longword;
-   FileVersion,PlayerVersion:byte;
-   PSpecialPlayer,PAuthor,PMisc:smallint;
-   NumOfSongs,FirstSong:byte;
-   PSongsStructure:smallint;
- end;
- TSongStructure = packed record
-   PSongName,PSongData:smallint;
- end;
- TSongData = packed record
-   ChanA,ChanB,ChanC,Noise:byte;
-   SongLength:word;
-   FadeLength:word;
-   HiReg,LoReg:byte;
-   PPoints,PAddresses:smallint;
- end;
- TPoints = packed record
-   Stek,Init,Inter:word;
-   Adr1,Len1,Offs1,Adr2,Len2,Offs2,Zero:word;
- end;
-
 var
  s:string;
  PT3:TSpeccyModule;
@@ -1869,6 +1847,39 @@ if GetCopyControl(CtrlType,WC) then
  0: (WC as TCustomEdit).PasteFromClipboard;
  1: (WC as TTracks).PasteFromClipboard;
  end;
+end;
+
+procedure TMainForm.UndoUpdate(Sender: TObject);
+begin
+Undo.Enabled := (MDIChildCount <> 0) and
+                        (TMDIChild(ActiveMDIChild).ChangeCount > 0)
+end;
+
+procedure TMainForm.UndoExecute(Sender: TObject);
+begin
+if (MDIChildCount = 0) then exit;
+TMDIChild(ActiveMDIChild).DoUndo(1,True)
+end;
+
+procedure TMainForm.RedoUpdate(Sender: TObject);
+begin
+Redo.Enabled := (MDIChildCount <> 0) and
+                        (TMDIChild(ActiveMDIChild).ChangeCount < TMDIChild(ActiveMDIChild).ChangeTop)
+end;
+
+procedure TMainForm.RedoExecute(Sender: TObject);
+begin
+if (MDIChildCount = 0) then exit;
+TMDIChild(ActiveMDIChild).DoUndo(1,False)
+end;
+
+procedure TMainForm.CheckCommandLine;
+var
+ i:integer;
+begin
+i := ParamCount;
+if i = 0 then exit;
+for i := i downto 1 do CreateMDIChild(ParamStr(i))
 end;
 
 end.
