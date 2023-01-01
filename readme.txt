@@ -1,4 +1,4 @@
-Vortex Tracker II v1.0 beta 11
+Vortex Tracker II v1.0 beta 12
 (c)2000-2005 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
@@ -55,7 +55,7 @@ one chance to save your music, if PT3 saving is not available due size
 limitations (65536 bytes).
 
 In fact, Vortex Tracker II is Win32 version of ZX Spectrum Pro Tracker 3.xx.
-The most compatible version is Pro Tracker v3.692 of Alone Coder (a.k.a. Dima
+The most compatible version is Pro Tracker v3.695 of Alone Coder (a.k.a. Dima
 Bystrov). Vortex Tracker II is fully compatible with any Pro Tracker v3.5x in
 "ProTracker 3.5" mode.
 
@@ -74,33 +74,25 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-04/23/2005:
+05/29/2005:
 
-1. Added Amadeus (Fuxoft AY Language) modules import. Both FXM and ZXAYAMAD are
-   supported. The most modules require manual editing, but sounds good and
-   without it.
+1. Fixed error in PT2 importer: memory before sample import was not clear.
 
-04/24/2005:
+06/14/2005:
 
-2. Memory for patterns/samples/ornaments are static now, i.e. you can decrease
-   and increase its length without losting last lines previous values.
-3. Fixed error: fault when trying to play empty (default) pattern by F7/F8.
-4. Patterns/samples/ornaments length can be changed during playing now.
+2. Fixed horrible mistake: if you open save or some other dialogs during playing
+   in "Loop among all opened modules" and next window start playing before you
+   will finish, dialog will work with new active window. From this version
+   all dialogs work with window, which was active during calling dialog.
+   
+09/16/2005:
 
-04/26/2005:
+3. Added import of PSC v1.00-1.03 modules.
 
-5. Maximal length of pattern is 256 lines now. To keep 2 columns line numeration
-   it is hexadecimal now.
+09/30/2005:
 
-05/01/2005:
-
-6. Undo/Redo functions are added. Try to test and send me bugreports or wishes.
-
-05/04/2005:
-
-7. Due HalfElf's request, added ability to load modules into editor from command
-   line. Several files must be divided by spaces, and filenames with spaces must
-   be placed to doublequotes.
+4. Added import of compiled PSM (Pro Sound Maker by Denis Dratov) modules. They
+   must be compiled by original (author's) compiler.
 
 Known problems
 --------------
@@ -378,7 +370,7 @@ Maximum length of title and author strings is 32 chars.
 Highligt step for pattern lines can be adjusted in pattern window. If Auto is
 on, step is autoselected from 3,4 and 5 depending of pattern length.
 
-You can load VT II modules into ZX Spectrum Pro Tracker 3.692. It can load
+You can load VT II modules into ZX Spectrum Pro Tracker 3.69x. It can load
 modules with VT II header and with *.pt3 file extension.
 
 For playing module by standard ZX Spectrum playing routine don't select song
@@ -578,6 +570,8 @@ Siril
 z00m
 Asi
 Rolemusic
+Karbofos
+Kyv
 and you ;)
 
 
@@ -592,4 +586,4 @@ somewhere in your projects, where you include all or part of the sources and
 
 Sergey Bulba
 
-24 of August 2002 - 6 of May 2005
+24 of August 2002 - 30 of September 2005

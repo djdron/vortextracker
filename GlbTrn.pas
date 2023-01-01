@@ -53,7 +53,7 @@ uses Main, Childwin, trfuncs;
 {$R *.DFM}
 
 var
-  MChld: TMDIChild;
+  CurrentWindow:TMDIChild;
   st:integer;
   stk:real;
 
@@ -64,13 +64,16 @@ end;
 
 procedure TGlbTrans.FormShow(Sender: TObject);
 begin
-MChld := TMDIChild(MainForm.ActiveMDIChild);
 if MainForm.MDIChildCount = 0 then
- Button1.Enabled := False
+ begin
+  CurrentWindow := nil;
+  Button1.Enabled := False
+ end 
 else
  begin
+  CurrentWindow := TMDIChild(MainForm.ActiveMDIChild);
   Button1.Enabled := True;
-  UpDown1.Position := MChld.PatNum
+  UpDown1.Position := CurrentWindow.PatNum
  end;
 Edit8.SelectAll;
 Edit8.SetFocus
@@ -85,14 +88,14 @@ procedure TGlbTrans.TransChn;
 var
  j:integer;
 begin
-if MChld.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note >= 0 then
+if CurrentWindow.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note >= 0 then
  begin
-  j := MChld.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note + st;
+  j := CurrentWindow.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note + st;
   if j >= 96 then
    j := 95
   else if j < 0 then
    j := 0;
-  MChld.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note := j
+  CurrentWindow.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note := j
  end
 end;
 
@@ -100,7 +103,7 @@ procedure TGlbTrans.Trans;
 var
  PLen,i:integer;
 begin
-with MChld do
+with CurrentWindow do
  begin
   if VTMP.Patterns[Pat] = nil then exit;
   SongChanged := True;
@@ -127,7 +130,7 @@ procedure TGlbTrans.Button1Click(Sender: TObject);
 var
  i:integer;
 begin
-if MainForm.MDIChildCount = 0 then exit;
+if CurrentWindow = nil then exit;
 if not CheckBox1.Checked and
    not CheckBox2.Checked and
    not CheckBox3.Checked and
@@ -139,16 +142,16 @@ if RadioButton1.Checked then
  begin
   if MessageDlg('This operation cannot be undo. Are you sure you want to continue?',mtConfirmation,[mbYes,mbNo],0) = mrYes then
    begin
-    MChld.DisposeUndo(True);
+    CurrentWindow.DisposeUndo(True);
     for i := 0 to MaxPatNum do Trans(i)
    end;
  end
 else
  begin
-  if MChld.VTMP.Patterns[UpDown1.Position] = nil then exit;
-  MChld.AddUndo(CATransposePattern,UpDown1.Position,0);
-  New(MChld.ChangeList[MChld.ChangeCount - 1].Pattern);
-  MChld.ChangeList[MChld.ChangeCount - 1].Pattern^ := MChld.VTMP.Patterns[UpDown1.Position]^;
+  if CurrentWindow.VTMP.Patterns[UpDown1.Position] = nil then exit;
+  CurrentWindow.AddUndo(CATransposePattern,UpDown1.Position,0);
+  New(CurrentWindow.ChangeList[CurrentWindow.ChangeCount - 1].Pattern);
+  CurrentWindow.ChangeList[CurrentWindow.ChangeCount - 1].Pattern^ := CurrentWindow.VTMP.Patterns[UpDown1.Position]^;
   Trans(UpDown1.Position)
  end;
 end;

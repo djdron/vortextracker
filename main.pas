@@ -28,7 +28,7 @@ const
 //Version related constants
  VersionString = '1.0';
  IsBeta = ' beta';
- BetaNumber = ' 11';
+ BetaNumber = ' 12';
 
  FullVersString:string = 'Vortex Tracker II v' + VersionString + IsBeta + BetaNumber;
  HalfVersString:string = 'Version ' + VersionString + IsBeta + BetaNumber;
@@ -168,7 +168,6 @@ type
     procedure FileSave1Update(Sender: TObject);
     procedure FileSaveAs1Execute(Sender: TObject);
     procedure FileSaveAs1Update(Sender: TObject);
-    procedure SavePT3(FileName:string;AsText:boolean);
     procedure Play1Update(Sender: TObject);
     procedure Stop1Update(Sender: TObject);
     procedure Play1Execute(Sender: TObject);
@@ -538,13 +537,40 @@ else
  end
 end;
 
+procedure SavePT3(CW:TMDIChild;FileName:string;AsText:boolean);
+var
+ PT3:TSpeccyModule;
+ Size:integer;
+ f:file;
+begin
+if not AsText then
+ begin
+  if not VTM2PT3(@PT3,CW.VTMP,Size) then
+   begin
+    Application.MessageBox('Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.',PAnsiChar(FileName));
+    exit
+   end;
+  AssignFile(f,FileName);
+  Rewrite(f,1);
+  BlockWrite(f,PT3,Size);
+  CloseFile(f)
+ end
+else
+ VTM2TextFile(FileName,CW.VTMP);
+CW.SongChanged := False;
+MainForm.AddFileName(FileName)
+end;
+
 procedure TMainForm.FileSave1Execute(Sender: TObject);
 begin
 FileSaveAs1Execute(Sender)
 end;
 
 procedure TMainForm.FileSaveAs1Execute(Sender: TObject);
+var
+ CurrentWindow:TMDIChild;
 begin
+CurrentWindow := TMDIChild(ActiveMDIChild);
 while SaveDialog1.Execute do
  begin
   if SaveDialog1.FilterIndex = 1 then
@@ -555,8 +581,8 @@ while SaveDialog1.Execute do
      (MessageDlg('File ''' + SaveDialog1.FileName + ''' exists. Overwrite?',
         mtConfirmation,[mbYes,mbNo],0) = mrYes) then
    begin
-    TMDIChild(ActiveMDIChild).Caption := SaveDialog1.FileName;
-    SavePT3(SaveDialog1.FileName,SaveDialog1.FilterIndex = 1);
+    CurrentWindow.Caption := SaveDialog1.FileName;
+    SavePT3(CurrentWindow,SaveDialog1.FileName,SaveDialog1.FilterIndex = 1);
     break
    end
  end
@@ -571,30 +597,6 @@ end;
 procedure TMainForm.FileSaveAs1Update(Sender: TObject);
 begin
 FileSaveAs1.Enabled := MDIChildCount <> 0
-end;
-
-procedure TMainForm.SavePT3;
-var
- PT3:TSpeccyModule;
- Size:integer;
- f:file;
-begin
-if not AsText then
- begin
-  if not VTM2PT3(@PT3,TMDIChild(ActiveMDIChild).VTMP,Size) then
-   begin
-    Application.MessageBox('Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.',PAnsiChar(FileName));
-    exit
-   end;
-  AssignFile(f,FileName);
-  Rewrite(f,1);
-  BlockWrite(f,PT3,Size);
-  CloseFile(f)
- end
-else
- VTM2TextFile(FileName,TMDIChild(ActiveMDIChild).VTMP);
-TMDIChild(ActiveMDIChild).SongChanged := False;
-AddFileName(FileName)
 end;
 
 procedure TMainForm.SaveDialog1TypeChange(Sender: TObject);
@@ -1377,8 +1379,10 @@ var
  Size,i:integer;
  f:file;
  p:pointer;
+ CurrentWindow:TMDIChild;
 begin
 if MDIChildCount = 0 then exit;
+CurrentWindow := TMDIChild(ActiveMDIChild);
 if SaveDialogSNDH.InitialDir = '' then
  SaveDialogSNDH.InitialDir := OpenDialog.InitialDir;
 if SaveDialogSNDH.Execute then
@@ -1386,7 +1390,7 @@ if SaveDialogSNDH.Execute then
   SaveDialogSNDH.InitialDir := ExtractFileDir(SaveDialogSNDH.FileName);
   i := FindResource(HInstance,'SNDHPLAYER','SNDH');
   p := pointer(LoadResource(HInstance,i));
-  if not VTM2PT3(@PT3,TMDIChild(ActiveMDIChild).VTMP,Size) then
+  if not VTM2PT3(@PT3,CurrentWindow.VTMP,Size) then
    begin
     Application.MessageBox('Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.',PAnsiChar(SaveDialogSNDH.FileName));
     exit
@@ -1394,7 +1398,7 @@ if SaveDialogSNDH.Execute then
   AssignFile(f,SaveDialogSNDH.FileName);
   Rewrite(f,1);
   BlockWrite(f,p^,sndhplsz);
-  with TMDIChild(ActiveMDIChild) do
+  with CurrentWindow do
    begin
     BlockWrite(f,PT3,Size);
     i := Length(VTMP.Title);
@@ -1452,12 +1456,13 @@ var
  SongStructure:TSongStructure;
  AYSongData:TSongData;
  AYPoints:TPoints;
-
+ CurrentWindow:TMDIChild;
 begin
 if MDIChildCount = 0 then exit;
-if not VTM2PT3(@PT3,TMDIChild(ActiveMDIChild).VTMP,ZXModSize) then
+CurrentWindow := TMDIChild(ActiveMDIChild);
+if not VTM2PT3(@PT3,CurrentWindow.VTMP,ZXModSize) then
  begin
-  Application.MessageBox('Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.',PAnsiChar(TMDIChild(ActiveMDIChild).Caption));
+  Application.MessageBox('Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.',PAnsiChar(CurrentWindow.Caption));
   exit
  end;
 i := FindResource(HInstance,'ZXAYPLAYER','ZXAY');
@@ -1552,9 +1557,9 @@ if SaveDialogZXAY.Execute then
       PlayerVersion := 0;
       PSpecialPlayer := 0;
       j := 8 + SizeOf(TSongStructure) + SizeOf(TSongData) + SizeOf(TPoints) +
-           Length(TMDIChild(ActiveMDIChild).VTMP.Title) + 1;
+           Length(CurrentWindow.VTMP.Title) + 1;
       PAuthor := IntelWord(j);
-      inc(j,Length(TMDIChild(ActiveMDIChild).VTMP.Author) + 1 - 2);
+      inc(j,Length(CurrentWindow.VTMP.Author) + 1 - 2);
       PMisc := IntelWord(j);
       NumOfSongs := 0;
       FirstSong := 0;
@@ -1573,10 +1578,10 @@ if SaveDialogZXAY.Execute then
       ChanB := 1;
       ChanC := 2;
       Noise := 3;
-      if TMDIChild(ActiveMDIChild).TotInts > 65535 then
+      if CurrentWindow.TotInts > 65535 then
        SongLength := 65535
       else
-       SongLength := IntelWord(TMDIChild(ActiveMDIChild).TotInts);
+       SongLength := IntelWord(CurrentWindow.TotInts);
       FadeLength := 0;
       HiReg := 0;
       LoReg := 0;
@@ -1591,8 +1596,8 @@ if SaveDialogZXAY.Execute then
       Inter := IntelWord(ZXCompAddr + 5);
       Adr1 := IntelWord(ZXCompAddr);
       Len1 := IntelWord(zxplsz);
-      j := 10 + Length(TMDIChild(ActiveMDIChild).VTMP.Title) +
-                        Length(TMDIChild(ActiveMDIChild).VTMP.Author) +
+      j := 10 + Length(CurrentWindow.VTMP.Title) +
+                        Length(CurrentWindow.VTMP.Author) +
                         Length(FullVersString) + 3;
       Offs1 := IntelWord(j);
       Adr2 := IntelWord(ZXCompAddr + zxplsz + zxdtsz);
@@ -1601,14 +1606,14 @@ if SaveDialogZXAY.Execute then
       Zero := 0
      end;
     BlockWrite(f,AYPoints,SizeOf(TPoints));
-    j := Length(TMDIChild(ActiveMDIChild).VTMP.Title);
+    j := Length(CurrentWindow.VTMP.Title);
     if j <> 0 then
-     BlockWrite(f,TMDIChild(ActiveMDIChild).VTMP.Title[1],j + 1)
+     BlockWrite(f,CurrentWindow.VTMP.Title[1],j + 1)
     else
      BlockWrite(f,j,1);
-    j := Length(TMDIChild(ActiveMDIChild).VTMP.Author);
+    j := Length(CurrentWindow.VTMP.Author);
     if j <> 0 then
-     BlockWrite(f,TMDIChild(ActiveMDIChild).VTMP.Author[1],j + 1)
+     BlockWrite(f,CurrentWindow.VTMP.Author[1],j + 1)
     else
      BlockWrite(f,j,1);
     BlockWrite(f,FullVersString[1],Length(FullVersString) + 1)

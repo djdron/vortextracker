@@ -67,6 +67,7 @@ type
     procedure SpeedButton7Click(Sender: TObject);
     procedure Transp(Pat,Lin,Chn:integer);
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     { Private declarations }
   public
@@ -82,6 +83,9 @@ uses Main, Childwin, TrFuncs;
 
 {$R *.DFM}
 
+var
+ CurrentWindow:TMDIChild;
+
 procedure TTrMng.TracksOp;
 var
  FPLen,TPLen,i,j:integer;
@@ -89,8 +93,8 @@ var
  OldPat:PPattern;
  Flg:boolean;
 begin
-if MainForm.MDIChildCount = 0 then exit;
-with TMDIChild(MainForm.ActiveMDIChild) do
+if CurrentWindow = nil then exit;
+with CurrentWindow do
  begin
   if (VTMP.Patterns[FPat] = nil) and (VTMP.Patterns[TPat] = nil) then exit;
   ValidatePattern2(FPat);
@@ -205,8 +209,8 @@ var
  OldPat:PPattern;
  Flg:boolean;
 begin
-if MainForm.MDIChildCount = 0 then exit;
-with TMDIChild(MainForm.ActiveMDIChild) do
+if CurrentWindow = nil then exit;
+with CurrentWindow do
  begin
   if VTMP.Patterns[Pat] = nil then exit;
   st := TrMng.UpDown8.Position; if st = 0 then exit;
@@ -258,6 +262,14 @@ UpDown5.Max := MaxPatLen;
 UpDown5.Position := MaxPatLen;
 UpDown2.Max := MaxPatLen - 1;
 UpDown4.Max := MaxPatLen - 1
+end;
+
+procedure TTrMng.FormShow(Sender: TObject);
+begin
+if MainForm.MDIChildCount = 0 then
+ CurrentWindow := nil
+else
+ CurrentWindow := TMDIChild(MainForm.ActiveMDIChild);
 end;
 
 end.

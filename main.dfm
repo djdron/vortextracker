@@ -394,14 +394,15 @@ object MainForm: TMainForm
     DefaultExt = 'PT3'
     Filter = 
       'All supported files|*.txt;*.pt3;*.pt2;*.stc;*.stp;*.sqt;*.asc;*.' +
-      'psc;*.fls;*.pt1;*.gtr;*.ftc;*.fxm;*.ay|Pro Tracker 3.xx files (P' +
-      'T3)|*.pt3|Pro Tracker 2.xx files (PT2)|*.pt2|Sound Tracker 1.x c' +
-      'ompiled files (STC)|*.stc|Sound Tracker Pro compiled files (STP)' +
-      '|*.stp|SQ-Tracker compiled files (SQT)|*.sqt|ASC Sound Master co' +
-      'mpiled files (ASC)|*.asc|Pro Sound Creator files (PSC)|*.psc|Fla' +
-      'sh Tracker files (FLS)|*.fls|Pro Tracker 1.xx files (PT1)|*.pt1|' +
-      'Global Tracker 1.x (GTR)|*.gtr|Fast Tracker (FTC)|*.ftc|Fuxoft'#39's' +
-      ' AY Language (FXM, AY AMAD)|*.fxm;*.ay'
+      'psc;*.fls;*.pt1;*.gtr;*.ftc;*.fxm;*.ay;*.psm|Pro Tracker 3.xx fi' +
+      'les (PT3)|*.pt3|Pro Tracker 2.xx files (PT2)|*.pt2|Sound Tracker' +
+      ' 1.x compiled files (STC)|*.stc|Sound Tracker Pro compiled files' +
+      ' (STP)|*.stp|SQ-Tracker compiled files (SQT)|*.sqt|ASC Sound Mas' +
+      'ter compiled files (ASC)|*.asc|Pro Sound Creator files (PSC)|*.p' +
+      'sc|Flash Tracker files (FLS)|*.fls|Pro Tracker 1.xx files (PT1)|' +
+      '*.pt1|Global Tracker 1.x (GTR)|*.gtr|Fast Tracker (FTC)|*.ftc|Fu' +
+      'xoft'#39's AY Language (FXM, AY AMAD)|*.fxm;*.ay|Pro Sound Maker fil' +
+      'es (PSM)|*.psm'
     Options = [ofHideReadOnly, ofAllowMultiSelect, ofPathMustExist, ofEnableSizing]
     Title = 'Open module(s):'
     Left = 8
