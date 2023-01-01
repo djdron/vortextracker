@@ -551,7 +551,7 @@ object Form1: TForm1
           Width = 177
           Height = 21
           Style = csDropDownList
-          ItemHeight = 13
+          ItemHeight = 0
           TabOrder = 2
           Visible = False
           OnChange = ComboBox1Change

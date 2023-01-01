@@ -1,6 +1,6 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2006 S.V.Bulba
+(c)2000-2007 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/
@@ -24,6 +24,7 @@ type
     Comments: TLabel;
     Label1: TLabel;
     Label3: TLabel;
+    Label2: TLabel;
     procedure FormCreate(Sender: TObject);
   private
     { Private declarations }

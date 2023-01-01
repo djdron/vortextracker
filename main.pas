@@ -1,6 +1,6 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2006 S.V.Bulba
+(c)2000-2007 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/
@@ -28,7 +28,7 @@ const
 //Version related constants
  VersionString = '1.0';
  IsBeta = ' beta';
- BetaNumber = ' 14';
+ BetaNumber = ' 15';
 
  FullVersString:string = 'Vortex Tracker II v' + VersionString + IsBeta + BetaNumber;
  HalfVersString:string = 'Version ' + VersionString + IsBeta + BetaNumber;
@@ -39,6 +39,7 @@ const
  MyRegPath3:string = VersionString + IsBeta;
 
 type
+  TChansArrayBool = array [0..2] of boolean;
   ERegistryError = class(Exception);
   TMainForm = class(TForm)
     MainMenu1: TMainMenu;
@@ -157,6 +158,33 @@ type
     Redo1: TMenuItem;
     ToolButton25: TToolButton;
     ComboBox1: TComboBox;
+    TransposeUp1: TAction;
+    TransposeDown1: TAction;
+    TransposeUp12: TAction;
+    TransposeDown12: TAction;
+    PopupMenu2: TPopupMenu;
+    ranspose11: TMenuItem;
+    ranspose12: TMenuItem;
+    ranspose121: TMenuItem;
+    ranspose122: TMenuItem;
+    N5: TMenuItem;
+    Undo2: TMenuItem;
+    Redo2: TMenuItem;
+    N6: TMenuItem;
+    Copy1: TMenuItem;
+    Cut1: TMenuItem;
+    Paste1: TMenuItem;
+    N7: TMenuItem;
+    ToolButton26: TToolButton;
+    ToolButton27: TToolButton;
+    ToolButton28: TToolButton;
+    PopupMenu3: TPopupMenu;
+    File2: TMenuItem;
+    Clipboard1: TMenuItem;
+    UndoRedo1: TMenuItem;
+    Window2: TMenuItem;
+    Play5: TMenuItem;
+    rack1: TMenuItem;
     procedure FileNew1Execute(Sender: TObject);
     procedure FileOpen1Execute(Sender: TObject);
     procedure HelpAbout1Execute(Sender: TObject);
@@ -234,13 +262,26 @@ type
     procedure SavePT3(CW:TMDIChild;FileName:string;AsText:boolean);
     function AllowSave(fn:string):boolean;
     procedure RedrawPlWindow(PW:TMDIChild;ps,pat,line:integer);
+    procedure TransposeChannel(WorkWin:TMDIChild;Pat,Chn,i,Semitones:integer);
+    procedure TransposeColumns(WorkWin:TMDIChild;Pat:integer;Env:boolean;Chans:TChansArrayBool;LFrom,LTo,Semitones:integer;MakeUndo:boolean);
+    procedure TransposeSelection(Semitones:integer);
+    procedure TransposeUp1Update(Sender: TObject);
+    procedure TransposeDown1Update(Sender: TObject);
+    procedure TransposeUp12Update(Sender: TObject);
+    procedure TransposeDown12Update(Sender: TObject);
+    procedure TransposeUp1Execute(Sender: TObject);
+    procedure TransposeDown1Execute(Sender: TObject);
+    procedure TransposeUp12Execute(Sender: TObject);
+    procedure TransposeDown12Execute(Sender: TObject);
+    procedure PopupMenu3Click(Sender: TObject);
+    procedure SetBar(BarNum:integer;Value:boolean);
   private
     { Private declarations }
     procedure CreateMDIChild(const Name: string);
   public
     { Public declarations }
     NewTrack_NumberOfLines:integer;
-    NewTrack_Font:TFont;
+    NewTrack_Font,NewSample_Font:TFont;
     RecentFiles:array[0..5] of string;
     NoteKeys:array[0..255] of shortint;
     ChanAlloc:TChansArray;
@@ -288,6 +329,7 @@ end;
 procedure TMainForm.CreateMDIChild(const Name: string);
 var
   Child: TMDIChild;
+  Ok:boolean;
 begin
   Inc(WinCount);
   { create a new MDI child window }
@@ -295,8 +337,10 @@ begin
   Child.WinNumber := WinCount;
   Child.Caption := IntToStr(WinCount) + ': new module';
   ComboBox1.AddItem(Child.Caption,Child);
+  Ok := True;
   if (Name <> '') and FileExists(Name) then
-   Child.LoadTrackerModule(Name);
+   Ok := Child.LoadTrackerModule(Name);
+  if Ok then Caption := Child.Caption + ' - Vortex Tracker II';
 end;
 
 procedure TMainForm.FileNew1Execute(Sender: TObject);
@@ -399,6 +443,9 @@ NewTrack_NumberOfLines := NewTrack_NumberOfLinesDef;
 NewTrack_Font := TFont.Create;
 NewTrack_Font.Name := 'Courier';
 NewTrack_Font.Size := 12;
+NewSample_Font := TFont.Create;
+NewSample_Font.Name := 'Courier';
+NewSample_Font.Size := 10;
 LoopAllowed := False;
 LoopAllAllowed := False;
 GlobalVolume := TrackBar1.Position;
@@ -1115,7 +1162,7 @@ begin
 if ComboBox1.ItemIndex > 0 then
  begin
   PlayingWindow[2] := TMDIChild(ComboBox1.Items.Objects[ComboBox1.ItemIndex]);
-  if PlayingWindow[1] <> PlayingWindow[2] then
+  if (PlayingWindow[1] <> PlayingWindow[2]) and (PlayingWindow[2].VTMP.Positions.Length <> 0) then
    begin
     NumberOfSoundChips := 2;
     PlayingWindow[2].Edit2.Enabled := False;
@@ -1230,12 +1277,12 @@ end;
 
 procedure TMainForm.Tracksmanager1Click(Sender: TObject);
 begin
-TrMng.ShowModal
+TrMng.Visible := not TrMng.Visible;
 end;
 
 procedure TMainForm.Globaltransposition1Click(Sender: TObject);
 begin
-GlbTrans.ShowModal
+GlbTrans.Visible := not GlbTrans.Visible; 
 end;
 
 procedure TMainForm.TrackBar1Change(Sender: TObject);
@@ -1316,6 +1363,16 @@ try
  SaveDW('NewTrack_FontUnderline',Ord(fsUnderline in NewTrack_Font.Style));
  SaveDW('NewTrack_FontStrikeOut',Ord(fsStrikeOut in NewTrack_Font.Style));
  SaveDW('WindowMaximized',Ord(WindowState = wsMaximized));
+
+ //Specially for Znahar
+ if WindowState <> wsMaximized then
+  begin
+   SaveDW('WindowX',Left);
+   SaveDW('WindowY',Top);
+   SaveDW('WindowWidth',Width);
+   SaveDW('WindowHeight',Height);
+  end;
+  
  SaveDW('Filtering',Ord(IsFilt));
  SaveDW('FilterQ',Filt_M);
  SaveDW('TrkClBk',TrkClBk);
@@ -1323,6 +1380,11 @@ try
  SaveDW('TrkClHlBk',TrkClHlBk);
  SaveDW('TrkClSelBk',TrkClSelBk);
  SaveDW('TrkClSelTxt',TrkClSelTxt);
+
+ //specially for Znahar
+ for i := 0 to 5 do
+  SaveDW(PChar('ToolBar' + IntToStr(i)),Ord(PopupMenu3.Items[i].Checked));
+
 finally
  RegCloseKey(subKeyHnd1)
 end
@@ -1445,6 +1507,16 @@ if RegOpenKeyEx(HKEY_LOCAL_MACHINE,PChar(MyRegPath),0,
   if GetDW('WindowMaximized',v) then
    if v <> 0 then
     WindowState := wsMaximized;
+
+  //Specially for Znahar
+  if WindowState <> wsMaximized then
+   begin
+    if GetDW('WindowX',v) then Left := v;
+    if GetDW('WindowY',v) then Top := v;
+    if GetDW('WindowWidth',v) then Width := v;
+    if GetDW('WindowHeight',v) then Height := v;
+   end;
+
   if GetDW('Filtering',v) then
    SetFilter(v <> 0,Filt_M);
   if GetDW('FilterQ',v) then
@@ -1459,6 +1531,10 @@ if RegOpenKeyEx(HKEY_LOCAL_MACHINE,PChar(MyRegPath),0,
    TrkClSelBk := v;
   if GetDW('TrkClSelTxt',v) then
    TrkClSelTxt := v;
+  //specially for Znahar
+  for i := 0 to 5 do
+   if GetDW(PChar('ToolBar' + IntToStr(i)),v) then
+    SetBar(i,v <> 0);
   RegCloseKey(subKeyHnd1)
  end
 end;
@@ -2042,7 +2118,6 @@ begin
 if (MDIChildCount = 0) then exit;
 TMDIChild(ActiveMDIChild).DoUndo(1,False)
 end;
-
 procedure TMainForm.CheckCommandLine;
 var
  i:integer;
@@ -2057,6 +2132,218 @@ begin
 Result := not FileExists(fn) or
  (MessageDlg('File ''' + fn + ''' exists. Overwrite?',
         mtConfirmation,[mbYes,mbNo],0) = mrYes)
+end;
+
+procedure TMainForm.TransposeChannel(WorkWin:TMDIChild;Pat,Chn,i,Semitones:integer);
+var
+ j:integer;
+begin
+if WorkWin.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note >= 0 then
+ begin
+  j := WorkWin.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note + Semitones;
+  if (j >= 96) or (j < 0) then exit;
+  WorkWin.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note := j
+ end
+end;
+
+procedure TMainForm.TransposeColumns(WorkWin:TMDIChild;Pat:integer;Env:boolean;Chans:TChansArrayBool;LFrom,LTo,Semitones:integer;MakeUndo:boolean);
+var
+ stk:real;
+ i,e,PLen:integer;
+ f:boolean;
+ OldPat:PPattern;
+begin
+if Semitones = 0 then exit;
+with WorkWin do
+ begin
+  if VTMP.Patterns[Pat] = nil then exit;
+  f := Env or Chans[0] or Chans[1] or Chans[2];
+  if not f then exit;
+  PLen := VTMP.Patterns[Pat].Length;
+  if LTo >= PLen then LTo := PLen - 1;
+  if LFrom > LTo then exit;
+  SongChanged := True;
+  if MakeUndo then
+   begin
+    New(OldPat); OldPat^ := VTMP.Patterns[Pat]^;
+   end;
+  if Chans[0] then
+   for i := LFrom to LTo do
+    TransposeChannel(WorkWin,Pat,0,i,Semitones);
+  if Chans[1] then
+   for i := LFrom to LTo do
+    TransposeChannel(WorkWin,Pat,1,i,Semitones);
+  if Chans[2] then
+   for i := LFrom to LTo do
+    TransposeChannel(WorkWin,Pat,2,i,Semitones);
+  if Env then
+   begin
+    stk := exp(-Semitones / 12 * ln(2));
+    for i := LFrom to LTo do
+     begin
+      e := VTMP.Patterns[Pat].Items[i].Envelope; //if e = 0 then e := 1;
+      e := round(e * stk);
+//      if (e = 1) and (VTMP.Patterns[Pat].Items[i].Envelope = 0) then e := 0;
+      if (e >= 0) and (e < $10000) then VTMP.Patterns[Pat].Items[i].Envelope := e;
+     end;
+   end;
+  if MakeUndo then
+   begin
+    AddUndo(CATransposePattern,Pat,0);
+    ChangeList[ChangeCount - 1].Pattern := OldPat
+   end; 
+  if PatNum = Pat then
+   begin
+    if Tracks.Focused then HideCaret(Tracks.Handle);
+    Tracks.RedrawTracks(0);
+    if Tracks.Focused then ShowCaret(Tracks.Handle);
+   end;
+ end;
+end;
+
+procedure TMainForm.TransposeSelection(Semitones:integer);
+var
+ X1,X2,Y1,Y2:integer;
+ Chans:TChansArrayBool;
+begin
+if Semitones = 0 then exit;
+if MDIChildCount = 0 then exit;
+with TMDIChild(ActiveMDIChild).Tracks do
+ begin
+  X2 := CursorX;
+  X1 := SelX;
+  if X1 > X2 then
+   begin
+    X1 := X2;
+    X2 := SelX
+   end;
+  Y1 := SelY;
+  Y2 := ShownFrom - N1OfLines + CursorY;
+  if Y1 > Y2 then
+   begin
+    Y1 := Y2;
+    Y2 := SelY
+   end;
+  Chans[ChanAlloc[0]] := (X1 <= 8) and (X2 >= 8);
+  Chans[ChanAlloc[1]] := (X1 <= 22) and (X2 >= 22);
+  Chans[ChanAlloc[2]] := (X1 <= 36) and (X2 >= 36);
+  TransposeColumns(TMDIChild(ActiveMDIChild),TMDIChild(ActiveMDIChild).PatNum,
+                   X1 <= 3,Chans,Y1,Y2,Semitones,True);
+ end;
+end;
+
+procedure TMainForm.TransposeUp1Update(Sender: TObject);
+begin
+TransposeUp1.Enabled := (MDIChildCount <> 0) and
+                        TMDIChild(ActiveMDIChild).Tracks.Focused;
+end;
+
+procedure TMainForm.TransposeDown1Update(Sender: TObject);
+begin
+TransposeDown1.Enabled := (MDIChildCount <> 0) and
+                        TMDIChild(ActiveMDIChild).Tracks.Focused;
+end;
+
+procedure TMainForm.TransposeUp12Update(Sender: TObject);
+begin
+TransposeUp12.Enabled := (MDIChildCount <> 0) and
+                        TMDIChild(ActiveMDIChild).Tracks.Focused;
+end;
+
+procedure TMainForm.TransposeDown12Update(Sender: TObject);
+begin
+TransposeDown12.Enabled := (MDIChildCount <> 0) and
+                        TMDIChild(ActiveMDIChild).Tracks.Focused;
+end;
+
+procedure TMainForm.TransposeUp1Execute(Sender: TObject);
+begin
+TransposeSelection(1);
+end;
+
+procedure TMainForm.TransposeDown1Execute(Sender: TObject);
+begin
+TransposeSelection(-1);
+end;
+
+procedure TMainForm.TransposeUp12Execute(Sender: TObject);
+begin
+TransposeSelection(12);
+end;
+
+procedure TMainForm.TransposeDown12Execute(Sender: TObject);
+begin
+TransposeSelection(-12);
+end;
+
+//specially for Znahar
+procedure TMainForm.SetBar;
+begin
+PopupMenu3.Items[BarNum].Checked := Value;
+case BarNum of
+0:
+ begin
+  ToolButton9.Visible := Value;
+  ToolButton1.Visible := Value;
+  ToolButton2.Visible := Value;
+  ToolButton3.Visible := Value;
+ end;
+1:
+ begin
+  ToolButton4.Visible := Value;
+  ToolButton5.Visible := Value;
+  ToolButton6.Visible := Value;
+  ToolButton7.Visible := Value;
+ end;
+2:
+ begin
+  ToolButton23.Visible := Value;
+  ToolButton24.Visible := Value;
+  ToolButton22.Visible := Value;
+ end;
+3:
+ begin
+  ToolButton8.Visible := Value;
+  ToolButton10.Visible := Value;
+  ToolButton11.Visible := Value;
+  ToolButton12.Visible := Value;
+ end;
+4:
+ begin
+  ToolButton14.Visible := Value;
+  ToolButton18.Visible := Value;
+  ToolButton13.Visible := Value;
+  ToolButton20.Visible := Value;
+  ToolButton21.Visible := Value;
+  ToolButton15.Visible := Value;
+  ToolButton17.Visible := Value;
+  ToolButton16.Visible := Value;
+ end;
+5:
+ begin
+  ToolButton26.Visible := Value;
+  ToolButton27.Visible := Value;
+  ToolButton28.Visible := Value;
+ end;
+{6:
+ begin
+  SpeedButton1.Visible := Value;
+  SpeedButton2.Visible := Value;
+  ToolButton19.Visible := Value;
+ end;
+7:
+ begin
+  TrackBar1.Visible := Value;
+  ToolButton25.Visible := Value;
+ end;
+8:
+ ComboBox1.Visible := Value;}
+end;
+end;
+
+procedure TMainForm.PopupMenu3Click(Sender: TObject);
+begin
+SetBar((Sender as TMenuItem).Tag, not (Sender as TMenuItem).Checked);
 end;
 
 end.

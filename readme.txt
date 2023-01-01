@@ -1,5 +1,5 @@
-Vortex Tracker II v1.0 beta 14
-(c)2000-2006 S.V.Bulba
+Vortex Tracker II v1.0 beta 15
+(c)2000-2007 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/
@@ -36,7 +36,6 @@ Vortex Tracker II can import ZX Spectrum music files (modules) of next types:
  11) compiled Sound Tracker Pro modules (*.stp);
  12) compiled SQ-Tracker modules (*.sqt);
  13) Amadeus (Fuxoft AY Language) modules (*.fxm, *.ay).
-
 
 VT II detects module type only by filename extension (mask), and no any
 additional checks are performed. These extensions are used in well-known player
@@ -75,22 +74,39 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-10/01/2006:
+03/04/2007:
 
-1. Window for 2nd chip is autoselected during changing module window. No need to
-   select it manually now (if you are editing only two modules in TS mode, of
-   course).
-2. During playing in TS mode tracks moving of both windows are sinchronized now.
-3. During editing in TS mode tracks and cursors of both windows are sinchronized
-   too.
-4. In TS mode cursor moving to the maximum right or left position of tracks
-   editor will activate window of 2nd chip in same position of tracks editor.
-5. "Play from position" function (F5) works from current cursor position now.
+1. Module window is redesigned for more comfortable editing in TS mode (thanks
+   to Znahar for ideas and help).
+2. No need to close Tracks Manager window now, it stays on top and works with
+   current module, which name is duplicated in main window title (specially for
+   (Znahar).
 
-10/03/2006:
+03/08/2007:
 
-6. Fixed bug: envelope period changed in AutoEnv mode was not added to the undo
-   list (thanks to Karbofos for bug-report).
+3. Selected track area can be transposed by calling pop-up menu or from keyboard
+   (Num +, Num -, Ctrl+Num +, Ctrl+Num - (+-semiton/+-octave). New function
+   works with notes and envelope track.
+4. Fixed error: after using AutoStep current time was not updated.
+5. AutoStep works after pasting from clipboard now (specially for TAD).
+6. Fixed error: trying to start playing of just created (empty) module in TS
+   mode rised error message (thanks to Znahar for bug-report).
+7. AutoStep can be used with insert/delete/clear track/pattern line. Can be
+   useful for increasing/decreasing pattern size twice (thanks to TAD for idea).
+8. Fixed error: the most Undo/Redo operations not updated module duration info.
+9. Fixed error: after insert/delete/clear track/pattern line module duration and
+   current time info was not updated.
+
+03/10/2007:
+
+10. Some Znahar's ideas was added: Global Transposition window can be always
+    opened; the most buttons of tools panel can be removed via pop-up menu; size
+    and position of main window is saved during closing.
+11. Fixed error: if envelopes in channel is disabled in Editor Controls, you can
+    hear tone and noise if they enabled in sample now (thanks to TAD for bug-
+    report and test module).
+12. You can input -96 and +96 numbers in ornament editor (works like 95, but -96
+    is used in many PT3-modules from ZX Spectrum). Thanks to TAD for info.
 
 Known problems
 --------------
@@ -190,7 +206,7 @@ and position list editors.
 6.2. Ctrl+I - insert empty pattern line (with moving).
 
 
-7. Working with Windows Clipboard
+7. Working with selection
 
 7.1. Ctrl+C, Ctrl+Insert - copy selection to clipbord.
 
@@ -199,6 +215,10 @@ and position list editors.
 7.3. Ctrl+V, Shift+Insert - inserting from clipboard (to right and to down from
 cursor or from upper left corner of selection). In case of selection is defined,
 insertion not exceeds its bounds.
+
+7.4. Num + and Num - - transpose 1 semiton up and down.
+
+7.5. Ctrl+Num + and Ctrl+Num - - transpose 1 octave up and down.
 
 8. Test playing of pattern's part
 
@@ -213,6 +233,8 @@ is pushed. If any looping is on, pattern will be playing ciclically,
 
 9.2. Space - on/off Auto Step.
 
+Right mouse button can call pop-up menu, which duplicates some key combinations
+(useful if you are using keyboard without Numpad, like in notebooks).
 
  Common keys
  ~~~~~~~~~~~
@@ -269,6 +291,7 @@ backward).
 
 4.7. Alt+BackSpace - undo last change.
 
+4.8. Alt+Enter - redo last change.
 
  Positions list editor keys
  ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -524,7 +547,6 @@ transpose one or more tracks of whole module or of selected pattern. This
 dialog allows avoid multiple using of Tracks manager. Adjusting and using same
 as in Tracks manager.
 
-
 Menu Files->Save and Files->Save as...
 --------------------------------------
 
@@ -532,7 +554,6 @@ In appeared save dialog select in dropdown list file type for saving module:
 either work text format (TXT) or Pro Tracker 3 (PT3) for final compilation.
 During saving PT3 format, VT II removes all not used samples, ornaments and
 patterns.
-
 
 Menu Files->Exports->Save in SNDH (Atari ST)
 --------------------------------------------
@@ -578,6 +599,8 @@ Thanks to
 - HalfElf for using in xLook Far Manager plug-in.
 - Karbofos for testing, suggestions and test modules.
 - Ch41ns4w for wishes about TS-mode.
+- Znahar for another branch of VT II with good ideas.
+- TAD for sugestions, bug-reports and test modules.
 
 Thanks to musicians using VT II:
 Shiru Otaku
@@ -592,8 +615,10 @@ Karbofos
 Kyv
 Ch41ns4w
 Ryurik
+Gibson
+TAD
+Znahar
 and you ;)
-
 
 Distribution
 ------------
@@ -606,4 +631,4 @@ somewhere in your projects, where you include all or part of the sources and
 
 Sergey Bulba
 
-24 of August 2002 - 3 of October 2006
+24 of August 2002 - 10 of March 2007

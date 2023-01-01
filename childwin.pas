@@ -1,6 +1,6 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2006 S.V.Bulba
+(c)2000-2007 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/
@@ -187,8 +187,6 @@ type
     OptTab: TTabSheet;
     Vtm3xxxGrp: TRadioGroup;
     SaveHead: TRadioGroup;
-    Label6: TLabel;
-    Label7: TLabel;
     Label8: TLabel;
     Edit5: TEdit;
     UpDown6: TUpDown;
@@ -208,18 +206,10 @@ type
     Label17: TLabel;
     Label18: TLabel;
     Label19: TLabel;
-    GroupBox3: TGroupBox;
-    Label20: TLabel;
-    Label21: TLabel;
-    Label22: TLabel;
-    Label23: TLabel;
-    Label24: TLabel;
-    Label25: TLabel;
     ListBox1: TListBox;
     SpeedButton13: TSpeedButton;
     SpeedButton14: TSpeedButton;
     Label26: TLabel;
-    Label27: TLabel;
     Edit11: TEdit;
     Edit12: TEdit;
     UpDown9: TUpDown;
@@ -269,9 +259,15 @@ type
     Edit17: TEdit;
     UpDown15: TUpDown;
     Label41: TLabel;
+    Label25: TLabel;
+    Label22: TLabel;
+    Label20: TLabel;
+    Label24: TLabel;
+    Label23: TLabel;
+    Label21: TLabel;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormCreate(Sender: TObject);
-    procedure TracksMoveCursorMouse(X,Y:integer;Sel,Mv:boolean);
+    procedure TracksMoveCursorMouse(X,Y:integer;Sel,Mv,ButRight:boolean);
     procedure TracksKeyDown(Sender: TObject; var Key: Word;
      Shift: TShiftState);
     procedure SamplesKeyDown(Sender: TObject; var Key: Word;
@@ -285,7 +281,7 @@ type
     procedure OrnamentsMouseDown(Sender: TObject; Button: TMouseButton;
      Shift: TShiftState; X, Y: Integer);
     procedure FormDestroy(Sender: TObject);
-    procedure LoadTrackerModule(Name:string);
+    function LoadTrackerModule(Name:string):boolean;
     procedure TracksMouseWheelDown(Sender: TObject; Shift: TShiftState;
       MousePos: TPoint; var Handled: Boolean);
     procedure TracksMouseWheelUp(Sender: TObject; Shift: TShiftState;
@@ -411,7 +407,7 @@ type
       Shift: TShiftState);
     procedure TracksExit(Sender: TObject);
     procedure Edit14Exit(Sender: TObject);
-    procedure DoStep(i:integer);
+    function DoStep(i:integer):boolean;
     procedure SpeedButton20Click(Sender: TObject);
     procedure SpeedButton19Click(Sender: TObject);
     procedure LoadOrnament(FN:string);
@@ -514,6 +510,7 @@ for i := 1 to MainForm.ComboBox1.Items.Count - 1 do
    MainForm.ComboBox1.Items.Delete(i);
    break
   end;
+MainForm.Caption := 'Vortex Tracker II';
 Action := caFree
 end;
 
@@ -583,6 +580,7 @@ begin
   StringGrid1.Cells[i,0] := '...';
  CreateTracks;
  Tracks.TabOrder := 0;
+ Tracks.PopupMenu := MainForm.PopupMenu2;
  CreateSamples;
  CreateOrnaments;
  CreateTestLines;
@@ -591,35 +589,42 @@ begin
  Ornaments.TabOrder := 0;
  OrnamentTestLine.TabOrder := 6;
  i := Samples.Left * 2 + Samples.Width;
- SpeedButton13.Left := i;
- SpeedButton14.Left := i;
- SpeedButton23.Left := i;
  SpeedButton25.Left := i;
  SpeedButton24.Left := i;
+ GroupBox2.Left := i;
  GroupBox6.Left := i + SpeedButton24.Width + Samples.Left;
- inc(i,Samples.Left + SpeedButton13.Width);
- Label27.Left := i;
- ListBox1.Left := i;
- i := Label27.Top;
- j := Label27.Height + 4;
- Dec(j,j mod Samples.CelH);
- ListBox1.Top := i + j;
- ListBox1.Height := Samples.Height + Samples.Top - i - j;
- ListBox1.Width := Samples.CelW * 22;
+ ListBox1.Width := Samples.CelW * 22 + GetSystemMetrics(SM_CXVSCROLL);
+ ListBox1.ClientHeight := Samples.CelH * 4;
  ListBox1.Font := Samples.Font;
  for i := 0 to Length(MainForm.SampleLineTemplates) - 1 do
   ListBox1.Items.Add(GetSampleString(MainForm.SampleLineTemplates[i],False,True));
  ListBox1.ItemIndex := MainForm.CurrentSampleLineTemplate;
- i := ListBox1.Left + ListBox1.Width - Tracks.Left;
- if i < StringGrid1.Width then
-  i := StringGrid1.Width;
- PageControl1.ClientWidth := i + (Tracks.Left + PatternsSheet.Left) * 2;
+
+ i := ListBox1.Left + ListBox1.Width + 4;
+ SpeedButton13.Left := i;
+ SpeedButton14.Left := i + SpeedButton13.Width;
+ SpeedButton23.Left := SpeedButton14.Left + SpeedButton14.Width;
+
+ i := Edit4.Width + Edit4.Left + Edit3.Left;
+ j := Tracks.Width + Tracks.Left * 2;
+ if i < j then i := j;
+ PageControl1.ClientWidth := i + PatternsSheet.Left * 2;
  i := Tracks.Top + Tracks.Height;
- j := Samples.Top + Samples.Height;
+ j := Ornaments.Top + Ornaments.Height;
  if i < j then i := j;
  PageControl1.ClientHeight := i + Tracks.Left + PatternsSheet.Top + 4;
+
+ ListBox1.Top := i - ListBox1.Height;
+ SpeedButton13.Top := ListBox1.Top;
+ SpeedButton14.Top := ListBox1.Top;
+ SpeedButton23.Top := ListBox1.Top;
+
+ Samples.NOfLines := (ListBox1.Top - Samples.Top - 4 - 4) div Samples.CelH;
+ Samples.ClientHeight := Samples.CelH * Samples.NOfLines;
+
  ClientWidth := PageControl1.Width;
  ClientHeight := PageControl1.Height;
+
  i := MainForm.ClientHeight - MainForm.StatusBar.Height -
                                         MainForm.ToolBar2.Height - 4;
  if (Top <> 0) and (Top + Height  > i) then
@@ -777,7 +782,6 @@ begin
  SampleTestLine.Top := UpDown7.Top;
  SampleTestLine.ClientWidth := SampleTestLine.CelW * 21;
  SampleTestLine.ClientHeight := SampleTestLine.CelH;
- GroupBox2.Left := SampleTestLine.Left + SampleTestLine.Width + 7;
  SampleTestLine.OnKeyDown := SampleTestLine.TestLineKeyDown;
  SampleTestLine.OnKeyUp := SampleTestLine.TestLineKeyUp;
  SampleTestLine.OnExit := SampleTestLine.TestLineExit;
@@ -797,7 +801,6 @@ begin
  OrnamentTestLine.Top := UpDown7.Top;
  OrnamentTestLine.ClientWidth := OrnamentTestLine.CelW * 21;
  OrnamentTestLine.ClientHeight := OrnamentTestLine.CelH;
- GroupBox4.Left := OrnamentTestLine.Left + OrnamentTestLine.Width + 7;
  OrnamentTestLine.OnKeyDown := OrnamentTestLine.TestLineKeyDown;
  OrnamentTestLine.OnKeyUp := OrnamentTestLine.TestLineKeyUp;
  OrnamentTestLine.OnExit := OrnamentTestLine.TestLineExit;
@@ -813,7 +816,7 @@ begin
   ParentColor := False;
   BevelKind := bkTile;
   BevelInner := bvLowered;
-  Font := MainForm.NewTrack_Font;
+  Font := MainForm.NewSample_Font;
   NOfLines := 16;
   CursorX := 0;
   CursorY := 0;
@@ -881,6 +884,7 @@ Ornaments.Top := Edit5.Left + Edit5.Top + Edit5.Height;
 Ornaments.ClientWidth := Ornaments.CelW * 4 * 7;
 Ornaments.ClientHeight := Ornaments.CelH * 16;
 i := Ornaments.Left * 2 + Ornaments.Width;
+GroupBox4.Left := i;
 SpeedButton19.Left := i;
 SpeedButton20.Left := i;
 SpeedButton21.Left := i;
@@ -1057,7 +1061,7 @@ if ShownPattern = nil then
  SelY := DefPatLen - 1
 else
  SelY := ShownPattern.Length - 1;
-SelX := 48; 
+SelX := 48;
 HideCaret(Handle);
 RedrawTracks(0);
 SetCaretPos(CelW * (3 + CursorX),
@@ -1686,7 +1690,7 @@ procedure TMDIChild.TracksKeyDown(Sender: TObject; var Key: Word;
     ChangeNote(PatNum,i,j,Note);
     DoAutoEnv(PatNum,i,j);
     HideCaret(Tracks.Handle);
-    DoStep(i);
+    if DoStep(i) then ShowStat;
     Tracks.RedrawTracks(0);
     ShowCaret(Tracks.Handle);
     RestartPlayingLine(i)
@@ -1720,7 +1724,7 @@ procedure TMDIChild.TracksKeyDown(Sender: TObject; var Key: Word;
     if Tracks.CursorX in [13,27,41] then DoAutoEnv(PatNum,i,c);
     HideCaret(Tracks.Handle);
 //    if Tracks.CursorX in [12,15,26,29,40,43] then //comment -> step in any col
-     DoStep(i);
+     if DoStep(i) then ShowStat;
     Tracks.RedrawTracks(0);
     ShowCaret(Tracks.Handle);
     RestartPlayingLine(i)
@@ -1944,6 +1948,8 @@ procedure TMDIChild.TracksKeyDown(Sender: TObject; var Key: Word;
           Tracks.ShownPattern.Items[j - 1].Channel[c];
         Tracks.ShownPattern.Items[i].Channel[c] := EmptyChannelLine
        end;
+      CalcTotLen;
+      if DoStep(i) then ShowStat;
       RedrawTrs;
       ChangeList[ChangeCount - 1].NewParams.prm.PatternCursorY := Tracks.CursorY;
       ChangeList[ChangeCount - 1].NewParams.prm.PatternShownFrom := Tracks.ShownFrom
@@ -1989,6 +1995,8 @@ procedure TMDIChild.TracksKeyDown(Sender: TObject; var Key: Word;
           Tracks.ShownPattern.Items[j].Channel[c];
         Tracks.ShownPattern.Items[MaxPatLen - 1].Channel[c] := EmptyChannelLine
        end;
+      CalcTotLen;
+      if DoStep(i) then ShowStat;
       RedrawTrs;
       ChangeList[ChangeCount - 1].NewParams.prm.PatternCursorY := Tracks.CursorY;
       ChangeList[ChangeCount - 1].NewParams.prm.PatternShownFrom := Tracks.ShownFrom
@@ -2019,6 +2027,8 @@ procedure TMDIChild.TracksKeyDown(Sender: TObject; var Key: Word;
        Tracks.ShownPattern.Items[i].Noise := 0;
       for c := 0 to 2 do if T[c] then
        Tracks.ShownPattern.Items[i].Channel[c] := EmptyChannelLine;
+      CalcTotLen;
+      if DoStep(i) then ShowStat;
       RedrawTrs;
       ChangeList[ChangeCount - 1].NewParams.prm.PatternCursorY := Tracks.CursorY;
       ChangeList[ChangeCount - 1].NewParams.prm.PatternShownFrom := Tracks.ShownFrom
@@ -3005,7 +3015,7 @@ type
   nm:integer;
  begin
   nm := Ornaments.InputONumber * 10 + n;
-  if nm > 95 then
+  if nm > 96 then
    nm := n;
   Ornaments.InputONumber := nm;
   DoNumber
@@ -3131,11 +3141,28 @@ VK_LEFT:
 end}
 end;
 
-procedure TMDIChild.TracksMoveCursorMouse(X,Y:integer;Sel,Mv:boolean);
+procedure TMDIChild.TracksMoveCursorMouse(X,Y:integer;Sel,Mv,ButRight:boolean);
 var
  x1,y1,i,PLen:integer;
+ SX1,SX2,SY1,SY2:integer;
 begin
 if Mv and not Tracks.Clicked then exit;
+
+  SX2 := Tracks.CursorX;
+  SX1 := Tracks.SelX;
+  if SX1 > SX2 then
+   begin
+    SX1 := SX2;
+    SX2 := Tracks.SelX
+   end;
+  SY1 := Tracks.SelY;
+  SY2 := Tracks.ShownFrom - Tracks.N1OfLines + Tracks.CursorY;
+  if SY1 > SY2 then
+   begin
+    SY1 := SY2;
+    SY2 := Tracks.SelY
+   end;
+
 x1 := X div Tracks.CelW - 3;
 y1 := Y div Tracks.CelH;
 if Y < 0 then dec(y1);
@@ -3162,6 +3189,14 @@ if (y1 >= i) and (y1 < i + PLen) and
    x1 := 22
   else if x1 in [37..38] then
    x1 := 36;
+
+  if ButRight and (x1 >= SX1) and (x1 <= SX2) and
+                  (y1 >= SY1 + i) and (y1 <= SY2 + i) then
+   begin
+    if not Mv then Tracks.Clicked := False;
+    exit;
+   end;
+
   if (Tracks.CursorX <> x1) or (Tracks.CursorY <> y1) then
    begin
     if Tracks.Focused then HideCaret(Tracks.Handle);
@@ -3201,7 +3236,7 @@ end;
 procedure TMDIChild.TracksMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-TracksMoveCursorMouse(X,Y,GetKeyState(VK_SHIFT) and 128 <> 0,False);
+TracksMoveCursorMouse(X,Y,GetKeyState(VK_SHIFT) and 128 <> 0,False,Shift = [ssRight]);
 if not Tracks.Focused then Windows.SetFocus(Tracks.Handle)
 end;
 
@@ -3329,8 +3364,8 @@ end;
 procedure TMDIChild.TracksMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
 begin
-if (ssLeft in Shift) and Tracks.Focused then
- TracksMoveCursorMouse(X,Y,True,True)
+if ((ssLeft in Shift) or (ssRight in Shift)) and Tracks.Focused then
+ TracksMoveCursorMouse(X,Y,True,True,False)
 end;
 
 procedure TMDIChild.SamplesMouseMove(Sender: TObject; Shift: TShiftState; X,
@@ -3458,7 +3493,7 @@ for i := 1 to MainForm.ComboBox1.Items.Count - 1 do
   end;
 end;
 
-procedure TMDIChild.LoadTrackerModule(Name:string);
+function TMDIChild.LoadTrackerModule(Name:string):boolean;
 const
  ers:array[1..6] of string =
   ('Module not found',
@@ -3475,6 +3510,7 @@ var
  FileType:Available_Types;
  s,AuthN,SongN:string;
 begin
+Result := True;
 UndoWorking := True;
 SavedAsText := True;
 try
@@ -3485,6 +3521,7 @@ Unknown:
   i := LoadModuleFromText(Name,VTMP);
   if i <> 0 then
    begin
+    Result := False;
     Close;
     MessageBox(MainForm.Handle,PChar(ers[i] + ' (line: ' + IntToStr(TxtLine) + ')'),
                'Text module loader error',MB_ICONEXCLAMATION);
@@ -3594,7 +3631,7 @@ Tracks.RedrawTracks(0);
 finally
  UndoWorking := False;
  SongChanged := False;
-end; 
+end;
 end;
 
 procedure TMDIChild.TracksMouseWheelDown(Sender: TObject; Shift: TShiftState;
@@ -4967,10 +5004,11 @@ begin
 Edit14.Text := IntToStr(UpDown12.Position)
 end;
 
-procedure TMDIChild.DoStep;
+function TMDIChild.DoStep;
 var
  t:integer;
 begin
+Result := False;
 if not AutoStep then exit;
 t := UpDown12.Position;
 if t <> 0 then
@@ -4978,6 +5016,7 @@ if t <> 0 then
   Inc(t,i);
   if (t >= 0) and (t < Tracks.ShownPattern.Length) then
    begin
+    Result := True;
     Tracks.ShownFrom := t;
     if Tracks.CursorY <> Tracks.N1OfLines then
      begin
@@ -5605,9 +5644,14 @@ for l := 0 to l - 1 do
     if m > X2 then break
    end
  end;
+CursorY := Y1 - ShownFrom + N1OfLines;
+CursorX := X1;
+SetCaretPos(CelW * (3 + CursorX),CelH * CursorY);
 RemoveSelection(0,True);
+RecreateCaret;
 with TMDIChild(MainForm.ActiveMDIChild) do
  begin
+  DoStep(Y1);
   ChangeList[ChangeCount - 1].NewParams.prm.PatternCursorY := CursorY;
   ChangeList[ChangeCount - 1].NewParams.prm.PatternShownFrom := ShownFrom;
   CalcTotLen;
@@ -5615,7 +5659,7 @@ with TMDIChild(MainForm.ActiveMDIChild) do
  end;
 HideCaret(Handle);
 RedrawTracks(0);
-ShowCaret(Handle)
+ShowCaret(Handle);
 end;
 
 procedure TTracks.ClearSelection;
@@ -5958,7 +6002,8 @@ for i := Steps downto 1 do
    begin
     UpDown3.Position := Pars.prm.Speed;
     Edit6.SelectAll;
-    SetF(0,Edit6)
+    SetF(0,Edit6);
+    CalcTotLen;
    end;
   CAChangeTitle:
    begin
@@ -5991,7 +6036,10 @@ for i := Steps downto 1 do
     SetF(2,Edit12)
    end;
   CAChangePatternSize:
-   RedrawTracks(index,Pars,True);
+   begin
+    RedrawTracks(index,Pars,True);
+    CalcTotLen;
+   end;
   CAChangeNote:
    begin
     ChangeNote(ComParams.CurrentPattern,Line,Channel,Pars.prm.Note);
@@ -6004,11 +6052,16 @@ for i := Steps downto 1 do
     RedrawTracks(index,@OldParams,False);
    end;
   CAChangeNoise,CAChangeSample,CAChangeEnvelopeType,
-  CAChangeOrnament,CAChangeVolume,CAChangeSpecialCommandNumber,
-  CAChangeSpecialCommandDelay,CAChangeSpecialCommandParameter:
+  CAChangeOrnament,CAChangeVolume,CAChangeSpecialCommandDelay:
    begin
     ChangeTracks(ComParams.CurrentPattern,Line,Channel,PatternCursorX,Pars.prm.Value,False);
     RedrawTracks(index,@OldParams,False);
+   end;
+  CAChangeSpecialCommandNumber,CAChangeSpecialCommandParameter:
+   begin
+    ChangeTracks(ComParams.CurrentPattern,Line,Channel,PatternCursorX,Pars.prm.Value,False);
+    RedrawTracks(index,@OldParams,False);
+    CalcTotLen;
    end;
   CALoadPattern,CAInsertPatternFromClipboard,CAPatternInsertLine,CAPatternDeleteLine,
   CAPatternClearLine,CAPatternClearSelection,CATransposePattern,CATracksManagerCopy:
@@ -6017,7 +6070,8 @@ for i := Steps downto 1 do
     Pnt := Pattern;
     Pattern := VTMP.Patterns[ComParams.CurrentPattern];
     VTMP.Patterns[ComParams.CurrentPattern] := Pnt;
-    RedrawTracks(index,Pars,False)
+    RedrawTracks(index,Pars,False);
+    CalcTotLen;
    end;
   CAChangePositionListLoop:
    begin
@@ -6032,7 +6086,8 @@ for i := Steps downto 1 do
     VTMP.Positions.Length := Pars.prm.PositionListLen;
     if CurrentPosition <  VTMP.Positions.Length then
      ChangePositionValue(CurrentPosition,Pars.prm.Value);
-    SetF(0,StringGrid1)
+    SetF(0,StringGrid1);
+    CalcTotLen;
    end;
   CADeletePosition,CAInsertPosition:
    begin
@@ -6199,6 +6254,7 @@ begin
       break;
      end;
 LastActiveWindow := Self;
+MainForm.Caption := Caption + ' - Vortex Tracker II';
 end;
 
 end.

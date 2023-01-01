@@ -1,6 +1,6 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2006 S.V.Bulba
+(c)2000-2007 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/
@@ -539,6 +539,7 @@ end;
 
 procedure Module_SetCurrentPosition(Position:Integer);
 begin
+if VTM.Positions.Length = 0 then exit;
 PlVars[CurChip].CurrentPosition := Position;
 Module_SetCurrentPattern(VTM.Positions.Value[Position])
 end;
@@ -690,14 +691,10 @@ var
      TempMixer := TempMixer or 4;
     if not VTM.IsChans[ChNum].Global_Noise then
      TempMixer := TempMixer or 32;
-    if Amplitude > 15 then
-     begin
-      if not VTM.IsChans[ChNum].Global_Envelope then
-       Amplitude := 0
-     end
-    else if (not VTM.IsChans[ChNum].Global_Ton or
-             not VTM.IsChans[ChNum].Global_Noise) and
-            (TempMixer and 36 = 36)  then
+    if not VTM.IsChans[ChNum].Global_Envelope then
+     Amplitude := Amplitude and 15;
+    if (not VTM.IsChans[ChNum].Global_Ton or not VTM.IsChans[ChNum].Global_Noise)
+       and (Amplitude and 16 = 0) and (TempMixer and 36 = 36) then
      Amplitude := 0
    end
 end;
@@ -900,6 +897,11 @@ end;
 
 function Module_PlayCurrentLine:Integer;
 begin
+if VTM.Positions.Length = 0 then
+ begin
+  Result := 3;
+  exit;
+ end;
 Result := Pattern_PlayCurrentLine;
 if Result = 2 then
  begin

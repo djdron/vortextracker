@@ -1,6 +1,6 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2006 S.V.Bulba
+(c)2000-2007 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.at.kz/
@@ -17,15 +17,11 @@ uses
 type
   TTrMng = class(TForm)
     GroupBox1: TGroupBox;
-    Label2: TLabel;
     Edit2: TEdit;
     UpDown1: TUpDown;
-    Label1: TLabel;
     Edit1: TEdit;
     UpDown2: TUpDown;
     GroupBox2: TGroupBox;
-    Label3: TLabel;
-    Label4: TLabel;
     Edit3: TEdit;
     UpDown3: TUpDown;
     Edit4: TEdit;
@@ -45,10 +41,8 @@ type
     Edit5: TEdit;
     UpDown5: TUpDown;
     Button1: TButton;
-    Label6: TLabel;
     Edit6: TEdit;
     UpDown6: TUpDown;
-    Label7: TLabel;
     Edit7: TEdit;
     UpDown7: TUpDown;
     GroupBox7: TGroupBox;
@@ -57,6 +51,9 @@ type
     Label8: TLabel;
     SpeedButton6: TSpeedButton;
     SpeedButton7: TSpeedButton;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
     procedure SpeedButton2Click(Sender: TObject);
     procedure TracksOp(FPat,FLin,FChn,TPat,TLin,TChn,TrOp:integer);
     procedure SpeedButton1Click(Sender: TObject);
@@ -67,7 +64,7 @@ type
     procedure SpeedButton7Click(Sender: TObject);
     procedure Transp(Pat,Lin,Chn:integer);
     procedure FormCreate(Sender: TObject);
-    procedure FormShow(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -83,17 +80,16 @@ uses Main, Childwin, TrFuncs;
 
 {$R *.DFM}
 
-var
- CurrentWindow:TMDIChild;
-
 procedure TTrMng.TracksOp;
 var
  FPLen,TPLen,i,j:integer;
  cl:TChannelLine;
  OldPat:PPattern;
  Flg:boolean;
+ CurrentWindow:TMDIChild;
 begin
-if CurrentWindow = nil then exit;
+if MainForm.MDIChildCount = 0 then exit;
+CurrentWindow := TMDIChild(MainForm.ActiveMDIChild);
 with CurrentWindow do
  begin
   if (VTMP.Patterns[FPat] = nil) and (VTMP.Patterns[TPat] = nil) then exit;
@@ -204,46 +200,12 @@ end;
 
 procedure TTrMng.Transp;
 var
- PLen,i,st,j:integer;
- stk:real;
- OldPat:PPattern;
- Flg:boolean;
+ Chans:TChansArrayBool;
 begin
-if CurrentWindow = nil then exit;
-with CurrentWindow do
- begin
-  if VTMP.Patterns[Pat] = nil then exit;
-  st := TrMng.UpDown8.Position; if st = 0 then exit;
-  New(OldPat); OldPat^ := VTMP.Patterns[Pat]^;
-  stk := exp(-st / 12 * ln(2));
-  PLen := VTMP.Patterns[Pat].Length;
-  Flg := False;
-  for i := 0 to TrMng.UpDown5.Position - 1 do
-   begin
-    if i + Lin >= PLen then break;
-    Flg := True;
-    if TrMng.CheckBox1.Checked then
-     VTMP.Patterns[Pat].Items[i + Lin].Envelope := round(VTMP.Patterns[Pat].Items[i + Lin].Envelope * stk);
-    if VTMP.Patterns[Pat].Items[i + Lin].Channel[Chn].Note >= 0 then
-     begin
-      j := VTMP.Patterns[Pat].Items[i + Lin].Channel[Chn].Note + st;
-      if j >= 96 then
-       j := 95
-      else if j < 0 then
-       j := 0;
-      VTMP.Patterns[Pat].Items[i + Lin].Channel[Chn].Note := j
-     end
-   end;
-  if Flg then
-   begin
-    SongChanged := True;
-    AddUndo(CATransposePattern,Pat,0);
-    ChangeList[ChangeCount - 1].Pattern := OldPat
-   end
-  else
-   Dispose(OldPat); 
-  if PatNum = Pat then Tracks.RedrawTracks(0)
- end
+if MainForm.MDIChildCount = 0 then exit;
+Chans[0] := False; Chans[1] := False; Chans[2] := False; Chans[Chn] := True;
+MainForm.TransposeColumns(TMDIChild(MainForm.ActiveMDIChild),Pat,CheckBox1.Checked,
+ Chans,Lin,Lin + TrMng.UpDown5.Position - 1,TrMng.UpDown8.Position,True);
 end;
 
 procedure TTrMng.SpeedButton6Click(Sender: TObject);
@@ -264,12 +226,9 @@ UpDown2.Max := MaxPatLen - 1;
 UpDown4.Max := MaxPatLen - 1
 end;
 
-procedure TTrMng.FormShow(Sender: TObject);
+procedure TTrMng.Button1Click(Sender: TObject);
 begin
-if MainForm.MDIChildCount = 0 then
- CurrentWindow := nil
-else
- CurrentWindow := TMDIChild(MainForm.ActiveMDIChild);
+Hide;
 end;
 
 end.
