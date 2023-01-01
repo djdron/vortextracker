@@ -1,5 +1,5 @@
-Vortex Tracker II v1.0 beta 18
-(c)2000-2007 S.V.Bulba
+Vortex Tracker II v1.0 beta 19
+(c)2000-2009 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.untergrund.net/
@@ -86,57 +86,10 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-11/20/2008:
+02/08/2009:
 
-1. Tracks redrawing moved from additional to main thread via windows messages
-   for more safe and stable work (but without measured moving warranty).
-2. Specially for TAD new tool "Toggle samples" (Ctrl+M) was made (seek at Play
-   menu or on tool panel). Tool allows to mute sound of any samples to hear/mute
-   standalone parties of composition (drum, main theme, echo, etc).
-3. Due many requests channel numbers in Track Manager are literal now (A, B and
-   C). In type field can be input numbers from 0 to 2 as usually.
-
-11/22/2008:
-
-4. Specially for TAD added Shift+Backspace shortcut to do step backward if
-   AutoStep is on.
-5. Serious bug was found: if new typed value is equal to existing one, change
-   is not added to Undo, but numbers of line and channel stored somewhere (if
-   first change than can be access violation, if not first - in previous action,
-   that's not good too). Fixed.
-
-11/24/2008:
-
-6. Especially for TAD after changing pattern number or activating module window
-   its number is copied to Tracks Manager and Global Transposition windows.
-7. In input pattern size field you can press PageUp and PageDown to increase/
-   decrease pattern size with highlight step value (for TAD).
-8. You can select position in OrderList of 2nd window during playing in Turbo
-   Sound mode to restart playing from.
-9. Pop-up menu or keys / and * on numpad allows to compress/expand pattern size
-   by 2 times (specially for TAD). Just set new speed to keep tempo after
-   operation if you need.
-
-11/25/2008:
-
-10.Due Roman Kuraev request added new function Merge (Ctrl+Alt+V or pop-up menu)
-   to Paste from clipboard without erasing existing pattern data with empty
-   values. Can be useful for making echo or inserting 2nd party between notes of
-   main party.
-11.Copy of Tracks Manager is added to Undo, but all previous Undo actions is
-   cleared. Fixed.
-12.Due TAD request, all operations of Tracks Manager can exceed patterns size up
-   to maximum pattern length (256) if work lines number allows. This feature
-   allows you to increase pattern size after operation.
-13.Fixed old error in ZX player export: bad player relocation for some address
-   (for example, B1DD for TS-player) due carry ignoring when low byte of address
-   is bigger than some value.
-
-11/26/2008:
-
-14.For TAD editing 1st module in TS-mode makes available Save button (and query
-   for saving before closing) after switching to 2nd module even if it is not
-   edited yet.
+1. TAD has pointed, that initally unused or loaded samples can be muted (after
+   appearing version with Toggle Samples tool). Fixed.
 
 Known problems
 --------------
@@ -704,4 +657,4 @@ somewhere in your projects, where you include all or part of the sources and
 
 Sergey Bulba
 
-24 of August 2002 - 26 of November 2008
+24 of August 2002 - 23 of February 2009

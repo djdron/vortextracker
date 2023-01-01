@@ -1,6 +1,6 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2008 S.V.Bulba
+(c)2000-2009 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
 Support page: http://bulba.untergrund.net/
@@ -1003,9 +1003,9 @@ begin
 if VTM.Samples[sam] = nil then
  begin
   New(VTM.Samples[sam]);
-  VTM.Samples[sam].Enabled := True;
   VTM.Samples[sam].Loop := 0;
   VTM.Samples[sam].Length := 1;
+  VTM.Samples[sam].Enabled := True;
   VTM.Samples[sam].Items[0].Add_to_Ton := 0;
   VTM.Samples[sam].Items[0].Ton_Accumulation := False;
   VTM.Samples[sam].Items[0].Amplitude := 0;
@@ -1125,6 +1125,7 @@ begin
    TxtString := s;
    Sam.Loop := lp;
    Sam.Length := len;
+   Sam.Enabled := True;
    for len := len to MaxSamLen - 1 do
     Sam.Items[len] := EmptySampleTick;
   end;
