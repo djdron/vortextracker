@@ -181,7 +181,7 @@ and position list editors.
 
 5.4. Ctrl+Delete - clear pattern line values.
 
-5.5. Numpad - - delete each 2nd pattern line with moving and decreasing pattern
+5.5. Numpad / - delete each 2nd pattern line with moving and decreasing pattern
      size.
 
 6. Inserting empty lines
@@ -644,6 +644,7 @@ Nik-O
 Orson
 Lee du-Caine aka dC Audio
 4Mat
+Voxel
 and you ;)
 
 Distribution

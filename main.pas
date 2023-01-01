@@ -28,7 +28,7 @@ const
 //Version related constants
  VersionString = '1.0';
  IsBeta = ' beta';
- BetaNumber = ' 19';
+ BetaNumber = ' 19+';
 
  FullVersString:string = 'Vortex Tracker II v' + VersionString + IsBeta + BetaNumber;
  HalfVersString:string = 'Version ' + VersionString + IsBeta + BetaNumber;
@@ -1402,7 +1402,7 @@ begin
 SetPriority(0);
 MyRegPath := MyRegPath1 + '\' + MyRegPath2 + '\' + MyRegPath3 + #0;
 i := 0;
-i := RegCreateKeyEx(HKEY_LOCAL_MACHINE,PChar(MyRegPath),0,@i,
+i := RegCreateKeyEx(HKEY_CURRENT_USER{HKEY_LOCAL_MACHINE},PChar(MyRegPath),0,@i,
      REG_OPTION_NON_VOLATILE,KEY_ALL_ACCESS,nil,subKeyHnd1,@CreateStatus);
 CheckRegError(i);
 try
@@ -1499,7 +1499,7 @@ begin
 if (integer(GetVersion) < 0) then //Win9x or Win32s
  SetPriority(HIGH_PRIORITY_CLASS);
 MyRegPath := MyRegPath1 + '\' + MyRegPath2 + '\' + MyRegPath3 + #0;
-if RegOpenKeyEx(HKEY_LOCAL_MACHINE,PChar(MyRegPath),0,
+if RegOpenKeyEx(HKEY_CURRENT_USER{HKEY_LOCAL_MACHINE},PChar(MyRegPath),0,
    KEY_EXECUTE,subKeyHnd1) = ERROR_SUCCESS then
  begin
   if GetDW('Priority',v) then SetPriority(v);
