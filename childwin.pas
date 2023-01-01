@@ -265,10 +265,10 @@ type
     SpeedButton23: TSpeedButton;
     SpeedButton26: TSpeedButton;
     SpeedButton27: TSpeedButton;
-    GroupBox7: TGroupBox;
+    AutoHLCheck: TCheckBox;
     Edit17: TEdit;
     UpDown15: TUpDown;
-    AutoHLCheck: TCheckBox;
+    Label41: TLabel;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure TracksMoveCursorMouse(X,Y:integer;Sel,Mv:boolean);
@@ -451,6 +451,9 @@ type
     procedure SetFileName(Name:string);
     procedure SaveModule;
     procedure SaveModuleAs;
+    procedure FormActivate(Sender: TObject);
+    procedure GoToTime(Time:integer);
+    procedure SinchronizeModules;
   private
     { Private declarations }
   public
@@ -478,6 +481,7 @@ type
 
 var
  PlayingWindow:array[1..MaxNumberOfSoundChips] of TMDIChild;
+ LastActiveWindow:TMDIChild;
 
 implementation
 
@@ -606,13 +610,7 @@ begin
  for i := 0 to Length(MainForm.SampleLineTemplates) - 1 do
   ListBox1.Items.Add(GetSampleString(MainForm.SampleLineTemplates[i],False,True));
  ListBox1.ItemIndex := MainForm.CurrentSampleLineTemplate;
- i := Tracks.Left * 2 + Tracks.Width;
- SpeedButton26.Left := i;
- SpeedButton27.Left := i;
- GroupBox7.Left := i;
  i := ListBox1.Left + ListBox1.Width - Tracks.Left;
- if i < Tracks.Width + GroupBox7.Width + Tracks.Left then
-  i := Tracks.Width + GroupBox7.Width + Tracks.Left;
  if i < StringGrid1.Width then
   i := StringGrid1.Width;
  PageControl1.ClientWidth := i + (Tracks.Left + PatternsSheet.Left) * 2;
@@ -732,7 +730,7 @@ begin
  SelectObject(DC,p);
  ReleaseDC(Tracks.Handle,DC);
  Tracks.Left := StringGrid1.Left;
- Tracks.Top := StringGrid1.Top + StringGrid1.Height + 4;
+ Tracks.Top := SpeedButton26.Top + SpeedButton26.Height + 4;
  Tracks.ClientWidth := Tracks.CelW * 52;
  Tracks.ClientHeight := Tracks.CelH * Tracks.NOfLines;
  Tracks.OnKeyDown := TracksKeyDown;
@@ -1628,6 +1626,25 @@ end;
 procedure TMDIChild.TracksKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 
+ procedure GoToNextWindow(Right:boolean);
+ var
+  w:TMDIChild;
+ begin
+ if MainForm.ComboBox1.ItemIndex > 0 then
+  begin
+   w := TMDIChild(MainForm.ComboBox1.Items.Objects[MainForm.ComboBox1.ItemIndex]);
+   if w <> Self then
+    if w.Tracks.Enabled then
+     begin
+      w.Tracks.RemoveSelection(0,False);
+      if Right then w.Tracks.CursorX := 48 else w.Tracks.CursorX := 0;
+      w.Tracks.RemoveSelection(0,True);
+      w.PageControl1.ActivePageIndex := 0;
+      w.Show; w.SetFocus; if w.Tracks.CanFocus then w.Tracks.SetFocus;
+     end;
+  end;
+ end;
+
  procedure RemSel;
  begin
   if not (ssShift in Shift) then
@@ -1832,6 +1849,8 @@ procedure TMDIChild.TracksKeyDown(Sender: TObject; var Key: Word;
     else
      Tracks.RemoveSelection(0,True)
    end
+  else
+   GoToNextWindow(True);
  end;
 
  procedure DoCursorRight;
@@ -1862,7 +1881,9 @@ procedure TMDIChild.TracksKeyDown(Sender: TObject; var Key: Word;
     else
      Tracks.RemoveSelection(0,True)
    end
-  end;
+  else
+   GoToNextWindow(False);
+ end;
 
  type
   TA3 = array[0..2] of boolean;
@@ -3936,6 +3957,26 @@ if (j > 0) and (j < Tracks.ShownPattern.Length) then
  end
 end;
 
+procedure TMDIChild.GoToTime(Time:integer);
+var
+ Pos,Line:integer;
+begin
+GetTimeParams(VTMP,Time,Pos,Line);
+if Pos >= 0 then
+ MainForm.RedrawPlWindow(Self,Pos,VTMP.Positions.Value[Pos],Line);
+end;
+
+procedure TMDIChild.SinchronizeModules;
+var
+ w:TMDIChild;
+begin
+if (not IsPlaying or (PlayMode <> PMPlayModule)) and (MainForm.ComboBox1.ItemIndex > 0) then
+ begin
+  w := TMDIChild(MainForm.ComboBox1.Items.Objects[MainForm.ComboBox1.ItemIndex]);
+  if w <> Self then w.GoToTime(PosBegin + LineInts);
+ end;
+end;
+
 procedure TMDIChild.SelectPosition;
 begin
 if Pos < VTMP.Positions.Length then
@@ -3945,13 +3986,14 @@ if Pos < VTMP.Positions.Length then
   if IsPlaying and (PlayMode = PMPlayModule) then
    RestartPlayingPos(Pos)
   else if not IsPlaying or (PlayMode <> PMPlayPattern) then
-   UpDown1.Position := VTMP.Positions.Value[Pos]
+   UpDown1.Position := VTMP.Positions.Value[Pos];
  end
 else
  begin
   PosBegin := TotInts;
   Label25.Caption := IntsToTime(PosBegin);
   Label24.Caption := '(' + IntToStr(PosBegin);
+  SinchronizeModules;
  end;
 InputPNumber := 0
 end;
@@ -4642,7 +4684,8 @@ begin
 PosBegin := GetPositionTime(VTMP,PositionNumber,PosDelay);
 LineInts := 0;
 Label25.Caption := IntsToTime(PosBegin);
-Label24.Caption := '(' + IntToStr(PosBegin)
+Label24.Caption := '(' + IntToStr(PosBegin);
+SinchronizeModules;
 end;
 
 procedure TMDIChild.CalculatePos;
@@ -4654,7 +4697,8 @@ if (PositionNumber >= VTMP.Positions.Length) or
 LineInts := GetPositionTimeEx(VTMP,PositionNumber,PosDelay,Line);
 i := PosBegin + LineInts;
 Label25.Caption := IntsToTime(i);
-Label24.Caption := '(' + IntToStr(i)
+Label24.Caption := '(' + IntToStr(i);
+SinchronizeModules;
 end;
 
 procedure TMDIChild.ShowStat;
@@ -4871,20 +4915,26 @@ end;
 
 procedure TMDIChild.DoAutoEnv;
 var
- Nt:integer;
+ n,old:integer;
 begin
 if AutoEnv then
  begin
-  Nt := VTMP.Patterns[i].Items[j].Channel[k].Note;
-  if Nt >= 0 then
-   case VTMP.Patterns[i].Items[j].Channel[k].Envelope of
-   8,12:
-    VTMP.Patterns[i].Items[j].Envelope :=
-     round(GetNoteFreq(VTMP.Ton_Table,Nt) * AutoEnv0 / AutoEnv1 / 16);
-   10,14:
-    VTMP.Patterns[i].Items[j].Envelope :=
-     round(GetNoteFreq(VTMP.Ton_Table,Nt) * AutoEnv0 / AutoEnv1 / 32)
-   end
+  n := VTMP.Patterns[i].Items[j].Channel[k].Note; if n < 0 then exit;
+  case VTMP.Patterns[i].Items[j].Channel[k].Envelope of
+  8,12:
+   n := round(GetNoteFreq(VTMP.Ton_Table,n) * AutoEnv0 / AutoEnv1 / 16);
+  10,14:
+   n := round(GetNoteFreq(VTMP.Ton_Table,n) * AutoEnv0 / AutoEnv1 / 32);
+  else exit;
+  end;
+  old := VTMP.Patterns[i].Items[j].Envelope; if n = old then exit;
+  if not UndoWorking then
+   begin
+    AddUndo(CAChangeEnvelopePeriod,old,n);
+    ChangeList[ChangeCount - 1].Line := j;
+   end;
+  VTMP.Patterns[i].Items[j].Envelope := n;
+  SongChanged := True;
  end
 end;
 
@@ -5074,7 +5124,8 @@ if CanClose then exit;
 res := MessageDlg('Edition ' + Caption + ' is changed. Save it now?',
     mtConfirmation, [mbYes, mbNo, mbCancel],0);
 CanClose := res in [mrYes, mrNo];
-if res = mrYes then SaveModule
+if res = mrYes then SaveModule;
+if CanClose then SongChanged := False;
 end;
 
 procedure TMDIChild.ToggleAutoStep;
@@ -5946,12 +5997,18 @@ for i := Steps downto 1 do
     ChangeNote(ComParams.CurrentPattern,Line,Channel,Pars.prm.Note);
     RedrawTracks(index,@OldParams,False)
    end;
-  CAChangeEnvelopePeriod,CAChangeNoise,CAChangeSample,CAChangeEnvelopeType,
+  CAChangeEnvelopePeriod:
+   begin
+    j := PatternCursorX; if j > 3 then j := 0;
+    ChangeTracks(ComParams.CurrentPattern,Line,Channel,j,Pars.prm.Value,False);
+    RedrawTracks(index,@OldParams,False);
+   end;
+  CAChangeNoise,CAChangeSample,CAChangeEnvelopeType,
   CAChangeOrnament,CAChangeVolume,CAChangeSpecialCommandNumber,
   CAChangeSpecialCommandDelay,CAChangeSpecialCommandParameter:
    begin
     ChangeTracks(ComParams.CurrentPattern,Line,Channel,PatternCursorX,Pars.prm.Value,False);
-    RedrawTracks(index,@OldParams,False)
+    RedrawTracks(index,@OldParams,False);
    end;
   CALoadPattern,CAInsertPatternFromClipboard,CAPatternInsertLine,CAPatternDeleteLine,
   CAPatternClearLine,CAPatternClearSelection,CATransposePattern,CATracksManagerCopy:
@@ -6126,6 +6183,22 @@ else
   if s <> WinFileName then SetFileName(s);
   MainForm.SavePT3(Self,WinFileName,SavedAsText);
  end;
+end;
+
+procedure TMDIChild.FormActivate(Sender: TObject);
+var
+ i:integer;
+begin
+//if MainForm.ComboBox1.Enabled then
+ if MainForm.ComboBox1.ItemIndex > 0 then
+  if Self = TMDIChild(MainForm.ComboBox1.Items.Objects[MainForm.ComboBox1.ItemIndex]) then
+   for i := 1 to MainForm.ComboBox1.Items.Count - 1 do
+    if MainForm.ComboBox1.Items.Objects[i] = LastActiveWindow then
+     begin
+      MainForm.ComboBox1.ItemIndex := i;
+      break;
+     end;
+LastActiveWindow := Self;
 end;
 
 end.

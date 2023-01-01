@@ -1,4 +1,4 @@
-Vortex Tracker II v1.0 beta 13
+Vortex Tracker II v1.0 beta 14
 (c)2000-2006 S.V.Bulba
 Author Sergey Bulba
 E-mail: vorobey@mail.khstu.ru
@@ -75,41 +75,22 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-10/02/2005:
+10/01/2006:
 
-1. Fixed error in PSM import: loop position always was zero.
+1. Window for 2nd chip is autoselected during changing module window. No need to
+   select it manually now (if you are editing only two modules in TS mode, of
+   course).
+2. During playing in TS mode tracks moving of both windows are sinchronized now.
+3. During editing in TS mode tracks and cursors of both windows are sinchronized
+   too.
+4. In TS mode cursor moving to the maximum right or left position of tracks
+   editor will activate window of 2nd chip in same position of tracks editor.
+5. "Play from position" function (F5) works from current cursor position now.
 
-03/14/2006:
+10/03/2006:
 
-2. In addition to 'Save As...' command added simple 'Save' (asks for file name
-   only for new modules).
-3. Added save requests before closing module windows or whole editor.
-
-03/16/2006:
-
-4. Added second sound chip emulation to play any two opened modules
-   simultaneously. 'Play' and 'Play from start' start playing module of current
-   window through the first chip and module selected in dropdown list of control
-   panel through the second chip. So, you can edit two standard PT3-modules, and
-   then play it simultaneously through some of known devices (Turbo-Sound or
-   Turbo-AY) on real ZX (see example in ZX-magazine InfoGuide #8).
-
-03/18/2006:
-
-5. MC68000 PT3-player is updated (SNDH-export). Note and volume tables are
-   packed now via Ivan Roshin methods (player size is 1 KB smaller now).
-6. SNDH-export is improved: new SNDH v2 TAGs are supported and new file name
-   extension (SNDH) is used now.
-
-03/19/2006:
-
-7. 'Options' dialog allows you to input any AY-frequency in range 1-3.5 MHz, and
-   any player frequency in range 1-2000 Hz.
-8. Added track colors selection in 'Options' dialog.
-
-03/25/2006:
-
-9. Fixed tracks editor's cursor moving errors (PageUp/PageDown reaction).
+6. Fixed bug: envelope period changed in AutoEnv mode was not added to the undo
+   list (thanks to Karbofos for bug-report).
 
 Known problems
 --------------
@@ -421,13 +402,19 @@ interpretation.
 Turbo-Sound mode
 ----------------
 From the end of 90s some people tried to popularize standards of two sound chips
-connection to ZX Spectrum. Know schemes are Quadro-AY, Turbo-AY and Turbo-Sound.
-One of way to use it is to play two different modules simultaneously (each
-through own chip). Vortex Tracker II allows to play any two opened modules
-simultaneously. Active window module sounds through the first sound chip, and
-module selected in dropdown list of main window control panel through the second
-chip. By default, second chip is off. Examples of playing on ZX can be find in
-ZX-magazine InfoGuide #8.
+connection to ZX Spectrum. Known schemes are Quadro-AY, Turbo-AY and
+Turbo-Sound. One of way to use it is to play two different modules
+simultaneously (each through own chip). Vortex Tracker II allows to play any two
+opened modules simultaneously. Active window module sounds through the first
+sound chip, and module selected in dropdown list of main window control panel
+through the second chip. By default, second chip is off.
+
+For more usability VT II autoselects module for 2nd chip during choosing other
+window in TS mode, sinchronizes tracks of two modules in both play and edit
+tracks modes (including cursors position), activates 2nd window after reaching
+tracks editor cursor right or left position.
+
+Examples of playing on ZX can be found in ZX-magazine InfoGuide #8.
 
 Files->Options... menu
 ----------------------
@@ -589,6 +576,8 @@ Thanks to
 - Ivan Roshin for help in writing new ZX PT3-player.
 - Jecktor for addapting PT3-player sources to XAS.
 - HalfElf for using in xLook Far Manager plug-in.
+- Karbofos for testing, suggestions and test modules.
+- Ch41ns4w for wishes about TS-mode.
 
 Thanks to musicians using VT II:
 Shiru Otaku
@@ -601,6 +590,8 @@ Asi
 Rolemusic
 Karbofos
 Kyv
+Ch41ns4w
+Ryurik
 and you ;)
 
 
@@ -615,4 +606,4 @@ somewhere in your projects, where you include all or part of the sources and
 
 Sergey Bulba
 
-24 of August 2002 - 25 of March 2006
+24 of August 2002 - 3 of October 2006

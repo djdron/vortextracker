@@ -28,7 +28,7 @@ const
 //Version related constants
  VersionString = '1.0';
  IsBeta = ' beta';
- BetaNumber = ' 13';
+ BetaNumber = ' 14';
 
  FullVersString:string = 'Vortex Tracker II v' + VersionString + IsBeta + BetaNumber;
  HalfVersString:string = 'Version ' + VersionString + IsBeta + BetaNumber;
@@ -233,6 +233,7 @@ type
     procedure CheckCommandLine;
     procedure SavePT3(CW:TMDIChild;FileName:string;AsText:boolean);
     function AllowSave(fn:string):boolean;
+    procedure RedrawPlWindow(PW:TMDIChild;ps,pat,line:integer);
   private
     { Private declarations }
     procedure CreateMDIChild(const Name: string);
@@ -409,28 +410,41 @@ ResetSampTemplate;
 LoadOptions
 end;
 
+procedure TMainForm.RedrawPlWindow(PW:TMDIChild;ps,pat,line:integer);
+begin
+if ps < 256 then PW.SelectPosition2(ps);
+if (PW.Tracks.ShownPattern <> PW.VTMP.Patterns[pat])
+   or (PW.Tracks.ShownFrom <> line) then
+ begin
+  PW.PatNum := pat;
+  PW.UpDown1.Position := pat;
+  PW.Tracks.ShownPattern := PW.VTMP.Patterns[pat];
+  PW.Tracks.ShownFrom := line;
+  PW.CalculatePos(line);
+  if PW.Tracks.Enabled then HideCaret(PW.Tracks.Handle);
+  PW.Tracks.CursorY := PW.Tracks.N1OfLines;
+  PW.Tracks.RemoveSelection(0,True);
+  PW.Tracks.RedrawTracks(0);
+  if PW.Tracks.Enabled then ShowCaret(PW.Tracks.Handle)
+ end;
+end;
+
 procedure TMainForm.umredrawtracks;
 var
- pat,ps:integer;
+ line,pat,ps:integer;
 begin
 if not IsPlaying then exit;
-ps := smallint(Msg.WParam and 65535);
-pat := Msg.WParam shr 16;
-if ps >= 0 then PlayingWindow[1].SelectPosition2(ps);
-if (PlayingWindow[1].Tracks.ShownPattern <> PlayingWindow[1].VTMP.Patterns[pat])
-   or (PlayingWindow[1].Tracks.ShownFrom <> Msg.LParam) then
+ps := Msg.WParam and $1FF;
+pat := (Msg.WParam shr 9) and $FF;
+line := (Msg.WParam shr 17) and $1FF - 1;
+RedrawPlWindow(PlayingWindow[1],ps,pat,line);
+if NumberOfSoundChips = 2 then
  begin
-  PlayingWindow[1].PatNum := pat;
-  PlayingWindow[1].UpDown1.Position := pat;
-  PlayingWindow[1].Tracks.ShownPattern := PlayingWindow[1].VTMP.Patterns[pat];
-  PlayingWindow[1].Tracks.ShownFrom := Msg.LParam;
-  PlayingWindow[1].CalculatePos(Msg.LParam);
-  if PlayingWindow[1].Tracks.Enabled then HideCaret(PlayingWindow[1].Tracks.Handle);
-  PlayingWindow[1].Tracks.CursorY := PlayingWindow[1].Tracks.N1OfLines;
-  PlayingWindow[1].Tracks.RemoveSelection(0,True);
-  PlayingWindow[1].Tracks.RedrawTracks(0);
-  if PlayingWindow[1].Tracks.Enabled then ShowCaret(PlayingWindow[1].Tracks.Handle)
- end
+  ps := Msg.LParam and $1FF;
+  pat := (Msg.LParam shr 9) and $FF;
+  line := (Msg.LParam shr 17) and $1FF - 1;
+  RedrawPlWindow(PlayingWindow[2],ps,pat,line);
+ end;
 end;
 
 procedure TMainForm.Options1Click(Sender: TObject);
@@ -715,7 +729,8 @@ PlayMode := PMPlayModule;
 DisableControls;
 CheckSecondWindow;
 PlayingWindow[1].Tracks.RemoveSelection(0,False);
-PlayingWindow[1].RerollToPos(PlayingWindow[1].PositionNumber);
+//PlayingWindow[1].RerollToPos(PlayingWindow[1].PositionNumber);
+PlayingWindow[1].RerollToLine;
 StartWOThread
 end;
 
@@ -759,12 +774,22 @@ RestoreControls;
 PlayingWindow[1].Tracks.RemoveSelection(0,True);
 if (TMDIChild(ActiveMDIChild) = PlayingWindow[1]) and
    (PlayingWindow[1].PageControl1.ActivePageIndex = 0) then
- PlayingWindow[1].Tracks.SetFocus
+ PlayingWindow[1].Tracks.SetFocus;
+if (TMDIChild(ActiveMDIChild) = PlayingWindow[2]) and
+   (PlayingWindow[2].PageControl1.ActivePageIndex = 0) then
+ PlayingWindow[2].Tracks.SetFocus;
 end;
 
 procedure TMainForm.FormClose(Sender: TObject; var Action: TCloseAction);
+var
+ i:integer;
 begin
 StopPlaying;
+
+//bug in Delphi VCL, close manually
+for i := 0 to MDIChildCount - 1 do
+ TMDIChild(MDIChildren[i]).Close;
+
 SaveOptions
 end;
 
@@ -1091,20 +1116,38 @@ if ComboBox1.ItemIndex > 0 then
  begin
   PlayingWindow[2] := TMDIChild(ComboBox1.Items.Objects[ComboBox1.ItemIndex]);
   if PlayingWindow[1] <> PlayingWindow[2] then
-   NumberOfSoundChips := 2
+   begin
+    NumberOfSoundChips := 2;
+    PlayingWindow[2].Edit2.Enabled := False;
+    PlayingWindow[2].UpDown1.Enabled := False;
+    PlayingWindow[2].Tracks.Enabled := False;
+   end;
  end;
 ComboBox1.Enabled := False;
 end;
 
 procedure TMainForm.RestoreControls;
+var
+ i:integer;
 begin
 Form1.PlayStops;
-PlayingWindow[1].Edit2.Enabled := True;
-PlayingWindow[1].UpDown1.Enabled := True;
-if PlayMode in [PMPlayModule,PMPlayPattern] then
- PlayingWindow[1].Tracks.CursorY := PlayingWindow[1].Tracks.N1OfLines;
-PlayingWindow[1].Tracks.Enabled := True;
+for i := 1 to NumberOfSoundChips do
+ begin
+  PlayingWindow[i].Edit2.Enabled := True;
+  PlayingWindow[i].UpDown1.Enabled := True;
+  if PlayMode in [PMPlayModule,PMPlayPattern] then
+   PlayingWindow[i].Tracks.CursorY := PlayingWindow[i].Tracks.N1OfLines;
+  PlayingWindow[i].Tracks.Enabled := True;
+ end;
 ComboBox1.Enabled := True;
+{if NumberOfSoundChips > 1 then
+ if PlayingWindow[2] = TMDIChild(ActiveMDIChild) then
+  for i := 1 to ComboBox1.Items.Count - 1 do
+   if ComboBox1.Items.Objects[i] = PlayingWindow[1] then
+    begin
+     ComboBox1.ItemIndex := i;
+     break;
+    end;}
 end;
 
 procedure TMainForm.SetIntFreqEx;

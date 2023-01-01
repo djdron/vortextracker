@@ -404,6 +404,8 @@ function GetPositionTime(VTM:PModule;Pos:integer;var PosDelay:integer):integer;
 function GetPositionTimeEx(VTM:PModule;Pos,PosDelay,Line:integer):integer;
 function GetNoteFreq(t,j:integer):integer;
 
+procedure GetTimeParams(VTM:PModule; Time:integer; var Pos,Line:integer);
+
 type
  PT3ToneTable = array[0..95] of word;
 
@@ -8181,6 +8183,49 @@ else
       end;
    Inc(Result,PosDelay)
   end
+end;
+
+procedure GetTimeParams;
+var
+ i,j,k,d,p,ct,tmp:integer;
+begin
+Pos := -1; Line := 0;
+d := VTM.Initial_Delay;
+ct := 0;
+for i := 0 to VTM.Positions.Length - 1 do
+ begin
+  p := VTM.Positions.Value[i];
+  if VTM.Patterns[p] = nil then
+   begin
+    tmp := d * DefPatLen;
+    if ct + tmp < Time then
+     Inc(ct,tmp)
+    else
+     begin
+      Pos := i;
+      Line := (Time - ct) div d;
+      exit;
+     end;
+   end
+  else
+   for j := 0 to VTM.Patterns[p].Length - 1 do
+    begin
+     if ct >= Time then
+      begin
+       Pos := i;
+       Line := j;
+       exit;
+      end;
+     for k := 2 downto 0 do
+      with VTM.Patterns[p].Items[j].Channel[k].Additional_Command do
+       if (Number = 11) and (Parameter <> 0) then
+        begin
+         d := Parameter;
+         break
+        end;
+     Inc(ct,d)
+    end
+ end;
 end;
 
 end.

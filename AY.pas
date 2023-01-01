@@ -637,8 +637,13 @@ if Tick_Counter >= Tik.Hi then
   Inc(BuffLen);
   if NOfTicks = VisPoint then
    begin
-    PlayingGrid[MkVisPos].CP := PlVars[1].CurrentPosition + (PlVars[1].CurrentPattern shl 16);
-    PlayingGrid[MkVisPos].CL := PlVars[1].CurrentLine;
+    PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
+                                (PlVars[1].CurrentPattern shl 9) +
+                                (PlVars[1].CurrentLine shl 17);
+    if NumberOfSoundChips > 1 then
+     PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
+                                 (PlVars[2].CurrentPattern shl 9) +
+                                 (PlVars[2].CurrentLine shl 17);
     if MkVisPos < VisPosMax - 1 then
      Inc(MkVisPos)
     else
@@ -704,8 +709,13 @@ if Tick_Counter >= Tik.Hi then
   Inc(BuffLen);
   if NOfTicks = VisPoint then
    begin
-    PlayingGrid[MkVisPos].CP := PlVars[1].CurrentPosition + (PlVars[1].CurrentPattern shl 16);
-    PlayingGrid[MkVisPos].CL := PlVars[1].CurrentLine;
+    PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
+                                (PlVars[1].CurrentPattern shl 9) +
+                                (PlVars[1].CurrentLine shl 17);
+    if NumberOfSoundChips > 1 then
+     PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
+                                 (PlVars[2].CurrentPattern shl 9) +
+                                 (PlVars[2].CurrentLine shl 17);
     if MkVisPos < VisPosMax - 1 then
      Inc(MkVisPos)
     else
@@ -795,8 +805,13 @@ if Tick_Counter >= Tik.Hi then
   Inc(BuffLen);
   if NOfTicks = VisPoint then
    begin
-    PlayingGrid[MkVisPos].CP := PlVars[1].CurrentPosition + (PlVars[1].CurrentPattern shl 16);
-    PlayingGrid[MkVisPos].CL := PlVars[1].CurrentLine;
+    PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
+                                (PlVars[1].CurrentPattern shl 9) +
+                                (PlVars[1].CurrentLine shl 17);
+    if NumberOfSoundChips > 1 then
+     PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
+                                 (PlVars[2].CurrentPattern shl 9) +
+                                 (PlVars[2].CurrentLine shl 17);
     if MkVisPos < VisPosMax - 1 then
      Inc(MkVisPos)
     else
@@ -849,8 +864,13 @@ if Tick_Counter >= Tik.Hi then
   Inc(BuffLen);
   if NOfTicks = VisPoint then
    begin
-    PlayingGrid[MkVisPos].CP := PlVars[1].CurrentPosition + (PlVars[1].CurrentPattern shl 16);
-    PlayingGrid[MkVisPos].CL := PlVars[1].CurrentLine;
+    PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
+                                (PlVars[1].CurrentPattern shl 9) +
+                                (PlVars[1].CurrentLine shl 17);
+    if NumberOfSoundChips > 1 then
+     PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
+                                 (PlVars[2].CurrentPattern shl 9) +
+                                 (PlVars[2].CurrentLine shl 17);
     if MkVisPos < VisPosMax - 1 then
      Inc(MkVisPos)
     else
@@ -942,8 +962,13 @@ PS16(Buf)^[BuffLen].Right := LevR;
 Inc(BuffLen);
 if NOfTicks = VisPoint then
  begin
-  PlayingGrid[MkVisPos].CP := PlVars[1].CurrentPosition + (PlVars[1].CurrentPattern shl 16);
-  PlayingGrid[MkVisPos].CL := PlVars[1].CurrentLine;
+  PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
+                              (PlVars[1].CurrentPattern shl 9) +
+                              (PlVars[1].CurrentLine shl 17);
+  if NumberOfSoundChips > 1 then
+   PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
+                               (PlVars[2].CurrentPattern shl 9) +
+                               (PlVars[2].CurrentLine shl 17);
   if MkVisPos < VisPosMax - 1 then
    Inc(MkVisPos)
   else
@@ -1032,8 +1057,13 @@ PS8(Buf)^[BuffLen].Right := LevR;
 Inc(BuffLen);
 if NOfTicks = VisPoint then
  begin
-  PlayingGrid[MkVisPos].CP := PlVars[1].CurrentPosition + (PlVars[1].CurrentPattern shl 16);
-  PlayingGrid[MkVisPos].CL := PlVars[1].CurrentLine;
+  PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
+                              (PlVars[1].CurrentPattern shl 9) +
+                              (PlVars[1].CurrentLine shl 17);
+  if NumberOfSoundChips > 1 then
+   PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
+                               (PlVars[2].CurrentPattern shl 9) +
+                               (PlVars[2].CurrentLine shl 17);
   if MkVisPos < VisPosMax - 1 then
    Inc(MkVisPos)
   else
@@ -1101,8 +1131,13 @@ PM16(Buf)^[BuffLen] := Lev;
 Inc(BuffLen);
 if NOfTicks = VisPoint then
  begin
-  PlayingGrid[MkVisPos].CP := PlVars[1].CurrentPosition + (PlVars[1].CurrentPattern shl 16);
-  PlayingGrid[MkVisPos].CL := PlVars[1].CurrentLine;
+  PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
+                              (PlVars[1].CurrentPattern shl 9) +
+                              (PlVars[1].CurrentLine shl 17);
+  if NumberOfSoundChips > 1 then
+   PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
+                               (PlVars[2].CurrentPattern shl 9) +
+                               (PlVars[2].CurrentLine shl 17);
   if MkVisPos < VisPosMax - 1 then
    Inc(MkVisPos)
   else
@@ -1170,8 +1205,13 @@ PM8(Buf)^[BuffLen] := Lev;
 Inc(BuffLen);
 if NOfTicks = VisPoint then
  begin
-  PlayingGrid[MkVisPos].CP := PlVars[1].CurrentPosition + (PlVars[1].CurrentPattern shl 16);
-  PlayingGrid[MkVisPos].CL := PlVars[1].CurrentLine;
+  PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
+                              (PlVars[1].CurrentPattern shl 9) +
+                              (PlVars[1].CurrentLine shl 17);
+  if NumberOfSoundChips > 1 then
+   PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
+                               (PlVars[2].CurrentPattern shl 9) +
+                               (PlVars[2].CurrentLine shl 17);
   if MkVisPos < VisPosMax - 1 then
    Inc(MkVisPos)
   else

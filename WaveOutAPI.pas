@@ -28,7 +28,7 @@ var
  Reseted:boolean = False;
  Interrupt_Freq,NumberOfChannels,SampleRate,SampleBit:integer;
  PlayingGrid:array of record
-  CP,CL:integer;
+  M1,M2:integer;
  end;
  MkVisPos,VisPosMax,VisPoint,VisStep,VisTickMax:DWORD;
  ResetMutex:THandle;
@@ -86,7 +86,7 @@ var
 begin
 while WaitForSingleObject(TSEventH,0) <> WAIT_OBJECT_0 do
  begin
-  if PlayMode in [PMPlayModule,PMPlayPattern] then
+  if IsPlaying and WOThreadActive and (PlayMode in [PMPlayModule,PMPlayPattern]) then
    begin
     t := GetTickCount;
     MMTIME1.wType := TIME_SAMPLES;
@@ -97,7 +97,7 @@ while WaitForSingleObject(TSEventH,0) <> WAIT_OBJECT_0 do
      begin
       CurVisPos := MMTIME1.sample mod VisTickMax div VisStep;
       SendMessage(MainForm.Handle,UM_REDRAWTRACKS,
-                   PlayingGrid[CurVisPos].CP,PlayingGrid[CurVisPos].CL - 1)
+                   PlayingGrid[CurVisPos].M1,PlayingGrid[CurVisPos].M2)
      end;
     Inc(t,20 - GetTickCount);
     if integer(t) < 0 then
@@ -120,8 +120,9 @@ procedure SkipRedraw;
 var
  msg:TMsg;
 begin
-while PeekMessage(msg,MainForm.Handle,
-                UM_REDRAWTRACKS,UM_REDRAWTRACKS,PM_REMOVE) do
+Sleep(0);
+if PlayMode in [PMPlayModule,PMPlayPattern] then
+ PeekMessage(msg,MainForm.Handle,UM_REDRAWTRACKS,UM_REDRAWTRACKS,PM_REMOVE);
 end;
 
 procedure StopTrackSlider;
@@ -131,10 +132,10 @@ begin
 SetEvent(TSEventH);
 repeat
  if not GetExitCodeThread(TSThreadH,ExCode) then break;
- if ExCode = STILL_ACTIVE then SkipRedraw
+ if ExCode = STILL_ACTIVE then SkipRedraw;
 until ExCode <> STILL_ACTIVE;
 CloseHandle(TSThreadH);
-CloseHandle(TSEventH)
+CloseHandle(TSEventH);
 end;
 
 procedure WaitForWOThreadExit;
@@ -144,7 +145,7 @@ begin
 if WOThreadH = 0 then exit;
 repeat
  if not GetExitCodeThread(WOThreadH,ExCode) then break;
- if ExCode = STILL_ACTIVE then SkipRedraw
+ if ExCode = STILL_ACTIVE then Sleep(0);
 until ExCode <> STILL_ACTIVE;
 CloseHandle(WOThreadH);
 WOThreadH := 0
@@ -357,7 +358,7 @@ for i := 1 to NumberOfSoundChips do
  begin
   ResetAYChipEmulation(i);
   Real_End[i] := False
- end; 
+ end;
 Real_End_All := False;
 if Optimization_For_Quality and IsFilt then
  begin
@@ -394,7 +395,9 @@ begin
 if Reseted then exit;
 Reseted := True;
 WaitForSingleObject(ResetMutex,INFINITE);
+EnterCriticalSection(WOCS);
 WOCheck(waveOutReset(HWO));
+LeaveCriticalSection(WOCS);
 MkVisPos := 0;
 VisPoint := 0;
 NOfTicks := 0;
