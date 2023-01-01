@@ -1,36 +1,36 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
 program VT;
 
+{$mode objfpc}{$H+}
+
 uses
-  Forms,
+  Forms, Interfaces,
   Main in 'main.pas' {MainForm},
-  Childwin in 'CHILDWIN.PAS' {MDIChild},
+  ChildWin {MDIChild},
   About in 'about.pas' {AboutBox},
   trfuncs in 'trfuncs.pas',
-  AY in 'AY.pas',
-  WaveOutAPI in 'WaveOutAPI.pas',
   options in 'options.pas' {Form1},
   TrkMng in 'TrkMng.pas' {TrMng},
   GlbTrn in 'GlbTrn.pas' {GlbTrans},
   ExportZX in 'ExportZX.pas' {ExpDlg},
   FXMImport in 'FXMImport.pas' {FXMParams},
   selectts in 'selectts.pas' {TSSel},
-  TglSams in 'TglSams.pas' {ToglSams};
+  TglSams {ToglSams},
+  Config, WinVersion, Languages, digsound, digsoundcode, AY;
 
-{$R *.RES}
 {$R SNDH\SNDH.RES}
 {$R ZXAYHOBETA\ZX.RES}
+{$R *.res}
 
 begin
   Application.Initialize;
-  Application.Title := 'Vortex Tracker II';
   Application.CreateForm(TMainForm, MainForm);
   Application.CreateForm(TAboutBox, AboutBox);
   Application.CreateForm(TForm1, Form1);

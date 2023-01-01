@@ -1,25 +1,34 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
+//bug of LCL - fsMDIChild always with sizable border, so to mask sizing errors
+//all MDI childs windows created with bsNone temporary
+
 unit Main;
+
+{$mode objfpc}{$H+}
 
 interface
 
-uses Windows, SysUtils, Classes, Graphics, Forms, Controls, Menus,
-  StdCtrls, Dialogs, Buttons, Messages, ExtCtrls, ComCtrls, StdActns,
-  ActnList, ToolWin, ImgList, AY, WaveOutAPI, trfuncs, grids, ChildWin;
+uses LCLIntf, LCLType,
+  {$IFDEF Windows}
+  Windows,
+  {$ENDIF Windows}
+  SysUtils, Classes, Graphics, Forms, Controls, Menus,
+  StdCtrls, Dialogs, Buttons, Messages, ExtCtrls, ComCtrls, {StdActns,}
+  ActnList, ImgList, AY, digsoundcode, digsound, trfuncs, grids, ChildWin,
+  lazutf8, LMessages, Config, Languages;
 
 const
- UM_REDRAWTRACKS = WM_USER;
- UM_PLAYINGOFF = WM_USER + 1;
- UM_FINALIZEWO = WM_USER + 2;
+ UM_FINALIZEDS = WM_USER + 2;
 
  NewTrack_NumberOfLinesDef = 11;
+ StdChannelsAllocationDef = 1;
 
  StdAutoEnvMax = 7;
  StdAutoEnv:array[0..StdAutoEnvMax,0..1] of integer =
@@ -28,25 +37,35 @@ const
 //Version related constants
  VersionString = '1.0';
  IsBeta = ' beta';
- BetaNumber = ' 19+';
+ BetaNumber = ' 20';
 
  FullVersString:string = 'Vortex Tracker II v' + VersionString + IsBeta + BetaNumber;
  HalfVersString:string = 'Version ' + VersionString + IsBeta + BetaNumber;
 
-//Registry paths
- MyRegPath1:string = 'SOFTWARE\Sergey Vladimirovich Bulba';
- MyRegPath2:string = 'Vortex Tracker II';
- MyRegPath3:string = VersionString + IsBeta;
-
 type
+  // to avoid conflicts with Delphi Code :
+  TWindowClose          = TAction;
+  TWindowCascade        = TAction;
+  TWindowTileHorizontal = TAction;
+  TWindowArrange        = TAction;
+  TWindowMinimizeAll    = TAction;
+  TWindowTileVertical   = TAction;
+
   TChansArrayBool = array [0..2] of boolean;
   ERegistryError = class(Exception);
+
+  { TMainForm }
+
   TMainForm = class(TForm)
     MainMenu1: TMainMenu;
     File1: TMenuItem;
     FileNewItem: TMenuItem;
     FileOpenItem: TMenuItem;
     FileCloseItem: TMenuItem;
+    ToolButton29: TToolButton;
+    ToolButton30: TToolButton;
+    ToolButton31: TToolButton;
+    VisTimer: TTimer;
     Window1: TMenuItem;
     Help1: TMenuItem;
     N1: TMenuItem;
@@ -192,31 +211,28 @@ type
     Merge1: TMenuItem;
     procedure AddWindowListItem(Child:TMDIChild);
     procedure DeleteWindowListItem(Child:TMDIChild);
+    procedure FileClose1Execute(Sender: TObject);
     procedure FileNew1Execute(Sender: TObject);
     procedure FileOpen1Execute(Sender: TObject);
+    procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure HelpAbout1Execute(Sender: TObject);
     procedure FileExit1Execute(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure umredrawtracks(var Msg: TMessage);message UM_REDRAWTRACKS;
-    procedure umplayingoff(var Msg: TMessage);message UM_PLAYINGOFF;
-    procedure umfinalizewo(var Msg: TMessage);message UM_FINALIZEWO;
+    procedure digsoundfinalize(var Msg: TMessage);message UM_FINALIZEDS;
     procedure Options1Click(Sender: TObject);
+    procedure CommonActionUpdate(Sender: TObject);
     procedure FileSave1Execute(Sender: TObject);
     procedure FileSave1Update(Sender: TObject);
     procedure FileSaveAs1Execute(Sender: TObject);
-    procedure FileSaveAs1Update(Sender: TObject);
-    procedure Play1Update(Sender: TObject);
     procedure Stop1Update(Sender: TObject);
     procedure Play1Execute(Sender: TObject);
     procedure Stop1Execute(Sender: TObject);
-    procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure SetLoopPosExecute(Sender: TObject);
     procedure SetLoopPosUpdate(Sender: TObject);
     procedure InsertPositionExecute(Sender: TObject);
     procedure InsertPositionUpdate(Sender: TObject);
     procedure DeletePositionUpdate(Sender: TObject);
     procedure DeletePositionExecute(Sender: TObject);
-    procedure FormDestroy(Sender: TObject);
     procedure ToggleLoopingExecute(Sender: TObject);
     procedure AddFileName(FN:string);
     procedure OpenRecent(n:integer);
@@ -245,8 +261,6 @@ type
     procedure SaveOptions;
     procedure LoadOptions;
     procedure ResetSampTemplate;
-    procedure PlayPatFromLineUpdate(Sender: TObject);
-    procedure PlayPatUpdate(Sender: TObject);
     procedure PlayPatExecute(Sender: TObject);
     procedure PlayPatFromLineExecute(Sender: TObject);
     procedure SaveSNDHMenuClick(Sender: TObject);
@@ -254,7 +268,9 @@ type
     procedure SaveDialogZXAYTypeChange(Sender: TObject);
     procedure SetDialogZXAYExt;
     procedure SaveDialog1TypeChange(Sender: TObject);
+    {$IFDEF Windows}
     procedure SetPriority(Pr:longword);
+    {$ENDIF Windows}
     procedure EditCopy1Update(Sender: TObject);
     procedure EditCut1Update(Sender: TObject);
     procedure EditCut1Execute(Sender: TObject);
@@ -286,9 +302,17 @@ type
     procedure ExpandTwice1Click(Sender: TObject);
     procedure Compresspattern1Click(Sender: TObject);
     procedure Merge1Click(Sender: TObject);
+    procedure VisTimerTimer(Sender: TObject);
+    procedure WindowArrangeAll1Execute(Sender: TObject);
+    procedure WindowCascade1Execute(Sender: TObject);
+    procedure WindowMinimizeAll1Execute(Sender: TObject);
+    procedure WindowTileHorizontal1Execute(Sender: TObject);
+    procedure WindowTileVertical1Execute(Sender: TObject);
+  protected
+    procedure WndProc(var TheMessage : TLMessage); override;
   private
     { Private declarations }
-    procedure CreateMDIChild(const Name: string);
+    procedure CreateMDIChild(const aFileName: string);
   public
     { Public declarations }
     NewTrack_NumberOfLines:integer;
@@ -303,16 +327,27 @@ type
     GlobalVolume,GlobalVolumeMax,WinCount:integer;
   end;
 
-function IntelWord(a:word):word;
+function SwapW(a:word):word; inline;
+
+//All=False - иницилизировать только проигрыватель (т.е. переменные плеера не инициализировать)
+procedure InitForAllTypes(All:boolean);
+
+function SetStdChannelsAllocation(CA:integer):string;
+procedure SetDefault;
+procedure ResetPlaying;
+procedure CatchAndResetPlaying;
 
 var
   MainForm: TMainForm;
+  {$IFDEF Windows}
   Priority:dword = NORMAL_PRIORITY_CLASS;
+  {$ENDIF Windows}
   TrkClBk,TrkClTxt,TrkClHlBk,TrkClSelBk,TrkClSelTxt:integer;
+  StdChannelsAllocation:integer;
 
 implementation
 
-{$R *.DFM}
+{$R *.lfm}
 
 uses About, options, TrkMng, GlbTrn, ExportZX, selectts, TglSams;
 
@@ -324,33 +359,45 @@ const
   Type1:TStr4; Size1:word;
   Type2:TStr4; Size2:word;
   TSID:TStr4;
- end = (Type1:'PT3!';Type2:'PT3!';TSID:'02TS');
+ end = (Type1:'PT3!';Size1:0;Type2:'PT3!';Size2:0;TSID:'02TS');
 
-function IntelWord(a:word):word;
-asm
-xchg al,ah
+function SwapW(a:word):word;
+begin
+Result := Swap(a);
 end;
 
-procedure CheckRegError(Index:integer);
+procedure InitForAllTypes(All:boolean);
 var
- Strg:PChar;
+  i:integer;
 begin
-if Index <> ERROR_SUCCESS then
+for i := NumberOfSoundChips-1 downto 0 do
  begin
-  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_ALLOCATE_BUFFER,
-                nil,Index,0,@Strg,0,nil);
-  try
-   raise ERegistryError.Create(Strg);
-  finally
-   LocalFree(integer(Strg))
-  end
- end
+  Module_SetPointer(PlayingWindow[i].VTMP,i);
+  InitTrackerParameters(All);
+  Real_End[i] := False;
+ end;
+Real_End_All := False;
+//if All then
+ //begin
+if IsFilt >= 0 then
+ begin
+  FillChar(Filt_XL[0],(Filt_M + 1) * 4,0);
+  FillChar(Filt_XR[0],(Filt_M + 1) * 4,0);
+  Filt_I := 0;
+ end;
+MkVisPos := 0;
+VisPoint := 0;
+NOfTicks := 0;
+for i := 0 to NumberOfSoundChips-1 do
+ ResetAYChipEmulation(i,True);
+ //end;
 end;
 
 procedure TMainForm.DeleteWindowListItem(Child:TMDIChild);
 var
  i,j:integer;
 begin
+LineReady := False;
 for i := 1 to TSSel.ListBox1.Items.Count - 1 do
  if TSSel.ListBox1.Items.Objects[i] = Child then
   begin
@@ -365,12 +412,17 @@ for i := 1 to TSSel.ListBox1.Items.Count - 1 do
   end;
 end;
 
+procedure TMainForm.FileClose1Execute(Sender: TObject);
+begin
+TMDIChild(ActiveMDIChild).Close;
+end;
+
 procedure TMainForm.AddWindowListItem(Child:TMDIChild);
 begin
 TSSel.ListBox1.AddItem(Child.Caption,Child);
 end;
 
-procedure TMainForm.CreateMDIChild(const Name: string);
+procedure TMainForm.CreateMDIChild(const aFileName: string);
 var
   Child: TMDIChild;
   Ok:boolean;
@@ -386,8 +438,8 @@ for i := 0 to 1 do
    Child.Caption := IntToStr(WinCount) + ': new module';
    AddWindowListItem(Child);
    Ok := True;
-   if (Name <> '') and FileExists(Name) then
-    Ok := Child.LoadTrackerModule(Name,VTMP2);
+   if (aFileName <> '') and FileExists(aFileName) then
+    Ok := Child.LoadTrackerModule(aFileName,VTMP2);
    if Ok then Caption := Child.Caption + ' - Vortex Tracker II';
    if not Ok or (VTMP2 = nil) then break;
   end;
@@ -397,7 +449,25 @@ if Ok and (VTMP2 <> nil) then
   Child.TSWindow := TMDIChild(TSSel.ListBox1.Items.Objects[MDIChildCount - 1]);
   Child.TSWindow.TSBut.Caption := Child.TSWindow.PrepareTSString(Child.TSWindow.TSBut,TSSel.ListBox1.Items[MDIChildCount]);
   Child.TSWindow.TSWindow := TMDIChild(TSSel.ListBox1.Items.Objects[MDIChildCount]);
-  if MDIChildCount = 2 then WindowTileVertical1.Execute;
+  if Child.Width*2 <= ClientWidth then
+   if MDIChildCount = 2 then
+    //only one TS - move to top left
+    begin
+     Child.Top:=0;
+     Child.Left:=0;
+     Child.TSWindow.Top:=0;
+     Child.TSWindow.Left:=Child.Width;
+    end
+   else
+    //new TS but some other opened before
+    begin
+     //to mask LCL bug MDI childs with bsNone border,
+     //and -16 and -48 is temporary constants till LCL bug will be fixed
+     Child.Left:=Child.TSWindow.Left-16;
+     Child.Top:=Child.TSWindow.Top-48;
+     Child.TSWindow.Top:=Child.TSWindow.Top-48; //mask LCL bug
+     Child.TSWindow.Left:=Child.Left+Child.Width;
+    end;
  end;
 end;
 
@@ -410,6 +480,7 @@ procedure TMainForm.FileOpen1Execute(Sender: TObject);
 var
  i:integer;
 begin
+  OpenDialog.FileName := ExtractFileName(OpenDialog.FileName);
   if OpenDialog.Execute then
    begin
     OpenDialog.InitialDir := ExtractFilePath(OpenDialog.FileName);
@@ -417,6 +488,12 @@ begin
     if i > 16 then i := 16;
     for i := i downto 0 do CreateMDIChild(OpenDialog.Files.Strings[i])
    end
+end;
+
+procedure TMainForm.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+begin
+digsoundthread_stop;
+SaveOptions;
 end;
 
 procedure TMainForm.HelpAbout1Execute(Sender: TObject);
@@ -442,7 +519,7 @@ TrkClSelBk := GetSysColor(COLOR_HIGHLIGHT);
 TrkClSelTxt := GetSysColor(COLOR_HIGHLIGHTTEXT);
 
 for i := 0 to 5 do RecentFiles[i] := '';
-FillChar(NoteKeys,SizeOf(NoteKeys),-3);
+FillChar(NoteKeys,SizeOf(NoteKeys),byte(-3));
 NoteKeys[ORD('A')] := -2;
 NoteKeys[ORD('K')] := -1;
 NoteKeys[ORD('Z')] := 0;
@@ -508,47 +585,22 @@ LoopAllowed := False;
 LoopAllAllowed := False;
 GlobalVolume := TrackBar1.Position;
 GlobalVolumeMax := TrackBar1.Max;
-SetDefault(SampleRate_Def,NumberOfChannels_Def,SampleBit_Def);
-ResetMutex := CreateMutex(nil, False, PChar('VTII_Reset' + IntToStr(GetCurrentProcessId)));
-Synthesizer := Synthesizer_Stereo16;
+digsoundNotify:=Handle;
+UM_DIGSOUNDNOTIFY:=UM_FINALIZEDS;
+SetDefault;
+Synthesizer := @Synthesizer_Stereo16;
 ResetSampTemplate;
-LoadOptions
+LoadOptions;
 end;
 
 procedure TMainForm.RedrawPlWindow(PW:TMDIChild;ps,pat,line:integer);
 begin
-if ps < 256 then PW.SelectPosition2(ps);
-if (PW.Tracks.ShownPattern <> PW.VTMP.Patterns[pat])
-   or (PW.Tracks.ShownFrom <> line) then
+if ps < 256 then
+ PW.ShowPosition(ps);
+if (PW.PatNum <> pat) or (PW.Tracks.ShownFrom <> line) then
  begin
-  PW.PatNum := pat;
-  PW.UpDown1.Position := pat;
-  PW.Tracks.ShownPattern := PW.VTMP.Patterns[pat];
-  PW.Tracks.ShownFrom := line;
+  PW.ChangePattern(pat,line);
   PW.CalculatePos(line);
-  if PW.Tracks.Enabled then HideCaret(PW.Tracks.Handle);
-  PW.Tracks.CursorY := PW.Tracks.N1OfLines;
-  PW.Tracks.RemoveSelection(0,True);
-  PW.Tracks.RedrawTracks(0);
-  if PW.Tracks.Enabled then ShowCaret(PW.Tracks.Handle)
- end;
-end;
-
-procedure TMainForm.umredrawtracks;
-var
- line,pat,ps:integer;
-begin
-if not IsPlaying then exit;
-ps := Msg.WParam and $1FF;
-pat := (Msg.WParam shr 9) and $FF;
-line := (Msg.WParam shr 17) and $1FF - 1;
-RedrawPlWindow(PlayingWindow[1],ps,pat,line);
-if NumberOfSoundChips = 2 then
- begin
-  ps := Msg.LParam and $1FF;
-  pat := (Msg.LParam shr 9) and $FF;
-  line := (Msg.LParam shr 17) and $1FF - 1;
-  RedrawPlWindow(PlayingWindow[2],ps,pat,line);
  end;
 end;
 
@@ -563,23 +615,23 @@ var
  Saved_NumberOfChannels,
  Saved_BufLen_ms,
  Saved_NumberOfBuffers,
- Saved_WODevice:integer;
+ Saved_digsoundDevice:integer;
  Saved_ChipType:ChTypes;
- Saved_Optimization:boolean;
+ Saved_Resampler:integer;
  Saved_FeaturesLevel:integer;
  Saved_DetectFeaturesLevel,
  Saved_VortexModuleHeader,
  Saved_DetectModuleHeader:boolean;
- Saved_IsFilt:boolean;
- Saved_Filt_M:integer;
+ {$IFDEF Windows}
  Saved_Prior:DWORD;
+ {$ENDIF Windows}
  i:integer;
 begin
 Form1.UpDown1.Position := NewTrack_NumberOfLines;
 Form1.Edit2.Font := NewTrack_Font;
 Form1.Edit2.Text := NewTrack_Font.Name;
-Form1.ChipSel.ItemIndex := Ord(Emulating_Chip) - 1;
-Saved_ChipType := Emulating_Chip;
+Form1.ChipSel.ItemIndex := Ord(ChType) - 1;
+Saved_ChipType := ChType;
 Form1.ChanSel.ItemIndex := StdChannelsAllocation;
 Saved_StdChannelsAllocation := StdChannelsAllocation;
 Form1.ChanVisAlloc.ItemIndex := ChanAllocIndex;
@@ -620,8 +672,9 @@ else
   Form1.IntSel.ItemIndex := 5;
  end;
 end;
-Form1.Opt.ItemIndex := Ord(not Optimization_For_Quality);
-Saved_Optimization := Optimization_For_Quality;
+Saved_Resampler := Ord(FilterWant);
+Form1.Resamp.ItemIndex := Ord(FilterWant);
+Form1.Label9.Caption:=FiltInfo;
 if DetectFeaturesLevel then
  Form1.RadioGroup1.ItemIndex := 3
 else
@@ -643,7 +696,11 @@ else if SampleRate = 22050 then
 else if SampleRate = 44100 then
  Form1.SR.ItemIndex := 2
 else if SampleRate = 48000 then
- Form1.SR.ItemIndex := 3;
+ Form1.SR.ItemIndex := 3
+else if SampleRate = 96000 then
+ Form1.SR.ItemIndex := 4
+else if SampleRate = 192000 then
+ Form1.SR.ItemIndex := 5;
 Saved_SampleRate := SampleRate;
 Form1.BR.ItemIndex := Ord(SampleBit = 16);
 Saved_SampleBit := SampleBit;
@@ -653,18 +710,14 @@ Form1.TrackBar1.Position := BufLen_ms;
 Saved_BufLen_ms := BufLen_ms;
 Form1.TrackBar2.Position := NumberOfBuffers;
 Saved_NumberOfBuffers := NumberOfBuffers;
-if integer(WODevice) >= 0 then
- if not Form1.ComboBox1.Visible then Form1.Button4Click(Sender);
-if Form1.ComboBox1.Visible then
- Form1.ComboBox1.ItemIndex := WODevice + 1;
-Saved_WODevice := WODevice;
-Saved_IsFilt := IsFilt;
-Form1.FiltChk.Checked := IsFilt;
-Form1.FiltersGroup.Visible := Optimization_For_Quality;
-Saved_Filt_M := Filt_M;
-Form1.FiltNK.Position := round(Ln(Filt_M) / Ln(2));
+Saved_digsoundDevice := digsoundDevice;
+digsound_getdevices(Form1.ComboBox1.Items);
+if digsoundDevice < Form1.ComboBox1.Items.Count then
+ Form1.ComboBox1.ItemIndex := digsoundDevice;
+{$IFDEF Windows}
 Saved_Prior := Priority;
 Form1.PriorGrp.ItemIndex := Ord(Priority <> NORMAL_PRIORITY_CLASS);
+{$ENDIF Windows}
 
 if Form1.ShowModal = mrOk then
  begin
@@ -676,7 +729,7 @@ if Form1.ShowModal = mrOk then
   TrkClSelBk := Form1.Label12.Color;
   TrkClSelTxt := Form1.Label13.Font.Color;
   for i := 0 to MDIChildCount - 1 do
-   TMDIChild(MDIChildren[i]).Tracks.RedrawTracks(0);
+   TMDIChild(MDIChildren[i]).Tracks.RedrawTracks;
  end
 else
  begin
@@ -684,37 +737,37 @@ else
    SetChannelsAllocationVis(Saved_ChanAllocIndex);
   SetEmulatingChip(Saved_ChipType);
   if Saved_AY_Freq <> AY_Freq then
-   SetAYFreq(Saved_AY_Freq);
+   Set_Chip_Frq(Saved_AY_Freq);
   if Saved_StdChannelsAllocation <> StdChannelsAllocation then
    ToggleChanAlloc.Caption :=  SetStdChannelsAllocation(Saved_StdChannelsAllocation);
   if Saved_Interrupt_Freq <> Interrupt_Freq then
    SetIntFreqEx(Saved_Interrupt_Freq);
-  Set_Optimization(Saved_Optimization);
+  if Saved_Resampler <> Ord(FilterWant) then
+   SetFilter(Saved_Resampler <> 0);
   FeaturesLevel := Saved_FeaturesLevel;
   DetectFeaturesLevel := Saved_DetectFeaturesLevel;
   VortexModuleHeader := Saved_VortexModuleHeader;
   DetectModuleHeader := Saved_DetectModuleHeader;
-  if not WOThreadActive then
+  if not digsoundthread_active then
    begin
     if Saved_SampleRate <> SampleRate then
-     SetSampleRate(Saved_SampleRate);
+     Set_Sample_Rate(Saved_SampleRate);
     if Saved_SampleBit <> SampleBit then
-     SetBitRate(Saved_SampleBit);
+     Set_Sample_Bit(Saved_SampleBit);
     if Saved_NumberOfChannels <> NumberOfChannels then
-     SetNChans(Saved_NumberOfChannels);
+     Set_Stereo(Saved_NumberOfChannels);
     if (Saved_BufLen_ms <> BufLen_ms) or
        (Saved_NumberOfBuffers <> NumberOfBuffers) then
      SetBuffers(Saved_BufLen_ms,Saved_NumberOfBuffers);
-    WODevice := Saved_WODevice
+    digsoundDevice := Saved_digsoundDevice;
    end;
-  SetFilter(Saved_IsFilt,Saved_Filt_M);
-  SetPriority(Saved_Prior)
- end
+  {$IFDEF Windows}
+  SetPriority(Saved_Prior);
+  {$ENDIF Windows}
+ end;
 end;
 
 procedure TMainForm.SavePT3(CW:TMDIChild;FileName:string;AsText:boolean);
-const
- ErrMsg = 'Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.';
 var
  PT3:TSpeccyModule;
  Size:integer;
@@ -724,8 +777,8 @@ if not AsText then
  begin
   if not VTM2PT3(@PT3,CW.VTMP,Size) then
    begin
-    Application.MessageBox(ErrMsg,PAnsiChar(FileName));
-    exit;
+    Application.MessageBox(PAnsiChar(Mes_CantCompileTooBig),PAnsiChar(FileName));
+    Exit;
    end;
   AssignFile(f,FileName);
   Rewrite(f,1);
@@ -736,8 +789,8 @@ if not AsText then
      TSData.Size1 := Size;
      if not VTM2PT3(@PT3,CW.TSWindow.VTMP,Size) then
       begin
-       Application.MessageBox(ErrMsg,PAnsiChar(FileName));
-       exit;
+       Application.MessageBox(PAnsiChar(Mes_CantCompileTooBig),PAnsiChar(FileName));
+       Exit;
       end;
      BlockWrite(f,PT3,Size);
      TSData.Size2 := Size;
@@ -764,6 +817,12 @@ if CW.TSWindow <> nil then
 AddFileName(FileName);
 end;
 
+procedure TMainForm.CommonActionUpdate(Sender: TObject);
+begin
+with Sender as TAction do
+ Enabled := MDIChildCount <> 0;
+end;
+
 procedure TMainForm.FileSave1Execute(Sender: TObject);
 begin
 TMDIChild(ActiveMDIChild).SaveModule;
@@ -782,11 +841,6 @@ FileSave1.Enabled := (MDIChildCount <> 0) and
     TMDIChild(ActiveMDIChild).TSWindow.SongChanged));
 end;
 
-procedure TMainForm.FileSaveAs1Update(Sender: TObject);
-begin
-FileSaveAs1.Enabled := MDIChildCount <> 0
-end;
-
 procedure TMainForm.SaveDialog1TypeChange(Sender: TObject);
 var
  s:string;
@@ -795,75 +849,59 @@ if SaveDialog1.FilterIndex = 1 then
  s := 'txt'
 else
  s := 'pt3';
-SaveDialog1.DefaultExt := s
-end;
-
-procedure TMainForm.Play1Update(Sender: TObject);
-begin
-Play1.Enabled := MDIChildCount <> 0
-end;
-
-procedure TMainForm.PlayFromPos1Update(Sender: TObject);
-begin
-PlayFromPos1.Enabled := MDIChildCount <> 0
-end;
-
-procedure TMainForm.PlayPatUpdate(Sender: TObject);
-begin
-PlayPat.Enabled := MDIChildCount <> 0
-end;
-
-procedure TMainForm.PlayPatFromLineUpdate(Sender: TObject);
-begin
-PlayPatFromLine.Enabled := MDIChildCount <> 0
+SaveDialog1.DefaultExt := s;
 end;
 
 procedure TMainForm.Stop1Update(Sender: TObject);
 begin
-Stop1.Enabled := (MDIChildCount <> 0) and IsPlaying
+Stop1.Enabled := (MDIChildCount <> 0) and IsPlaying;
 end;
 
 procedure TMainForm.Play1Execute(Sender: TObject);
 var
  i:integer;
 begin
-if MDIChildCount = 0 then exit;
-if TMDIChild(ActiveMDIChild).VTMP.Positions.Length <= 0 then exit;
+if MDIChildCount = 0 then
+ Exit;
+if TMDIChild(ActiveMDIChild).VTMP^.Positions.Length <= 0 then
+ Exit;
 if IsPlaying then
  begin
-  StopPlaying;
-  RestoreControls
+  digsoundthread_stop;
+  RestoreControls;
  end;
 PlayMode := PMPlayModule;
 DisableControls;
 CheckSecondWindow;
-PlayingWindow[1].Tracks.RemoveSelection(0,False);
-for i := 1 to NumberOfSoundChips do
+PlayingWindow[0].Tracks.RemoveSelection(False);
+for i := 0 to NumberOfSoundChips-1 do
  begin
   Module_SetPointer(PlayingWindow[i].VTMP,i);
-  Module_SetDelay(PlayingWindow[i].VTMP.Initial_Delay);
+  Module_SetDelay(PlayingWindow[i].VTMP^.Initial_Delay);
   Module_SetCurrentPosition(0);
  end;
 InitForAllTypes(True);
-StartWOThread
+digsoundthread_start;
+VisTimer.Enabled:=True;
 end;
 
 procedure TMainForm.PlayFromPos1Execute(Sender: TObject);
 begin
 if MDIChildCount = 0 then exit;
-if TMDIChild(ActiveMDIChild).VTMP.Positions.Length <= 0 then exit;
+if TMDIChild(ActiveMDIChild).VTMP^.Positions.Length <= 0 then exit;
 if IsPlaying then
  begin
-  StopPlaying;
-  RestoreControls
+  digsoundthread_stop;
+  RestoreControls;
  end;
 PlayMode := PMPlayModule;
 DisableControls;
 CheckSecondWindow;
-PlayingWindow[1].Tracks.RemoveSelection(0,False);
-//PlayingWindow[1].RerollToPos(PlayingWindow[1].PositionNumber);
-PlayingWindow[1].RerollToLine(1);
-StartWOThread;
+PlayingWindow[0].Tracks.RemoveSelection(False);
+//PlayingWindow[0].RerollToPos(PlayingWindow[0].PositionNumber);
+PlayingWindow[0].RerollToLine(0);
+digsoundthread_start;
+VisTimer.Enabled:=True;
 end;
 
 procedure TMainForm.PlayPatExecute(Sender: TObject);
@@ -871,19 +909,20 @@ begin
 if MDIChildCount = 0 then exit;
 if IsPlaying then
  begin
-  StopPlaying;
-  RestoreControls
+  digsoundthread_stop;
+  RestoreControls;
  end;
 PlayMode := PMPlayPattern;
 DisableControls;
-PlayingWindow[1].ValidatePattern2(PlayingWindow[1].PatNum);
-PlayingWindow[1].Tracks.RemoveSelection(0,False);
-Module_SetPointer(PlayingWindow[1].VTMP,1);
-Module_SetDelay(PlayingWindow[1].VTMP.Initial_Delay);
-PlVars[1].CurrentPosition := 65535;
-Module_SetCurrentPattern(PlayingWindow[1].PatNum);
+PlayingWindow[0].ValidatePattern2(PlayingWindow[0].PatNum);
+PlayingWindow[0].Tracks.RemoveSelection(False);
+Module_SetPointer(PlayingWindow[0].VTMP,0);
+Module_SetDelay(PlayingWindow[0].VTMP^.Initial_Delay);
+PlVars[0].CurrentPosition := 65535;
+Module_SetCurrentPattern(PlayingWindow[0].PatNum);
 InitForAllTypes(False);
-StartWOThread
+digsoundthread_start;
+VisTimer.Enabled:=True;
 end;
 
 procedure TMainForm.PlayPatFromLineExecute(Sender: TObject);
@@ -891,32 +930,27 @@ begin
 if MDIChildCount = 0 then exit;
 if IsPlaying then
  begin
-  StopPlaying;
-  RestoreControls
+  digsoundthread_stop;
+  RestoreControls;
  end;
 TMDIChild(ActiveMDIChild).ValidatePattern2(TMDIChild(ActiveMDIChild).PatNum);
-TMDIChild(ActiveMDIChild).RestartPlayingPatternLine(False)
+TMDIChild(ActiveMDIChild).RestartPlayingPatternLine(False);
 end;
 
 procedure TMainForm.Stop1Execute(Sender: TObject);
 begin
 if (MDIChildCount = 0) or not IsPlaying then exit;
-StopPlaying;
+VisTimer.Enabled:=False;
+digsoundthread_stop;
 RestoreControls;
-PlayingWindow[1].Tracks.RemoveSelection(0,True);
-if (TMDIChild(ActiveMDIChild) = PlayingWindow[1]) and
+PlayingWindow[0].Tracks.RemoveSelection(True);
+if (TMDIChild(ActiveMDIChild) = PlayingWindow[0]) and
+   (PlayingWindow[0].PageControl1.ActivePageIndex = 0) then
+ PlayingWindow[0].Tracks.SetFocus;
+if NumberOfSoundChips > 1 then
+ if (TMDIChild(ActiveMDIChild) = PlayingWindow[1]) and
    (PlayingWindow[1].PageControl1.ActivePageIndex = 0) then
- PlayingWindow[1].Tracks.SetFocus;
-if NumberOfSoundChips < 2 then exit;
-if (TMDIChild(ActiveMDIChild) = PlayingWindow[2]) and
-   (PlayingWindow[2].PageControl1.ActivePageIndex = 0) then
- PlayingWindow[2].Tracks.SetFocus;
-end;
-
-procedure TMainForm.FormClose(Sender: TObject; var Action: TCloseAction);
-begin
-StopPlaying;
-SaveOptions;
+  PlayingWindow[1].Tracks.SetFocus;
 end;
 
 procedure TMainForm.SetLoopPosExecute(Sender: TObject);
@@ -924,19 +958,19 @@ begin
 if MDIChildCount = 0 then exit;
 with TMDIChild(ActiveMDIChild) do
  begin
-  if (StringGrid1.Selection.Left < VTMP.Positions.Length) and
-     (StringGrid1.Selection.Left <> VTMP.Positions.Loop) then
+  if (StringGrid1.Selection.Left < VTMP^.Positions.Length) and
+     (StringGrid1.Selection.Left <> VTMP^.Positions.Loop) then
    SetLoopPos(StringGrid1.Selection.Left);
-  InputPNumber := 0
- end
+  InputPNumber := 0;
+ end;
 end;
 
 procedure TMainForm.SetLoopPosUpdate(Sender: TObject);
 begin
 SetLoopPos.Enabled := (MDIChildCount <> 0) and
                       TMDIChild(ActiveMDIChild).StringGrid1.Focused and
-                      (TMDIChild(ActiveMDIChild).VTMP.Positions.Length >
-                       TMDIChild(ActiveMDIChild).StringGrid1.Selection.Left)
+                      (TMDIChild(ActiveMDIChild).VTMP^.Positions.Length >
+                       TMDIChild(ActiveMDIChild).StringGrid1.Selection.Left);
 end;
 
 procedure TMainForm.InsertPositionExecute(Sender: TObject);
@@ -948,32 +982,32 @@ if MDIChildCount = 0 then exit;
 if IsPlaying and (PlayMode = PMPlayModule) then exit;
 with TMDIChild(ActiveMDIChild) do
  begin
- if (StringGrid1.Selection.Left < VTMP.Positions.Length) and
-    (VTMP.Positions.Length < 256) then
-  begin
-   SongChanged := True;
-   AddUndo(CAInsertPosition,0,0);
-   ChangeList[ChangeCount - 1].CurrentPosition := StringGrid1.Selection.Left;
-   New(ChangeList[ChangeCount - 1].PositionList);
-   ChangeList[ChangeCount - 1].PositionList^ := VTMP.Positions;
-   i := VTMP.Positions.Length - StringGrid1.Selection.Left;
-   Inc(VTMP.Positions.Length);
-   if StringGrid1.Selection.Left <= VTMP.Positions.Loop then
-    Inc(VTMP.Positions.Loop);
-   for i := StringGrid1.Selection.Left + i - 1 downto
-                                StringGrid1.Selection.Left do
-    VTMP.Positions.Value[i + 1] := VTMP.Positions.Value[i];
-   for i := StringGrid1.Selection.Left to VTMP.Positions.Length - 1 do
-    begin
-     s := IntToStr(VTMP.Positions.Value[i]);
-     if i = VTMP.Positions.Loop then
-      s := 'L' + s;
-     StringGrid1.Cells[i,0] := s
-    end;
-   CalcTotLen 
-  end;
- InputPNumber := 0
- end
+  if (StringGrid1.Selection.Left < VTMP^.Positions.Length) and
+     (VTMP^.Positions.Length < 256) then
+   begin
+    SongChanged := True;
+    AddUndo(CAInsertPosition,0,0);
+    ChangeList[ChangeCount - 1].CurrentPosition := StringGrid1.Selection.Left;
+    New(ChangeList[ChangeCount - 1].PositionList);
+    ChangeList[ChangeCount - 1].PositionList^ := VTMP^.Positions;
+    i := VTMP^.Positions.Length - StringGrid1.Selection.Left;
+    Inc(VTMP^.Positions.Length);
+    if StringGrid1.Selection.Left <= VTMP^.Positions.Loop then
+     Inc(VTMP^.Positions.Loop);
+    for i := StringGrid1.Selection.Left + i - 1 downto
+                                 StringGrid1.Selection.Left do
+     VTMP^.Positions.Value[i + 1] := VTMP^.Positions.Value[i];
+    for i := StringGrid1.Selection.Left to VTMP^.Positions.Length - 1 do
+     begin
+      s := IntToStr(VTMP^.Positions.Value[i]);
+      if i = VTMP^.Positions.Loop then
+       s := 'L' + s;
+      StringGrid1.Cells[i,0] := s
+     end;
+    CalcTotLen;
+   end;
+  InputPNumber := 0;
+ end;
 end;
 
 procedure TMainForm.InsertPositionUpdate(Sender: TObject);
@@ -981,8 +1015,8 @@ begin
 InsertPosition.Enabled := (MDIChildCount <> 0) and
                       not (IsPlaying and (PlayMode = PMPlayModule)) and
                       TMDIChild(ActiveMDIChild).StringGrid1.Focused and
-                      (TMDIChild(ActiveMDIChild).VTMP.Positions.Length >
-                       TMDIChild(ActiveMDIChild).StringGrid1.Selection.Left)
+                      (TMDIChild(ActiveMDIChild).VTMP^.Positions.Length >
+                       TMDIChild(ActiveMDIChild).StringGrid1.Selection.Left);
 end;
 
 procedure TMainForm.DeletePositionExecute(Sender: TObject);
@@ -995,38 +1029,38 @@ if MDIChildCount = 0 then exit;
 if IsPlaying and (PlayMode = PMPlayModule) then exit;
 with TMDIChild(ActiveMDIChild) do
  begin
- if StringGrid1.Selection.Left < VTMP.Positions.Length then
+ if StringGrid1.Selection.Left < VTMP^.Positions.Length then
   begin
    SongChanged := True;
    AddUndo(CADeletePosition,0,0);
    ChangeList[ChangeCount - 1].CurrentPosition := StringGrid1.Selection.Left;
    New(ChangeList[ChangeCount - 1].PositionList);
-   ChangeList[ChangeCount - 1].PositionList^ := VTMP.Positions;
-   i := VTMP.Positions.Length - StringGrid1.Selection.Left - 1;
-   Dec(VTMP.Positions.Length);
-   if StringGrid1.Selection.Left < VTMP.Positions.Loop then
-    Dec(VTMP.Positions.Loop);
+   ChangeList[ChangeCount - 1].PositionList^ := VTMP^.Positions;
+   i := VTMP^.Positions.Length - StringGrid1.Selection.Left - 1;
+   Dec(VTMP^.Positions.Length);
+   if StringGrid1.Selection.Left < VTMP^.Positions.Loop then
+    Dec(VTMP^.Positions.Loop);
    if i > 0 then
     begin
      for i := StringGrid1.Selection.Left to
                                 StringGrid1.Selection.Left + i - 1 do
-      VTMP.Positions.Value[i] := VTMP.Positions.Value[i + 1];
-     for i := StringGrid1.Selection.Left to VTMP.Positions.Length - 1 do
+      VTMP^.Positions.Value[i] := VTMP^.Positions.Value[i + 1];
+     for i := StringGrid1.Selection.Left to VTMP^.Positions.Length - 1 do
       begin
-       s := IntToStr(VTMP.Positions.Value[i]);
-       if i = VTMP.Positions.Loop then
+       s := IntToStr(VTMP^.Positions.Value[i]);
+       if i = VTMP^.Positions.Loop then
         s := 'L' + s;
        StringGrid1.Cells[i,0] := s
       end
     end
    else
     begin
-     if (VTMP.Positions.Loop > 0) and
-           (VTMP.Positions.Length = VTMP.Positions.Loop) then
+     if (VTMP^.Positions.Loop > 0) and
+           (VTMP^.Positions.Length = VTMP^.Positions.Loop) then
       begin
-       Dec(VTMP.Positions.Loop);
-       StringGrid1.Cells[VTMP.Positions.Loop,0] := 'L' +
-                          IntToStr(VTMP.Positions.Value[VTMP.Positions.Loop])
+       Dec(VTMP^.Positions.Loop);
+       StringGrid1.Cells[VTMP^.Positions.Loop,0] := 'L' +
+                          IntToStr(VTMP^.Positions.Value[VTMP^.Positions.Loop])
       end;
      if StringGrid1.Selection.Left > 0 then
       begin
@@ -1038,11 +1072,11 @@ with TMDIChild(ActiveMDIChild) do
       end
     end;
    CalcTotLen;
-   if VTMP.Positions.Length < 256 then
-    StringGrid1.Cells[VTMP.Positions.Length,0] := '...'
+   if VTMP^.Positions.Length < 256 then
+    StringGrid1.Cells[VTMP^.Positions.Length,0] := '...'
   end;
- InputPNumber := 0
- end
+ InputPNumber := 0;
+ end;
 end;
 
 procedure TMainForm.DeletePositionUpdate(Sender: TObject);
@@ -1050,13 +1084,8 @@ begin
 DeletePosition.Enabled := (MDIChildCount <> 0) and
                       not (IsPlaying and (PlayMode = PMPlayModule)) and
                       TMDIChild(ActiveMDIChild).StringGrid1.Focused and
-                      (TMDIChild(ActiveMDIChild).VTMP.Positions.Length >
-                       TMDIChild(ActiveMDIChild).StringGrid1.Selection.Left)
-end;
-
-procedure TMainForm.FormDestroy(Sender: TObject);
-begin
-CloseHandle(ResetMutex);
+                      (TMDIChild(ActiveMDIChild).VTMP^.Positions.Length >
+                       TMDIChild(ActiveMDIChild).StringGrid1.Selection.Left);
 end;
 
 procedure TMainForm.ToggleLoopingExecute(Sender: TObject);
@@ -1067,7 +1096,7 @@ if LoopAllowed then
   LoopAllAllowed := False;
   ToggleLoopingAll.Checked := False
  end;
-ToggleLooping.Checked := LoopAllowed
+ToggleLooping.Checked := LoopAllowed;
 end;
 
 procedure TMainForm.ToggleLoopingAllExecute(Sender: TObject);
@@ -1078,10 +1107,15 @@ if LoopAllAllowed then
   LoopAllowed := False;
   ToggleLooping.Checked := False
  end;
-ToggleLoopingAll.Checked := LoopAllAllowed
+ToggleLoopingAll.Checked := LoopAllAllowed;
 end;
 
-procedure TMainForm.AddFileName;
+procedure TMainForm.PlayFromPos1Update(Sender: TObject);
+begin
+
+end;
+
+procedure TMainForm.AddFileName(FN: string);
 var
  i,j:integer;
  FN1:string;
@@ -1107,82 +1141,82 @@ for i :=  0 to 5 do
   end
  else
   MainMenu1.Items[0].Items[j + i].Visible := False;
-MainMenu1.Items[0].Items[j + 6].Visible := MainMenu1.Items[0].Items[j].Visible
+MainMenu1.Items[0].Items[j + 6].Visible := MainMenu1.Items[0].Items[j].Visible;
 end;
 
-procedure TMainForm.OpenRecent;
+procedure TMainForm.OpenRecent(n: integer);
 begin
 if (RecentFiles[n] <> '') and FileExists(RecentFiles[n]) then
  begin
   OpenDialog.InitialDir := ExtractFilePath(RecentFiles[n]);
   OpenDialog.FileName := RecentFiles[n];
-  CreateMDIChild(RecentFiles[n])
- end
+  CreateMDIChild(RecentFiles[n]);
+ end;
 end;
 
 procedure TMainForm.RFile1Click(Sender: TObject);
 begin
-OpenRecent(0)
+OpenRecent(0);
 end;
 
 procedure TMainForm.RFile2Click(Sender: TObject);
 begin
-OpenRecent(1)
+OpenRecent(1);
 end;
 
 procedure TMainForm.RFile3Click(Sender: TObject);
 begin
-OpenRecent(2)
+OpenRecent(2);
 end;
 
 procedure TMainForm.RFile4Click(Sender: TObject);
 begin
-OpenRecent(3)
+OpenRecent(3);
 end;
 
 procedure TMainForm.RFile5Click(Sender: TObject);
 begin
-OpenRecent(4)
+OpenRecent(4);
 end;
 
 procedure TMainForm.RFile6Click(Sender: TObject);
 begin
-OpenRecent(5)
+OpenRecent(5);
 end;
 
-procedure TMainForm.umplayingoff;
+procedure TMainForm.digsoundfinalize(var Msg: TMessage);
+var
+ TS:TMDIChild;
 begin
-RestoreControls
-end;
-
-procedure TMainForm.umfinalizewo;
-begin
-WOThreadFinalization;
+digsoundthread_free; //todo thread уже остановлен, а digsoundthread_free в начале "останавливает" опять
 RestoreControls;
 if LoopAllAllowed and (MDIChildCount > 1) then
  begin
+  TS := TMDIChild(ActiveMDIChild).TSWindow;
   Next;
-  Play1Execute(nil)
- end
+  //check to don't play TS one more time
+  if TMDIChild(ActiveMDIChild) = TS then Next;
+  Play1Execute(nil);
+ end;
 end;
 
 procedure TMainForm.ToggleChipExecute(Sender: TObject);
 begin
-if Emulating_Chip = AY_Chip then
+if ChType = AY_Chip then
  begin
-  Emulating_Chip := YM_Chip;
+  ChType := YM_Chip;
   ToggleChip.Caption := 'YM'
  end
 else
  begin
-  Emulating_Chip := AY_Chip;
+  ChType := AY_Chip;
   ToggleChip.Caption := 'AY'
  end;
 if StdChannelsAllocation in [0..6] then
  SetStdChannelsAllocation(StdChannelsAllocation)
 else
  Calculate_Level_Tables;
-if IsPlaying then PlayingWindow[1].StopAndRestart
+if IsPlaying then PlayingWindow[0].StopAndRestart;
 end;
 
 procedure TMainForm.ToggleChanAllocExecute(Sender: TObject);
@@ -1193,10 +1227,10 @@ ToggleChanAlloc.Caption := ToggleChanMode;
 CA := StdChannelsAllocation;
 if CA > 0 then Dec(CA);
 SetChannelsAllocationVis(CA);
-if IsPlaying then PlayingWindow[1].StopAndRestart
+if IsPlaying then PlayingWindow[0].StopAndRestart;
 end;
 
-procedure TMainForm.SetChannelsAllocationVis;
+procedure TMainForm.SetChannelsAllocationVis(CA: integer);
 var
  i,c,p,n:integer;
  PrevAlloc:array[0..2]of integer;
@@ -1209,7 +1243,7 @@ case CA of
 2:begin ChanAlloc[0] := 1; ChanAlloc[1] := 0; ChanAlloc[2] := 2 end;
 3:begin ChanAlloc[0] := 1; ChanAlloc[1] := 2; ChanAlloc[2] := 0 end;
 4:begin ChanAlloc[0] := 2; ChanAlloc[1] := 0; ChanAlloc[2] := 1 end;
-5:begin ChanAlloc[0] := 2; ChanAlloc[1] := 1; ChanAlloc[2] := 0 end
+5:begin ChanAlloc[0] := 2; ChanAlloc[1] := 1; ChanAlloc[2] := 0 end;
 end;
 for i := 0 to MDIChildCount - 1 do
  with TMDIChild(MDIChildren[i]) do
@@ -1220,45 +1254,48 @@ for i := 0 to MDIChildCount - 1 do
     p := PrevAlloc[c];
     n := 0;
     while (n < 2) and (ChanAlloc[n] <> p) do Inc(n);
-    Inc(Tracks.CursorX,(n - c) * 14)
+    Inc(Tracks.CursorX,(n - c) * 14);
    end;
-  ResetChanAlloc
- end
+  ResetChanAlloc;
+ end;
 end;
 
 procedure TMainForm.DisableControls;
 begin
 Form1.PlayStarts;
 NumberOfSoundChips := 1;
-PlayingWindow[1] := TMDIChild(ActiveMDIChild);
-PlayingWindow[1].Edit2.Enabled := False;
-PlayingWindow[1].UpDown1.Enabled := False;
-PlayingWindow[1].Tracks.Enabled := False;
+PlayingWindow[0] := TMDIChild(ActiveMDIChild);
+PlayingWindow[0].Edit2.Enabled := False;
+PlayingWindow[0].UpDown1.Enabled := False;
+PlayingWindow[0].Tracks.Enabled := False;
 end;
 
 procedure TMainForm.CheckSecondWindow;
 begin
-if PlayingWindow[1].TSWindow <> nil then
+if PlayingWindow[0].TSWindow <> nil then
  begin
-  PlayingWindow[2] := PlayingWindow[1].TSWindow;
-  if (PlayingWindow[1] <> PlayingWindow[2]) and (PlayingWindow[2].VTMP.Positions.Length <> 0) then
+  PlayingWindow[1] := PlayingWindow[0].TSWindow;
+  if (PlayingWindow[0] <> PlayingWindow[1]) and (PlayingWindow[1].VTMP^.Positions.Length <> 0) then
    begin
     NumberOfSoundChips := 2;
-    PlayingWindow[2].Edit2.Enabled := False;
-    PlayingWindow[2].UpDown1.Enabled := False;
-    PlayingWindow[2].Tracks.Enabled := False;
-    PlayingWindow[2].TSBut.Enabled := False;
+    PlayingWindow[1].Edit2.Enabled := False;
+    PlayingWindow[1].UpDown1.Enabled := False;
+    PlayingWindow[1].Tracks.Enabled := False;
+    PlayingWindow[1].TSBut.Enabled := False;
    end;
+  PlayingWindow[1].BringToFront; //todo see TMDIChild.FormActivate comment about SendToBack
+  PlayingWindow[0].BringToFront;
  end;
-PlayingWindow[1].TSBut.Enabled := False;
+PlayingWindow[0].TSBut.Enabled := False;
 end;
 
 procedure TMainForm.RestoreControls;
 var
  i:integer;
 begin
+VisTimer.Enabled:=False;
 Form1.PlayStops;
-for i := 1 to NumberOfSoundChips do
+for i := 0 to NumberOfSoundChips-1 do
  begin
   PlayingWindow[i].Edit2.Enabled := True;
   PlayingWindow[i].UpDown1.Enabled := True;
@@ -1269,17 +1306,126 @@ for i := 1 to NumberOfSoundChips do
  end;
 end;
 
-procedure TMainForm.SetIntFreqEx;
+function SetStdChannelsAllocation(CA:integer):string;
+var
+ Echo:integer;
+begin
+Result := '';
+StdChannelsAllocation := CA;
+case ChType of
+AY_Chip:
+ Echo := 85
+else
+ Echo := 13;
+end;
+case StdChannelsAllocation of
+0:
+ begin
+  MidChan := 0;
+  Result := 'Mono';
+  Index_AL := 255; Index_AR := 255;
+  Index_BL := 255; Index_BR := 255;
+  Index_CL := 255; Index_CR := 255
+ end;
+1:
+ begin
+  MidChan := 1;
+  Result := 'ABC';
+  Index_AL := 255; Index_AR := Echo;
+  Index_BL := 170; Index_BR := 170;
+  Index_CL := Echo; Index_CR := 255
+ end;
+2:
+ begin
+  MidChan := 2;
+  Result := 'ACB';
+  Index_AL := 255; Index_AR := Echo;
+  Index_CL := 170; Index_CR := 170;
+  Index_BL := Echo; Index_BR := 255
+ end;
+3:
+ begin
+  MidChan := 0;
+  Result := 'BAC';
+  Index_BL := 255; Index_BR := Echo;
+  Index_AL := 170; Index_AR := 170;
+  Index_CL := Echo; Index_CR := 255
+ end;
+4:
+ begin
+  MidChan := 2;
+  Result := 'BCA';
+  Index_BL := 255; Index_BR := Echo;
+  Index_CL := 170; Index_CR := 170;
+  Index_AL := Echo; Index_AR := 255
+ end;
+5:
+ begin
+  MidChan := 0;
+  Result := 'CAB';
+  Index_CL := 255; Index_CR := Echo;
+  Index_AL := 170; Index_AR := 170;
+  Index_BL := Echo; Index_BR := 255
+ end;
+6:
+ begin
+  MidChan := 1;
+  Result := 'CBA';
+  Index_CL := 255; Index_CR := Echo;
+  Index_BL := 170; Index_BR := 170;
+  Index_AL := Echo; Index_AR := 255
+ end;
+end;
+Calculate_Level_Tables;
+end;
+
+procedure SetDefault;
+var
+ IsPl:boolean;
+begin
+IsPl := digsoundthread_active;
+Set_Player_Frq(Interrupt_FreqDef);
+if not IsPl then Set_Sample_Rate(SampleRateDef);
+Set_Chip_Frq(AY_FreqDef);
+if not IsPl then
+ begin
+  Set_Sample_Bit(SampleBitDef);
+  Set_Stereo(NumOfChanDef);
+  SetBuffers(BufLen_msDef,NumberOfBuffersDef);
+  digsoundDevice := digsoundDeviceDef;
+  digsoundDeviceName := digsoundDeviceNameDef;
+ end;
+SetStdChannelsAllocation(ChanAllocDef);
+ChType := YM_Chip;
+SetFilter(True);
+Calculate_Level_Tables;
+end;
+
+procedure ResetPlaying;
+begin
+digsound_reset;
+MkVisPos := 0;
+VisPoint := 0;
+NOfTicks := 0;
+end;
+
+procedure CatchAndResetPlaying;
+begin
+digsoundloop_catch;
+ResetPlaying;
+end;
+
+procedure TMainForm.SetIntFreqEx(f: integer);
 var
  i:integer;
 begin
-SetIntFreq(f);
+Set_Player_Frq(f);
 for i := 0 to MDIChildCount - 1 do
  with TMDIChild(MDIChildren[i]) do
-  ReCalcTimes
+  ReCalcTimes;
 end;
 
-procedure TMainForm.SetSampleTemplate;
+procedure TMainForm.SetSampleTemplate(Tmp: integer);
 var
  i:integer;
 begin
@@ -1293,14 +1439,14 @@ for i := 0 to MDIChildCount - 1 do
     begin
      if Focused then
       HideCaret(Handle);
-     RedrawSamples(0);
+     RedrawSamples;
      if Focused then
-      ShowCaret(Handle)
-    end
-  end
+      ShowCaret(Handle);
+    end;
+  end;
 end;
 
-procedure TMainForm.AddToSampTemplate;
+procedure TMainForm.AddToSampTemplate(const SamTik: TSampleTick);
 var
  i,l:integer;
 begin
@@ -1324,7 +1470,7 @@ SetLength(SampleLineTemplates,l + 1);
 SampleLineTemplates[l] := SamTik;
 for i := 0 to MDIChildCount - 1 do
  with TMDIChild(MDIChildren[i]) do
-  ListBox1.Items.Add(GetSampleString(SamTik,False,True))
+  ListBox1.Items.Add(GetSampleString(SamTik,False,True));
 end;
 
 procedure TMainForm.ResetSampTemplate;
@@ -1344,7 +1490,7 @@ for i := 0 to MDIChildCount - 1 do
    ListBox1.Items.Add(GetSampleString(SampleLineTemplates[1],False,True));
   end;
 CurrentSampleLineTemplate := -1;
-SetSampleTemplate(0)
+SetSampleTemplate(0);
 end;
 
 procedure TMainForm.Togglesamples1Click(Sender: TObject);
@@ -1365,48 +1511,45 @@ end;
 procedure TMainForm.TrackBar1Change(Sender: TObject);
 begin
 GlobalVolume := TrackBar1.Position;
-Calculate_Level_Tables
+Calculate_Level_Tables;
 end;
 
-procedure TMainForm.SetEmulatingChip;
+procedure TMainForm.SetEmulatingChip(ChType: ChTypes);
 begin
-if Emulating_Chip <> ChType then
+if ChType <> ChType then
  begin
-  Emulating_Chip := ChType;
-  if Emulating_Chip = AY_Chip then
+  ChType := ChType;
+  if ChType = AY_Chip then
    ToggleChip.Caption := 'AY'
   else
    ToggleChip.Caption := 'YM';
-  Calculate_Level_Tables
- end
+  Calculate_Level_Tables;
+ end;
 end;
 
 procedure TMainForm.SaveOptions;
+
+ procedure SaveDW(const Nm:string; const Vl:integer);
+ begin
+ OptionsWrite(Nm,IntToStr(Vl));
+ end;
+
+ procedure SaveStr(const Nm:string; const Vl:string);
+ begin
+ OptionsWrite(Nm,Vl);
+ end;
+
 var
  i:integer;
- MyRegPath:string;
- CreateStatus:longword;
- subKeyHnd1:HKey;
-
- procedure SaveDW(Nm:PChar; const Vl:integer);
- begin
- CheckRegError(RegSetValueEx(subKeyHnd1,Nm,0,REG_DWORD,@Vl,4))
- end;
-
- procedure SaveStr(Nm:PChar; const Vl:string);
- begin
- CheckRegError(RegSetValueEx(subKeyHnd1,Nm,0,REG_SZ,PChar(Vl),Length(Vl) + 1))
- end;
-
 begin
+{$IFDEF Windows}
 SetPriority(0);
-MyRegPath := MyRegPath1 + '\' + MyRegPath2 + '\' + MyRegPath3 + #0;
-i := 0;
-i := RegCreateKeyEx(HKEY_CURRENT_USER{HKEY_LOCAL_MACHINE},PChar(MyRegPath),0,@i,
-     REG_OPTION_NON_VOLATILE,KEY_ALL_ACCESS,nil,subKeyHnd1,@CreateStatus);
-CheckRegError(i);
+{$ENDIF Windows}
+if OptionsInit(True) then
 try
+{$IFDEF Windows}
  SaveDW('Priority',Priority);
+{$ENDIF Windows}
  SaveDW('ChanAllocIndex',ChanAllocIndex);
  SaveDW('AY_Freq',AY_Freq);
  SaveDW('StdChannelsAllocation',StdChannelsAllocation);
@@ -1416,9 +1559,10 @@ try
  SaveDW('NumberOfChannels',NumberOfChannels);
  SaveDW('BufLen_ms',BufLen_ms);
  SaveDW('NumberOfBuffers',NumberOfBuffers);
- SaveDW('WODevice',WODevice);
- SaveDW('ChipType',Ord(Emulating_Chip));
- SaveDW('Optimization',Ord(Optimization_For_Quality));
+ SaveDW('digsoundDevice',digsoundDevice);
+ SaveStr('digsoundDeviceName',digsoundDeviceName);
+ SaveDW('ChipType',Ord(ChType));
+ SaveDW('Filter',Ord(FilterWant));
  SaveDW('FeaturesLevel',FeaturesLevel);
  SaveDW('DetectFeaturesLevel',Ord(DetectFeaturesLevel));
  SaveDW('VortexModuleHeader',Ord(VortexModuleHeader));
@@ -1463,52 +1607,40 @@ try
   SaveDW(PChar('ToolBar' + IntToStr(i)),Ord(PopupMenu3.Items[i].Checked));
 
 finally
- RegCloseKey(subKeyHnd1)
-end
+ OptionsDone;
+end;
 end;
 
 procedure TMainForm.LoadOptions;
+
+ function GetDW(const Nm:string; out Vl:integer):boolean;
+ var
+  s:string;
+ begin
+ Result := OptionsRead(Nm,s) and TryStrToInt(s,Vl);
+ end;
+
+ function GetStr(const Nm:string; out Vl:string):boolean;
+ begin
+ Result := OptionsRead(Nm,Vl);
+ end;
+
 var
- MyRegPath,s:string;
+ s:string;
  i,v:integer;
- subKeyHnd1:HKey;
-
- function GetDW(Nm:PChar; var Vl:integer):boolean;
- var
-  i:integer;
- begin
- i := 4;
- Result := RegQueryValueEx(subKeyHnd1,Nm,nil,nil,@Vl,@i) = ERROR_SUCCESS
- end;
-
- function GetStr(Nm:PChar; var Vl:string):boolean;
- var
-  i:integer;
- begin
- Result := RegQueryValueEx(subKeyHnd1,Nm,nil,nil,nil,@i) = ERROR_SUCCESS;
- if Result then
-  begin
-   SetLength(Vl,i + 1);
-   Result := RegQueryValueEx(subKeyHnd1,Nm,nil,nil,@Vl[1],@i) = ERROR_SUCCESS;
-   if Result then
-    Vl := PChar(Vl)
-  end;
- end;
 
 begin
-if (integer(GetVersion) < 0) then //Win9x or Win32s
- SetPriority(HIGH_PRIORITY_CLASS);
-MyRegPath := MyRegPath1 + '\' + MyRegPath2 + '\' + MyRegPath3 + #0;
-if RegOpenKeyEx(HKEY_CURRENT_USER{HKEY_LOCAL_MACHINE},PChar(MyRegPath),0,
-   KEY_EXECUTE,subKeyHnd1) = ERROR_SUCCESS then
+if OptionsInit(False) then
  begin
+  {$IFDEF Windows}
   if GetDW('Priority',v) then SetPriority(v);
+  {$ENDIF Windows}
   if GetDW('ChanAllocIndex',v) then
    if v <> ChanAllocIndex then
     SetChannelsAllocationVis(v);
   if GetDW('AY_Freq',v) then
    if v <> AY_Freq then
-    SetAYFreq(v);
+    Set_Chip_Frq(v);
   if GetDW('StdChannelsAllocation',v) then
    if v <> StdChannelsAllocation then
     ToggleChanAlloc.Caption :=  SetStdChannelsAllocation(v);
@@ -1518,8 +1650,6 @@ if RegOpenKeyEx(HKEY_CURRENT_USER{HKEY_LOCAL_MACHINE},PChar(MyRegPath),0,
   if GetDW('ChipType',v) then
    if v in [1,2] then
     SetEmulatingChip(ChTypes(v));
-  if GetDW('Optimization',v) then
-   Set_Optimization(v <> 0);
   if GetDW('FeaturesLevel',v) then
    FeaturesLevel := v;
   if GetDW('DetectFeaturesLevel',v) then
@@ -1530,21 +1660,22 @@ if RegOpenKeyEx(HKEY_CURRENT_USER{HKEY_LOCAL_MACHINE},PChar(MyRegPath),0,
    DetectModuleHeader := v <> 0;
   if GetDW('SampleRate',v) then
    if v <> SampleRate then
-    SetSampleRate(v);
+    Set_Sample_Rate(v);
   if GetDW('SampleBit',v) then
    if v <> SampleBit then
-    SetBitRate(v);
+    Set_Sample_Bit(v);
   if GetDW('NumberOfChannels',v) then
    if v <> NumberOfChannels then
-    SetNChans(v);
+    Set_Stereo(v);
   if GetDW('BufLen_ms',v) then
    if (v <> BufLen_ms) then
     SetBuffers(v,NumberOfBuffers);
   if GetDW('NumberOfBuffers',v) then
    if (v <> NumberOfBuffers) then
     SetBuffers(BufLen_ms,v);
-  if GetDW('WODevice',v) then
-   WODevice := v;
+  if GetDW('digsoundDevice',v) then
+   if GetStr('digsoundDeviceName',s) then
+    Set_WODevice(v,s);
   for i := 5 downto 0 do
    if GetStr(PChar('Recent' + IntToStr(i)),s) then
     AddFileName(s);
@@ -1594,10 +1725,8 @@ if RegOpenKeyEx(HKEY_CURRENT_USER{HKEY_LOCAL_MACHINE},PChar(MyRegPath),0,
     if GetDW('WindowHeight',v) then Height := v;
    end;
 
-  if GetDW('Filtering',v) then
-   SetFilter(v <> 0,Filt_M);
-  if GetDW('FilterQ',v) then
-   SetFilter(IsFilt,v);
+  if GetDW('Filter',v) then
+   SetFilter(v <> 0);
   if GetDW('TrkClBk',v) then
    TrkClBk := v;
   if GetDW('TrkClTxt',v) then
@@ -1608,12 +1737,14 @@ if RegOpenKeyEx(HKEY_CURRENT_USER{HKEY_LOCAL_MACHINE},PChar(MyRegPath),0,
    TrkClSelBk := v;
   if GetDW('TrkClSelTxt',v) then
    TrkClSelTxt := v;
+
   //specially for Znahar
   for i := 0 to 5 do
    if GetDW(PChar('ToolBar' + IntToStr(i)),v) then
     SetBar(i,v <> 0);
-  RegCloseKey(subKeyHnd1)
- end
+
+  OptionsDone;
+ end;
 end;
 
 procedure TMainForm.SaveSNDHMenuClick(Sender: TObject);
@@ -1627,10 +1758,11 @@ var
  sndhplsz,sndhhdrsz:integer;
  PT3:TSpeccyModule;
  Size,i,j:integer;
- f:file;
- p:wordptr;
+ w:Word;
  CurrentWindow:TMDIChild;
  s:string;
+ rs:TResourceStream;
+ fs:TFileStream;
 begin
 if MDIChildCount = 0 then exit;
 CurrentWindow := TMDIChild(ActiveMDIChild);
@@ -1640,7 +1772,7 @@ if SaveDialogSNDH.InitialDir = '' then
 if CurrentWindow.WinFileName = '' then
  MainForm.SaveDialogSNDH.FileName := 'VTIIModule' + IntToStr(CurrentWindow.WinNumber)
 else
- MainForm.SaveDialogSNDH.FileName := ChangeFileExt(CurrentWindow.WinFileName,'');
+ MainForm.SaveDialogSNDH.FileName := ChangeFileExt(ExtractFileName(CurrentWindow.WinFileName),'');
 
 repeat
  if not SaveDialogSNDH.Execute then exit;
@@ -1652,84 +1784,90 @@ repeat
 until AllowSave(SaveDialogSNDH.FileName);
 
 SaveDialogSNDH.InitialDir := ExtractFileDir(SaveDialogSNDH.FileName);
-i := FindResource(HInstance,'SNDHPLAYER','SNDH');
-sndhplsz := SizeofResource(HInstance,i);
-p := LockResource(LoadResource(HInstance,i));
-if not VTM2PT3(@PT3,CurrentWindow.VTMP,Size) then
- begin
-  Application.MessageBox('Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.',PAnsiChar(SaveDialogSNDH.FileName));
-  exit
- end;
-AssignFile(f,SaveDialogSNDH.FileName);
-Rewrite(f,1);
-BlockWrite(f,p^,16);
-sndhhdrsz := 10;
-with CurrentWindow do
- begin
-  i := Length(VTMP.Title);
-  if i <> 0 then
+
+rs := TResourceStream.Create(HInstance,'SNDHPLAYER','SNDH');
+try
+ sndhplsz := rs.Size;
+
+ if not VTM2PT3(@PT3,CurrentWindow.VTMP,Size) then
+  begin
+   Application.MessageBox(PAnsiChar(Mes_CantCompileTooBig),PAnsiChar(SaveDialogSNDH.FileName));
+   Exit;
+  end;
+
+ fs := TFileStream.Create(SaveDialogSNDH.FileName,fmCreate);
+ try
+  fs.CopyFrom(rs,16);
+
+  sndhhdrsz := 10;
+  with CurrentWindow do
    begin
-    inc(sndhhdrsz,4 + i + 1);
-    BlockWrite(f,TITL,4);
-    BlockWrite(f,VTMP.Title[1],i + 1)
-   end;
-  i := Length(VTMP.Author);
-  if i <> 0 then
-   begin
-    inc(sndhhdrsz,4 + i + 1);
-    BlockWrite(f,COMM,4);
-    BlockWrite(f,VTMP.Author[1],i + 1)
-   end;
-  BlockWrite(f,CONV,4);
-  i := Length(FullVersString) + 1; inc(sndhhdrsz,i);
-  BlockWrite(f,FullVersString[1],i);
-  s := '';
-  if InputQuery('SNDHv2 Extra TAG','Year of release (empty if no):',s) then
-   begin
-    s := Trim(s);
-    i := Length(s);
+    i := Length(VTMP^.Title);
     if i <> 0 then
      begin
-      inc(sndhhdrsz,i + 5);
-      BlockWrite(f,YEAR,4);
-      BlockWrite(f,s[1],i + 1);
+      inc(sndhhdrsz,4 + i + 1);
+      fs.WriteBuffer(TITL,4);
+      fs.WriteBuffer(VTMP^.Title[1],i + 1);
      end;
+    i := Length(VTMP^.Author);
+    if i <> 0 then
+     begin
+      inc(sndhhdrsz,4 + i + 1);
+      fs.WriteBuffer(COMM,4);
+      fs.WriteBuffer(VTMP^.Author[1],i + 1);
+     end;
+    fs.WriteBuffer(CONV,4);
+    i := Length(FullVersString) + 1; Inc(sndhhdrsz,i);
+    fs.WriteBuffer(FullVersString[1],i);
+    s := '';
+    if InputQuery('SNDHv2 Extra TAG','Year of release (empty if no):',s) then
+     begin
+      s := Trim(s);
+      i := Length(s);
+      if i <> 0 then
+       begin
+        Inc(sndhhdrsz,i + 5);
+        fs.WriteBuffer(YEAR,4);
+        fs.WriteBuffer(s[1],i + 1);
+       end;
+     end;
+    j := round(Interrupt_Freq / 1000);
+    s := 'TC' + IntToStr(j);
+    i := Length(s) + 1; Inc(sndhhdrsz,i);
+    fs.WriteBuffer(s[1],i);
+    fs.WriteBuffer(TIME,4);
+    i := round(TotInts / j); if i > 65535 then i := 65535;
+    fs.WriteWord(SwapW(i));
+    if (sndhhdrsz and 1) <> 0 then
+     begin
+      Inc(sndhhdrsz);
+      i := 0; fs.WriteByte(i);
+     end;
+    fs.CopyFrom(rs,sndhplsz - 16);
+    fs.WriteBuffer(PT3,Size);
    end;
-  j := round(Interrupt_Freq / 1000);
-  s := 'TC' + IntToStr(j);
-  i := Length(s) + 1; inc(sndhhdrsz,i);
-  BlockWrite(f,s[1],i);
-  BlockWrite(f,TIME,4);
-  i := round(TotInts / j); if i > 65535 then i := 65535;
-  i := IntelWord(i);
-  BlockWrite(f,i,2);
-  if (sndhhdrsz and 1) <> 0 then
+  i := -2;
+  for j := 0 to 2 do
    begin
-    inc(sndhhdrsz);
-    i := 0; BlockWrite(f,i,1);
+    inc(i,4); rs.Seek(i,soBeginning); w := Swap(rs.ReadWord);
+    Inc(w,sndhhdrsz);
+    fs.Seek(2 + j*4,soBeginning); fs.WriteWord(Swap(w));
    end;
-  BlockWrite(f,pointer(integer(p) + 16)^,sndhplsz - 16);
-  BlockWrite(f,PT3,Size);
+ finally
+  fs.Free;
  end;
-dec(integer(p),2);
-for j := 0 to 2 do
- begin
-  inc(integer(p),4);
-  i := IntelWord(IntelWord(p^) + sndhhdrsz);
-  seek(f,2 + j*4); BlockWrite(f,i,2);
- end;
-CloseFile(f)
+finally
+ rs.Free;
+end;
 end;
 
 procedure TMainForm.SaveforZXMenuClick(Sender: TObject);
-const
- ErrMsg = 'Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet.';
 var
  s:string;
  PT3_1,PT3_2:TSpeccyModule;
  i,t,j,k:integer;
- f:file;
- p:WordPtr;
+ rs:TResourceStream;
+ fs:TFileStream;
  pl:array of byte;
  hobetahdr:packed record
   case Boolean of
@@ -1767,38 +1905,39 @@ if MDIChildCount = 0 then exit;
 CurrentWindow := TMDIChild(ActiveMDIChild);
 if not VTM2PT3(@PT3_1,CurrentWindow.VTMP,ZXModSize1) then
  begin
-  Application.MessageBox(ErrMsg,PAnsiChar(CurrentWindow.Caption));
-  exit;
+  Application.MessageBox(PAnsiChar(Mes_CantCompileTooBig),PAnsiChar(CurrentWindow.Caption));
+  Exit;
  end;
 ZXModSize2 := 0;
 if (CurrentWindow.TSWindow <> nil) and not VTM2PT3(@PT3_2,CurrentWindow.TSWindow.VTMP,ZXModSize2) then
  begin
-  Application.MessageBox(ErrMsg,PAnsiChar(CurrentWindow.TSWindow.Caption));
-  exit;
+  Application.MessageBox(PAnsiChar(Mes_CantCompileTooBig),PAnsiChar(CurrentWindow.TSWindow.Caption));
+  Exit;
  end;
 if CurrentWindow.TSWindow = nil then
- i := FindResource(HInstance,'ZXAYPLAYER','ZXAY')
+ rs := TResourceStream.Create(HInstance,'ZXAYPLAYER','ZXAY')
 else
- i := FindResource(HInstance,'ZXTSPLAYER','ZXTS');
-p := LockResource(LoadResource(HInstance,i));
-Move(p^,zxplsz,2);
-Inc(integer(p),2);
-Move(p^,zxdtsz,2);
-if ExpDlg.ShowModal <> mrOK then exit;
+ rs := TResourceStream.Create(HInstance,'ZXTSPLAYER','ZXTS');
+try
+zxplsz := rs.ReadWord;
+zxdtsz := rs.ReadWord;
+if ExpDlg.ShowModal <> mrOK then
+ Exit;
 if SaveDialogZXAY.InitialDir = '' then
  SaveDialogZXAY.InitialDir := OpenDialog.InitialDir;
 SaveDialogZXAY.FilterIndex := ExpDlg.RadioGroup1.ItemIndex + 1;
 SetDialogZXAYExt;
 
 if CurrentWindow.WinFileName <> '' then
- SaveDialogZXAY.FileName := ChangeFileExt(CurrentWindow.WinFileName,'')
+ SaveDialogZXAY.FileName := ChangeFileExt(ExtractFileName(CurrentWindow.WinFileName),'')
 else if (CurrentWindow.TSWindow <> nil) and (CurrentWindow.TSWindow.WinFileName <> '') then
- SaveDialogZXAY.FileName := ChangeFileExt(CurrentWindow.TSWindow.WinFileName,'')
+ SaveDialogZXAY.FileName := ChangeFileExt(ExtractFileName(CurrentWindow.TSWindow.WinFileName),'')
 else
  SaveDialogZXAY.FileName := 'VTIIModule' + IntToStr(CurrentWindow.WinNumber);
 
 repeat
- if not SaveDialogZXAY.Execute then exit;
+ if not SaveDialogZXAY.Execute then
+  Exit;
  i := SaveDialogZXAY.FilterIndex - 1;
  if not (i in [0..4]) then i := ExpDlg.RadioGroup1.ItemIndex;
  case i of
@@ -1818,36 +1957,35 @@ if t <> 1 then
  begin
   if ZXModSize1 + ZXModSize2 + zxplsz + zxdtsz > 65536 then
    begin
-    Application.MessageBox('Size of module with player exceeds 65536 RAM size.','Cannot export');
-    exit;
+    Application.MessageBox(PAnsiChar(Mes_SizeTooBig),PAnsiChar(Mes_CantExport));
+    Exit;
    end;
-  Inc(integer(p),2);
   SetLength(pl,zxplsz);
-  Move(p^,pl[0],zxplsz);
-  Inc(integer(p),zxplsz);
-  while p^ < zxplsz - 1 do
-   begin
-    Inc(WordPtr(@pl[p^])^,ZXCompAddr);
-    Inc(integer(p),2);
-   end;
-  Inc(integer(p),2);
-  while p^ < zxplsz do
-   begin
-    Inc(BytePtr(@pl[p^])^,ZXCompAddr);
-    Inc(integer(p),2);
-   end;
-  Inc(integer(p),2);
-  while p^ < zxplsz do
-   begin
-    i := p^;
-    Inc(integer(p),2);
-    BytePtr(@pl[i])^ := (p^ + ZXCompAddr) shr 8;
-    Inc(integer(p),2);
-   end;
+  rs.ReadBuffer(pl[0],zxplsz);
+  repeat
+   i := rs.ReadWord;
+   if i >= zxplsz - 1 then
+    break;
+    Inc(PWord(@pl[i])^,ZXCompAddr);
+  until False;
+  repeat
+   i := rs.ReadWord;
+   if i >= zxplsz then
+    break;
+   Inc(PByte(@pl[i])^,ZXCompAddr);
+  until False;
+  repeat
+   i := rs.ReadWord;
+   if i >= zxplsz then
+    break;
+    PByte(@pl[i])^ := (rs.ReadWord + ZXCompAddr) shr 8;
+  until False;
   if ExpDlg.LoopChk.Checked then pl[10] := pl[10] or 1;
  end;
-AssignFile(f,SaveDialogZXAY.FileName);
-Rewrite(f,1);
+finally
+ rs.Free;
+end;
+fs := TFileStream.Create(SaveDialogZXAY.FileName,fmCreate);
 try
 i := ZXModSize1;
 case t of
@@ -1856,8 +1994,8 @@ case t of
   inc(i,ZXModSize2);
   if t = 0 then
    inc(i,zxplsz + zxdtsz)
-  else
-   inc(i,16);
+  else if CurrentWindow.TSWindow <> nil then
+   inc(i,SizeOf(TSData));
   with hobetahdr do
    begin
     Name := '        ';
@@ -1875,15 +2013,15 @@ case t of
     if i and 255 <> 0 then Inc(SectLeng,$100);
     if SectLeng = 0 then
      begin
-      Application.MessageBox('Size of hobeta file exceeds 255 sectors.','Cannot export');
-      exit;
+      Application.MessageBox(PAnsiChar(Mes_HobetaSizeTooBig),PAnsiChar(Mes_CantExport));
+      Exit;
      end;
     k := 0;
     for j := 0 to 14 do
      Inc(k,Ind[j]);
     CheckSum := k * 257 + 105;
    end;
-  BlockWrite(f,hobetahdr,sizeof(hobetahdr));
+  fs.WriteBuffer(hobetahdr,sizeof(hobetahdr));
  end;
 2:
  begin
@@ -1895,21 +2033,22 @@ case t of
     PlayerVersion := 0;
     PSpecialPlayer := 0;
     j := 8 + SizeOf(TSongStructure) + SizeOf(TSongData) + SizeOf(TPoints) +
-         Length(CurrentWindow.VTMP.Title) + 1;
-    PAuthor := IntelWord(j);
-    inc(j,Length(CurrentWindow.VTMP.Author) + 1 - 2);
-    PMisc := IntelWord(j);
+         Length(CurrentWindow.VTMP^.Title) + 1;
+    PAuthor := SwapW(j);
+    inc(j,Length(CurrentWindow.VTMP^.Author) + 1 - 2);
+    PMisc := SwapW(j);
     NumOfSongs := 0;
     FirstSong := 0;
     PSongsStructure := $200;
    end;
-  BlockWrite(f,AYFileHeader,SizeOf(TAYFileHeader));
+  fs.WriteBuffer(AYFileHeader,SizeOf(TAYFileHeader));
   with SongStructure do
    begin
-    PSongName := IntelWord(4 + SizeOf(TSongData) + SizeOf(TPoints));
+    PSongName := SwapW(4 + SizeOf(TSongData) + SizeOf(TPoints));
     PSongData := $200;
    end;
-  BlockWrite(f,SongStructure,SizeOf(TSongStructure));
+  fs.WriteBuffer(SongStructure,SizeOf(TSongStructure));
+
   with AYSongData do
    begin
     ChanA := 0;
@@ -1919,7 +2058,7 @@ case t of
     j := CurrentWindow.TotInts;
     if (CurrentWindow.TSWindow <> nil) and (CurrentWindow.TSWindow.TotInts > j) then
      j := CurrentWindow.TSWindow.TotInts;
-    if j > 65535 then SongLength := 65535 else SongLength := IntelWord(j);
+    if j > 65535 then SongLength := 65535 else SongLength := SwapW(j);
     FadeLength := 0;
     if CurrentWindow.TSWindow = nil then
      begin
@@ -1935,35 +2074,35 @@ case t of
     PPoints := $400;
     PAddresses := $800;
    end;
-  BlockWrite(f,AYSongData,SizeOf(TSongData));
+  fs.WriteBuffer(AYSongData,SizeOf(TSongData));
   with AYPoints do
    begin
-    Stek := IntelWord(ZXCompAddr);
-    Init := IntelWord(ZXCompAddr);
-    Inter := IntelWord(ZXCompAddr + 5);
-    Adr1 := IntelWord(ZXCompAddr);
-    Len1 := IntelWord(zxplsz);
-    j := 10 + Length(CurrentWindow.VTMP.Title) +
-                      Length(CurrentWindow.VTMP.Author) +
+    Stek := SwapW(ZXCompAddr);
+    Init := SwapW(ZXCompAddr);
+    Inter := SwapW(ZXCompAddr + 5);
+    Adr1 := SwapW(ZXCompAddr);
+    Len1 := Swap(zxplsz);
+    j := 10 + Length(CurrentWindow.VTMP^.Title) +
+                      Length(CurrentWindow.VTMP^.Author) +
                       Length(FullVersString) + 3;
-    Offs1 := IntelWord(j);
-    Adr2 := IntelWord(ZXCompAddr + zxplsz + zxdtsz);
-    Len2 := IntelWord(ZXModSize1 + ZXModSize2);
-    Offs2 := IntelWord(j - 6 + zxplsz);
+    Offs1 := SwapW(j);
+    Adr2 := SwapW(ZXCompAddr + zxplsz + zxdtsz);
+    Len2 := SwapW(ZXModSize1 + ZXModSize2);
+    Offs2 := SwapW(j - 6 + zxplsz);
     Zero := 0;
    end;
-  BlockWrite(f,AYPoints,SizeOf(TPoints));
-  j := Length(CurrentWindow.VTMP.Title);
+  fs.WriteBuffer(AYPoints,SizeOf(TPoints));
+  j := Length(CurrentWindow.VTMP^.Title);
   if j <> 0 then
-   BlockWrite(f,CurrentWindow.VTMP.Title[1],j + 1)
+   fs.WriteBuffer(CurrentWindow.VTMP^.Title[1],j + 1)
   else
-   BlockWrite(f,j,1);
-  j := Length(CurrentWindow.VTMP.Author);
+   fs.WriteByte(j);
+  j := Length(CurrentWindow.VTMP^.Author);
   if j <> 0 then
-   BlockWrite(f,CurrentWindow.VTMP.Author[1],j + 1)
+   fs.WriteBuffer(CurrentWindow.VTMP^.Author[1],j + 1)
   else
-   BlockWrite(f,j,1);
-  BlockWrite(f,FullVersString[1],Length(FullVersString) + 1);
+   fs.WriteByte(j);
+  fs.WriteBuffer(FullVersString[1],Length(FullVersString) + 1);
  end;
 3:
  begin
@@ -1991,7 +2130,7 @@ case t of
     k := 0;
     for j := 0 to sizeof(SCLHdr) - 1 do Inc(k,Ind[j]);
    end;
-  BlockWrite(f,SCLHdr,sizeof(SCLHdr));
+  fs.WriteBuffer(SCLHdr,sizeof(SCLHdr));
   for j := 0 to zxplsz - 1 do Inc(k,pl[j]);
   for j := 0 to ZXModSize1 - 1 do Inc(k,PT3_1.Index[j]);
   if CurrentWindow.TSWindow <> nil then
@@ -2008,20 +2147,21 @@ case t of
      Name := 'vtplayer  ';
     Leng := zxplsz; Start := ZXCompAddr; Trash := 32768;
     k := 0; for j := 2 to 19 do k := k xor Ind[j]; Sum := k;
-    BlockWrite(f,TAPHdr,21);
+    fs.WriteBuffer(TAPHdr,21);
     Sz := 2 + zxplsz; Flag := 255;
    end;
-  BlockWrite(f,TAPHdr,3);
- end
+  fs.WriteBuffer(TAPHdr,3);
+ end;
 end;
-if t <> 1 then BlockWrite(f,pl[0],zxplsz);
+if t <> 1 then
+ fs.WriteBuffer(pl[0],zxplsz);
 case t of
 4:
  begin
   with TAPHdr do
    begin
     k := 255; for j := 0 to zxplsz - 1 do k := k xor pl[j];
-    BlockWrite(f,k,1);
+    fs.WriteByte(k);
     Sz := 19; Flag := 0; Typ := 3; Name := '          ';
     Leng := ZXModSize1 + ZXModSize2; Start := ZXCompAddr + zxplsz + zxdtsz; Trash := 32768;
     s := ExtractFileName(SaveDialogZXAY.FileName);
@@ -2029,10 +2169,10 @@ case t of
     if j > 10 then j := 10;
     if j > 0 then Move(s[1],Name,j);
     k := 0; for j := 2 to 19 do k := k xor Ind[j]; Sum := k;
-    BlockWrite(f,TAPHdr,21);
+    fs.WriteBuffer(TAPHdr,21);
     Sz := 2 + ZXModSize1 + ZXModSize2; Flag := 255;
    end;
-  BlockWrite(f,TAPHdr,3);
+  fs.WriteBuffer(TAPHdr,3);
  end;
 3:
  begin
@@ -2041,25 +2181,26 @@ case t of
    begin
     j := 256 - j;
     FillChar(pl[0],j,0);
-    BlockWrite(f,pl[0],j)
+    fs.WriteBuffer(pl[0],j);
    end;
  end;
 0:
  begin
   if zxdtsz > zxplsz then SetLength(pl,zxdtsz);
   FillChar(pl[0],zxdtsz,0);
-  BlockWrite(f,pl[0],zxdtsz)
+  fs.WriteBuffer(pl[0],zxdtsz);
  end;
 end;
-BlockWrite(f,PT3_1,ZXModSize1);
-if CurrentWindow.TSWindow <> nil then BlockWrite(f,PT3_2,ZXModSize2);
+fs.WriteBuffer(PT3_1,ZXModSize1);
+if CurrentWindow.TSWindow <> nil then
+ fs.WriteBuffer(PT3_2,ZXModSize2);
 case t of
 4:
  begin
   k := 255; for j := 0 to ZXModSize1 - 1 do k := k xor PT3_1.Index[j];
   if CurrentWindow.TSWindow <> nil then
    for j := 0 to ZXModSize2 - 1 do k := k xor PT3_2.Index[j];
-  BlockWrite(f,k,1);
+  fs.WriteByte(k);
  end;
 3:
  begin
@@ -2068,9 +2209,9 @@ case t of
    begin
     j := 256 - j;
     FillChar(pl[0],j,0);
-    BlockWrite(f,pl[0],j)
+    fs.WriteBuffer(pl[0],j);
    end;
-  BlockWrite(f,k,4);
+  fs.WriteDWord(k);
  end;
 0..1:
  begin
@@ -2078,18 +2219,18 @@ case t of
    begin
     TSData.Size1 := ZXModSize1;
     TSData.Size2 := ZXModSize2;
-    BlockWrite(f,TSData,SizeOf(TSData));
+    fs.WriteBuffer(TSData,SizeOf(TSData));
    end;
   with hobetahdr do
    if SectLeng <> i then
     begin
      FillChar(PT3_1,SectLeng - i,0);
-     BlockWrite(f,PT3_1,SectLeng - i);
+     fs.WriteBuffer(PT3_1,SectLeng - i);
     end;
  end;
 end;
 finally
- CloseFile(f);
+ fs.Free;
 end;
 end;
 
@@ -2104,18 +2245,19 @@ case i of
 1:SaveDialogZXAY.DefaultExt := '$m';
 2:SaveDialogZXAY.DefaultExt := 'ay';
 3:SaveDialogZXAY.DefaultExt := 'scl';
-4:SaveDialogZXAY.DefaultExt := 'tap'
-end
+4:SaveDialogZXAY.DefaultExt := 'tap';
+end;
 end;
 
 procedure TMainForm.SaveDialogZXAYTypeChange(Sender: TObject);
 begin
-SetDialogZXAYExt
+SetDialogZXAYExt;
 end;
 
-procedure TMainForm.SetPriority;
+{$IFDEF Windows}
+procedure TMainForm.SetPriority(Pr: longword);
 var
- HMyProcess:longword;
+ HMyProcess:HANDLE;
 begin
 if Pr <> 0 then
  Priority := Pr
@@ -2123,8 +2265,9 @@ else
  Pr := NORMAL_PRIORITY_CLASS;
 HMyProcess := GetCurrentProcess;
 SetPriorityClass(HMyProcess,Pr);
-CloseHandle(HMyProcess);
+//FileClose(HMyProcess); { *Преобразовано из CloseHandle* }
 end;
+{$ENDIF Windows}
 
 function CanCopy:boolean;
 var
@@ -2138,18 +2281,18 @@ if Result then
   if Result then
    Result := (A as TCustomEdit).SelLength > 0
   else
-   Result := TMDIChild(MainForm.ActiveMDIChild).Tracks = A
- end
+   Result := TMDIChild(MainForm.ActiveMDIChild).Tracks = A;
+ end;
 end;
 
 procedure TMainForm.EditCopy1Update(Sender: TObject);
 begin
-EditCopy1.Enabled := CanCopy
+EditCopy1.Enabled := CanCopy;
 end;
 
 procedure TMainForm.EditCut1Update(Sender: TObject);
 begin
-EditCut1.Enabled := CanCopy
+EditCut1.Enabled := CanCopy;
 end;
 
 procedure TMainForm.EditPaste1Update(Sender: TObject);
@@ -2168,7 +2311,7 @@ if R then
 EditPaste1.Enabled := R;
 end;
 
-function GetCopyControl(var CT:integer;var WC:TWinControl):boolean;
+function GetCopyControl(out CT:integer;out WC:TWinControl):boolean;
 begin
 Result := MainForm.MDIChildCount <> 0;
 if Result then
@@ -2179,10 +2322,9 @@ if Result then
   if CT < 0 then
    begin
     Result := TMDIChild(MainForm.ActiveMDIChild).Tracks = WC;
-    if Result then CT := 1
-
+    if Result then CT := 1;
    end;
- end
+ end;
 end;
 
 procedure TMainForm.EditCut1Execute(Sender: TObject);
@@ -2224,52 +2366,53 @@ end;
 procedure TMainForm.UndoUpdate(Sender: TObject);
 begin
 Undo.Enabled := (MDIChildCount <> 0) and
-                        (TMDIChild(ActiveMDIChild).ChangeCount > 0)
+                        (TMDIChild(ActiveMDIChild).ChangeCount > 0);
 end;
 
 procedure TMainForm.UndoExecute(Sender: TObject);
 begin
 if (MDIChildCount = 0) then exit;
-TMDIChild(ActiveMDIChild).DoUndo(1,True)
+TMDIChild(ActiveMDIChild).DoUndo(1,True);
 end;
 
 procedure TMainForm.RedoUpdate(Sender: TObject);
 begin
 Redo.Enabled := (MDIChildCount <> 0) and
-                        (TMDIChild(ActiveMDIChild).ChangeCount < TMDIChild(ActiveMDIChild).ChangeTop)
+                        (TMDIChild(ActiveMDIChild).ChangeCount < TMDIChild(ActiveMDIChild).ChangeTop);
 end;
 
 procedure TMainForm.RedoExecute(Sender: TObject);
 begin
 if (MDIChildCount = 0) then exit;
-TMDIChild(ActiveMDIChild).DoUndo(1,False)
+TMDIChild(ActiveMDIChild).DoUndo(1,False);
 end;
+
 procedure TMainForm.CheckCommandLine;
 var
  i:integer;
 begin
 i := ParamCount;
 if i = 0 then exit;
-for i := i downto 1 do CreateMDIChild(ExpandFileName(ParamStr(i)))
+for i := i downto 1 do CreateMDIChild(ExpandFileName(ParamStr(i)));
 end;
 
 function TMainForm.AllowSave(fn:string):boolean;
 begin
 Result := not FileExists(fn) or
  (MessageDlg('File ''' + fn + ''' exists. Overwrite?',
-        mtConfirmation,[mbYes,mbNo],0) = mrYes)
+        mtConfirmation,[mbYes,mbNo],0) = mrYes);
 end;
 
 procedure TMainForm.TransposeChannel(WorkWin:TMDIChild;Pat,Chn,i,Semitones:integer);
 var
  j:integer;
 begin
-if WorkWin.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note >= 0 then
+if WorkWin.VTMP^.Patterns[Pat]^.Items[i].Channel[Chn].Note >= 0 then
  begin
-  j := WorkWin.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note + Semitones;
+  j := WorkWin.VTMP^.Patterns[Pat]^.Items[i].Channel[Chn].Note + Semitones;
   if (j >= 96) or (j < 0) then exit;
-  WorkWin.VTMP.Patterns[Pat].Items[i].Channel[Chn].Note := j
- end
+  WorkWin.VTMP^.Patterns[Pat]^.Items[i].Channel[Chn].Note := j;
+ end;
 end;
 
 procedure TMainForm.TransposeColumns(WorkWin:TMDIChild;Pat:integer;Env:boolean;Chans:TChansArrayBool;LFrom,LTo,Semitones:integer;MakeUndo:boolean);
@@ -2282,10 +2425,10 @@ begin
 if Semitones = 0 then exit;
 with WorkWin do
  begin
-  if VTMP.Patterns[Pat] = nil then exit;
+  if VTMP^.Patterns[Pat] = nil then exit;
   f := Env or Chans[0] or Chans[1] or Chans[2];
   if not f then exit;
-//  PLen := VTMP.Patterns[Pat].Length;
+//  PLen := VTMP^.Patterns[Pat]^.Length;
 //  if LTo >= PLen then LTo := PLen - 1;
   //Work with all pattern lines even if it greater then pattern length
   if LTo >= MaxPatLen then LTo := MaxPatLen - 1;
@@ -2293,7 +2436,7 @@ with WorkWin do
   SongChanged := True;
   if MakeUndo then
    begin
-    New(OldPat); OldPat^ := VTMP.Patterns[Pat]^;
+    New(OldPat); OldPat^ := VTMP^.Patterns[Pat]^;
    end;
   if Chans[0] then
    for i := LFrom to LTo do
@@ -2309,21 +2452,21 @@ with WorkWin do
     stk := exp(-Semitones / 12 * ln(2));
     for i := LFrom to LTo do
      begin
-      e := VTMP.Patterns[Pat].Items[i].Envelope; //if e = 0 then e := 1;
+      e := VTMP^.Patterns[Pat]^.Items[i].Envelope; //if e = 0 then e := 1;
       e := round(e * stk);
-//      if (e = 1) and (VTMP.Patterns[Pat].Items[i].Envelope = 0) then e := 0;
-      if (e >= 0) and (e < $10000) then VTMP.Patterns[Pat].Items[i].Envelope := e;
+//      if (e = 1) and (VTMP^.Patterns[Pat]^.Items[i].Envelope = 0) then e := 0;
+      if (e >= 0) and (e < $10000) then VTMP^.Patterns[Pat]^.Items[i].Envelope := e;
      end;
    end;
   if MakeUndo then
    begin
     AddUndo(CATransposePattern,Pat,0);
-    ChangeList[ChangeCount - 1].Pattern := OldPat;
+    ChangeList[ChangeCount - 1].Pattern := {%H-}OldPat;
    end;
   if PatNum = Pat then
    begin
     if Tracks.Focused then HideCaret(Tracks.Handle);
-    Tracks.RedrawTracks(0);
+    Tracks.RedrawTracks;
     if Tracks.Focused then ShowCaret(Tracks.Handle);
    end;
  end;
@@ -2405,7 +2548,7 @@ TransposeSelection(-12);
 end;
 
 //specially for Znahar
-procedure TMainForm.SetBar;
+procedure TMainForm.SetBar(BarNum: integer; Value: boolean);
 begin
 PopupMenu3.Items[BarNum].Checked := Value;
 case BarNum of
@@ -2415,6 +2558,8 @@ case BarNum of
   ToolButton1.Visible := Value;
   ToolButton2.Visible := Value;
   ToolButton3.Visible := Value;
+  ToolButton31.Visible := Value;
+  ToolButton30.Visible := Value;
  end;
 1:
  begin
@@ -2443,10 +2588,11 @@ case BarNum of
   ToolButton13.Visible := Value;
   ToolButton20.Visible := Value;
   ToolButton21.Visible := Value;
+  ToolButton29.Visible := Value;
   ToolButton15.Visible := Value;
   ToolButton17.Visible := Value;
-  ToolButton16.Visible := Value;
   ToolButton25.Visible := Value;
+  ToolButton16.Visible := Value;
  end;
 5:
  begin
@@ -2454,19 +2600,6 @@ case BarNum of
   ToolButton27.Visible := Value;
   ToolButton28.Visible := Value;
  end;
-{6:
- begin
-  SpeedButton1.Visible := Value;
-  SpeedButton2.Visible := Value;
-  ToolButton19.Visible := Value;
- end;
-7:
- begin
-  TrackBar1.Visible := Value;
-  ToolButton25.Visible := Value;
- end;
-8:
- ComboBox1.Visible := Value;}
 end;
 end;
 
@@ -2484,20 +2617,20 @@ if MDIChildCount = 0 then exit;
 with TMDIChild(ActiveMDIChild) do
  begin
   PL := DefPatLen;
-  if (VTMP.Patterns[PatNum] <> nil) then
-   PL := VTMP.Patterns[PatNum].Length;
+  if (VTMP^.Patterns[PatNum] <> nil) then
+   PL := VTMP^.Patterns[PatNum]^.Length;
   NL := PL * 2;
   if NL <= MaxPatLen then
    begin
     SongChanged := True;
     ValidatePattern2(PatNum);
-    New(OldPat); OldPat^ := VTMP.Patterns[PatNum]^;
+    New(OldPat); OldPat^ := VTMP^.Patterns[PatNum]^;
     AddUndo(CAExpandCompressPattern,0,0);
     ChangeList[ChangeCount - 1].Pattern := OldPat;
-    VTMP.Patterns[PatNum].Length := NL; UpDown5.Position := NL;
+    VTMP^.Patterns[PatNum]^.Length := NL; UpDown5.Position := NL;
     for i := PL - 1 downto 0 do
      begin
-      with VTMP.Patterns[PatNum].Items[i*2+1] do
+      with VTMP^.Patterns[PatNum]^.Items[i*2+1] do
        begin
         Envelope := 0;
         Noise := 0;
@@ -2505,14 +2638,14 @@ with TMDIChild(ActiveMDIChild) do
         Channel[1] := EmptyChannelLine;
         Channel[2] := EmptyChannelLine;
        end;
-      VTMP.Patterns[PatNum].Items[i*2] := VTMP.Patterns[PatNum].Items[i];
-{      with VTMP.Patterns[PatNum].Items[i*2] do
+      VTMP^.Patterns[PatNum]^.Items[i*2] := VTMP^.Patterns[PatNum]^.Items[i];
+{      with VTMP^.Patterns[PatNum]^.Items[i*2] do
        begin
-        Envelope := VTMP.Patterns[PatNum].Items[i].Envelope;
-        Noise := VTMP.Patterns[PatNum].Items[i].Noise;
-        Channel[0] := VTMP.Patterns[PatNum].Items[i].Channel[0];
-        Channel[1] := VTMP.Patterns[PatNum].Items[i].Channel[1];
-        Channel[2] := VTMP.Patterns[PatNum].Items[i].Channel[2];
+        Envelope := VTMP^.Patterns[PatNum]^.Items[i].Envelope;
+        Noise := VTMP^.Patterns[PatNum]^.Items[i].Noise;
+        Channel[0] := VTMP^.Patterns[PatNum]^.Items[i].Channel[0];
+        Channel[1] := VTMP^.Patterns[PatNum]^.Items[i].Channel[1];
+        Channel[2] := VTMP^.Patterns[PatNum]^.Items[i].Channel[2];
        end;}
      end;
     CheckTracksAfterSizeChanged(NL);
@@ -2532,21 +2665,21 @@ if MDIChildCount = 0 then exit;
 with TMDIChild(ActiveMDIChild) do
  begin
   PL := DefPatLen;
-  if (VTMP.Patterns[PatNum] <> nil) then
-   PL := VTMP.Patterns[PatNum].Length;
+  if (VTMP^.Patterns[PatNum] <> nil) then
+   PL := VTMP^.Patterns[PatNum]^.Length;
   NL := PL div 2;
   if NL > 0 then
    begin
     SongChanged := True;
     ValidatePattern2(PatNum);
-    New(OldPat); OldPat^ := VTMP.Patterns[PatNum]^;
+    New(OldPat); OldPat^ := VTMP^.Patterns[PatNum]^;
     AddUndo(CAExpandCompressPattern,0,0);
     ChangeList[ChangeCount - 1].Pattern := OldPat;
-    VTMP.Patterns[PatNum].Length := NL; UpDown5.Position := NL;
+    VTMP^.Patterns[PatNum]^.Length := NL; UpDown5.Position := NL;
     for i := 1 to NL - 1 do
-     VTMP.Patterns[PatNum].Items[i] := VTMP.Patterns[PatNum].Items[i*2];
+     VTMP^.Patterns[PatNum]^.Items[i] := VTMP^.Patterns[PatNum]^.Items[i*2];
     for i := NL to MaxPatLen - 1 do
-     with VTMP.Patterns[PatNum].Items[i] do
+     with VTMP^.Patterns[PatNum]^.Items[i] do
       begin
        Envelope := 0;
        Noise := 0;
@@ -2565,6 +2698,82 @@ procedure TMainForm.Merge1Click(Sender: TObject);
 begin
 if MDIChildCount = 0 then exit;
 TMDIChild(ActiveMDIChild).Tracks.PasteFromClipboard(True);
+end;
+
+procedure TMainForm.VisTimerTimer(Sender: TObject);
+var
+ CurVisPos:Int64;
+ i:integer;
+begin
+if IsPlaying and (PlayMode in [PMPlayModule,PMPlayPattern]) and
+   digsound_gotposition(CurVisPos) then
+ begin
+  CurVisPos := CurVisPos mod VisTickMax div VisStep;
+  for i := 0 to NumberOfSoundChips-1 do
+   with PlayingGrid[CurVisPos] do
+    RedrawPlWindow(PlayingWindow[i],M[i] and $1FF,(M[i] shr 9) and $FF,(M[i] shr 17) and $1FF - 1);
+ end;
+end;
+
+//some MDI actions from Delphi 7 not implemented in Lazarus yet, so temporary here
+type
+  TTileMode = (tbHorizontal, tbVertical);
+
+procedure DoTile(Form: TForm; TileMode: TTileMode);
+{$IFDEF Windows}
+const
+  TileParams: array[TTileMode] of Word = (MDITILE_HORIZONTAL, MDITILE_VERTICAL);
+begin
+  if (Form.FormStyle = fsMDIForm) and (Form.ClientHandle <> 0) then
+    SendMessage(Form.ClientHandle, WM_MDITILE, TileParams[TileMode], 0);
+{$ELSE}
+begin
+Form.Tile;
+{$ENDIF Windows}
+end;
+
+procedure TMainForm.WindowArrangeAll1Execute(Sender: TObject);
+begin
+ArrangeIcons;
+end;
+
+procedure TMainForm.WindowCascade1Execute(Sender: TObject);
+begin
+Cascade;
+end;
+
+procedure TMainForm.WindowMinimizeAll1Execute(Sender: TObject);
+var
+  I: Integer;
+begin
+  { Must be done backwards through the MDIChildren array }
+  for I := MDIChildCount - 1 downto 0 do
+    MDIChildren[I].WindowState := wsMinimized;
+end;
+
+procedure TMainForm.WindowTileHorizontal1Execute(Sender: TObject);
+begin
+DoTile(Self, tbHorizontal);
+end;
+
+procedure TMainForm.WindowTileVertical1Execute(Sender: TObject);
+begin
+DoTile(Self, tbVertical);
+end;
+
+//shotructs are lost due focus on invisible parent or elsewhere (LCL bug)
+procedure TMainForm.WndProc(var TheMessage : TLMessage);
+begin
+with TheMessage do
+case Msg of
+  LM_SETFOCUS:
+    begin
+      TheMessage.Result := 0;
+      LCLIntf.SetFocus(Handle);
+      Exit;
+    end;
+end;
+inherited WndProc(TheMessage);
 end;
 
 end.

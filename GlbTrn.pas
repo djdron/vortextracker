@@ -1,17 +1,19 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
 unit GlbTrn;
 
+{$mode objfpc}{$H+}
+
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, ComCtrls;
 
 type
@@ -47,13 +49,13 @@ var
 
 implementation
 
-uses Main, Childwin, trfuncs;
+uses Main, ChildWin, trfuncs;
 
-{$R *.DFM}
+{$R *.lfm}
 
 procedure TGlbTrans.Edit2Exit(Sender: TObject);
 begin
-Edit2.Text := IntToStr(UpDown1.Position)
+Edit2.Text := IntToStr(UpDown1.Position);
 end;
 
 procedure TGlbTrans.FormShow(Sender: TObject);
@@ -61,12 +63,12 @@ begin
 if MainForm.MDIChildCount <> 0 then
 UpDown1.Position := TMDIChild(MainForm.ActiveMDIChild).PatNum;
 Edit8.SelectAll;
-Edit8.SetFocus
+Edit8.SetFocus;
 end;
 
 procedure TGlbTrans.Edit8Exit(Sender: TObject);
 begin
-Edit8.Text := IntToStr(UpDown8.Position)
+Edit8.Text := IntToStr(UpDown8.Position);
 end;
 
 procedure TGlbTrans.Button1Click(Sender: TObject);
@@ -102,7 +104,7 @@ end;
 
 procedure TGlbTrans.Button2Click(Sender: TObject);
 begin
-Hide
+Hide;
 end;
 
 end.

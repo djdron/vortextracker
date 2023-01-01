@@ -1,17 +1,19 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
 unit selectts;
 
+{$MODE Delphi}
+
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls;
 
 type
@@ -32,7 +34,7 @@ var
 
 implementation
 
-{$R *.dfm}
+{$R *.lfm}
 
 procedure TTSSel.FormCreate(Sender: TObject);
 begin

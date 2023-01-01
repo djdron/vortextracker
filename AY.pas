@@ -1,58 +1,73 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
 unit AY;
 
+{$mode objfpc}{$H+}
+{$ASMMODE intel}
+
 interface
 
-uses Windows, trfuncs, WaveOutAPI;
-
-type
-//Available soundchips
- ChTypes = (No_Chip, AY_Chip, YM_Chip);
- TPlayModes = (PMPlayModule,PMPlayPattern,PMPlayLine);
+uses LCLIntf, SysUtils, digsoundcode, Languages;
 
 const
-//Two amplitude tables of sound chips (c)Hacker KAY
+//Amplitude tables of sound chips
+{ (c)Hacker KAY }
  Amplitudes_AY:array[0..15]of Word=
     (0, 836, 1212, 1773, 2619, 3875, 5397, 8823, 10392, 16706, 23339,
     29292, 36969, 46421, 55195, 65535);
+{ (c)V_Soft
+ Amplitudes_AY:array[0..15]of Word=
+    (0, 513, 828, 1239, 1923, 3238, 4926, 9110, 10344, 17876, 24682,
+    30442, 38844, 47270, 56402, 65535);}
+{ (c)Lion17
+ Amplitudes_YM:array[0..31]of Word=
+    (0,  30,  190,  286, 375, 470, 560, 664, 866, 1130, 1515, 1803, 2253,
+    2848, 3351, 3862, 4844, 6058, 7290, 8559, 10474, 12878, 15297, 17787,
+    21500, 26172, 30866, 35676, 42664, 50986, 58842, 65535);}
+{ (c)Hacker KAY }
  Amplitudes_YM:array[0..31]of Word=
     (0, 0, $F8, $1C2, $29E, $33A, $3F2, $4D7, $610, $77F, $90A, $A42,
     $C3B, $EC2, $1137, $13A7, $1750, $1BF9, $20DF, $2596, $2C9D, $3579,
     $3E55, $4768, $54FF, $6624, $773B, $883F, $A1DA, $C0FC, $E094, $FFFF);
 
- AY_Freq_Def = 1750000;//1773400;
- Interrupt_Freq_Def = 48828;//50000;
- NumberOfChannels_Def = 2;
- SampleRate_Def = 44100;
- SampleBit_Def = 16;
- Index_AL_Def    = 255;
- Index_AR_Def    = 13;
- Index_BL_Def    = 170;
- Index_BR_Def    = 170;
- Index_CL_Def    = 13;
- Index_CR_Def    = 255;
- StdChannelsAllocationDef = 1;
- Filt_NKoefs = 32; //powers of 2
+ //Default mixer parameters
+  SampleRateDef  = 48000;
+  SampleBitDef   = 16;
+  AY_FreqDef     = 1773400;
+  MaxTStatesDef  = 69888;
+  Interrupt_FreqDef = 50000;
+  NumOfChanDef   = 2;
+  ChanAllocDef    = 1;
+  NumberOfBuffersDef = 3;
+  BufLen_msDef = 200;
+
+  FiltInfo:string = '';
 
 type
- TRegisters = packed record
-   case Boolean of
-   True: (Index:array[0..13]of byte);
-   False:(TonA,TonB,TonC:word;
-          Noise,Mixer:byte;
-          AmplitudeA,AmplitudeB,AmplitudeC:byte;
-          Envelope:word;
-          EnvType:byte);
-  end;
+
+ TRegisterAY = packed record
+ case Integer of
+  0:(Index:array[0..15]of byte);
+  1:(TonA,TonB,TonC: word;
+     Noise:byte;
+     Mixer:byte;
+     AmplitudeA,AmplitudeB,AmplitudeC:byte;
+     Envelope:word;
+     EnvType:byte);
+ end;
+
+//Available soundchips
+  ChTypes = (No_Chip, AY_Chip, YM_Chip);
+
+type
  TSoundChip = object
-   AYRegisters:TRegisters;
+   RegisterAY:TRegisterAY;
    First_Period:boolean;
    Ampl:integer;
    Ton_Counter_A, Ton_Counter_B, Ton_Counter_C, Noise_Counter:packed record
@@ -75,8 +90,9 @@ type
            Val:dword);
     end;
    Case_EnvType:procedure of object;
-   Ton_EnA,Ton_EnB, Ton_EnC,Noise_EnA, Noise_EnB,Noise_EnC:boolean;
+   Ton_EnA,Ton_EnB,Ton_EnC,Noise_EnA, Noise_EnB,Noise_EnC:boolean;
    Envelope_EnA,Envelope_EnB,Envelope_EnC:boolean;
+   Current_RegisterAY:byte;
    procedure Case_EnvType_0_3__9;
    procedure Case_EnvType_4_7__15;
    procedure Case_EnvType_8;
@@ -86,156 +102,100 @@ type
    procedure Case_EnvType_13;
    procedure Case_EnvType_14;
    procedure Synthesizer_Logic_Q;
-   procedure Synthesizer_Logic_P;
    procedure SetMixerRegister(Value:byte);
    procedure SetEnvelopeRegister(Value:byte);
    procedure SetAmplA(Value:byte);
    procedure SetAmplB(Value:byte);
    procedure SetAmplC(Value:byte);
+   procedure SetAYRegister(Num:integer;Value:byte);
+   procedure SetAYRegisterFast(Num:integer;Value:byte);
    procedure Synthesizer_Mixer_Q;
    procedure Synthesizer_Mixer_Q_Mono;
-
   end;
  TFilt_K = array of integer;
+
 var
- Filt_M:integer = Filt_NKoefs;
- IsFilt:boolean = True;
+ NOfTicks:DWORD;
+ PlayingGrid:array of record
+  M:array[0..1] of integer;
+ end;
+ MkVisPos,VisPosMax,VisPoint,VisStep,VisTickMax:DWORD;
+
+ FilterWant:boolean = True;
+ Filt_M:integer;
+ IsFilt:integer = 1;
  Filt_K,Filt_XL,Filt_XR:TFilt_K;
  Filt_I:integer;
- PlayMode:TPlayModes;
-
- NumberOfSoundChips:integer = MaxNumberOfSoundChips;
-
- //Sound chip parameters
- SoundChip:array[1..MaxNumberOfSoundChips] of TSoundChip;
-
- //Parameters for all sound chips
- Index_AL,Index_AR,Index_BL,Index_BR,Index_CL,Index_CR:byte;
- Emulating_Chip:ChTypes;
+ IntFlag:boolean;
+ RegNumNext,DatNext:integer;
+ Delay_in_tiks:DWORD;
  AY_Freq:integer;
- Level_AR,Level_AL, Level_BR,Level_BL, Level_CR,Level_CL:array[0..31]of Integer;
- LevelL,LevelR,Left_Chan,Right_Chan:integer;
- Tick_Counter:byte;
+ Previous_Tact:integer;
+
+ NumberOfSoundChips:integer;
+ Real_End:array[0..1] of boolean;
+ Real_End_All,LoopAllowed:boolean;
+ LineReady:boolean;
+
+ SoundChip:array[0..1] of TSoundChip;
+
  Tik:packed record
-  case Integer of
-  0:(Lo:Word;
-     Hi:word);
-  1:(Re:dword);
-  end;
- Delay_in_tiks:dword;
+ case integer of
+ 0:(Lo:word;
+    Hi:word);
+ 1:(Re:integer);
+ end;
+ Synthesizer:procedure(Buf:pointer);
  Current_Tik:longword;
  Number_Of_Tiks:packed record
-     case boolean of
-      false:(lo:longword;
-             hi:longword);
-      true: (re:int64);
-     end;
- IntFlag:boolean;
- AY_Tiks_In_Interrupt,Sample_Tiks_in_Interrupt:longword;
- Synthesizer:procedure(Buf:pointer);
- StdChannelsAllocation:integer;
-
- Real_End:array[1..MaxNumberOfSoundChips] of boolean;
- Real_End_All,LoopAllowed:boolean;
-
-
-(*type
- TFilt_K = array of integer;
-var
- Filt_M:integer = Filt_NKoefs;
- IsFilt:boolean = True;
- Filt_K,Filt_XL,Filt_XR:TFilt_K;
- Filt_I:integer;
- PlayMode:TPlayModes;
+ case boolean of
+  False:(lo:longword;
+         hi:longword);
+  True: (re:int64);
+ end;
+ Flg:smallint;
  Index_AL,Index_AR,Index_BL,Index_BR,Index_CL,Index_CR:byte;
- Emulating_Chip:ChTypes;
- AY_Freq:integer;
- First_Period:boolean;
- Ampl:integer;
- Ton_Counter_A,
- Ton_Counter_B,
- Ton_Counter_C,
- Noise_Counter:packed record
-     case integer of
-      0:(Lo:word;
-         Hi:word);
-      1:(Re:longword);
-     end;
- Envelope_Counter:packed record
-     case integer of
-     0:(Lo:dword;
-        Hi:dword);
-     1:(Re:int64);
-     end;
- Ton_A,Ton_B,Ton_C:integer;
- Noise:packed record
-     case boolean of
-      True: (Seed:longword);
-      False:(Low:word;
-             Val:dword);
-     end;
- Level_AR,Level_AL,
- Level_BR,Level_BL,
- Level_CR,Level_CL:array[0..31]of Integer;
- Left_Chan,Right_Chan:integer;
- Tick_Counter:byte;
- Tik:packed record
-     Case Integer of
-      0:(Lo:Word;
-         Hi:word);
-      1:(Re:dword);
-     end;
- Delay_in_tiks:dword;
- Case_EnvType:procedure;
- Ton_EnA,Ton_EnB,
- Ton_EnC,Noise_EnA,
- Noise_EnB,Noise_EnC:boolean;
- Envelope_EnA,Envelope_EnB,Envelope_EnC:boolean;
- Current_Tik:longword;*)
- Optimization_For_Quality:boolean = True;
-(* Number_Of_Tiks:packed record
-     case boolean of
-      false:(lo:longword;
-             hi:longword);
-      true: (re:int64);
-     end;
- IntFlag:boolean;
- AY_Tiks_In_Interrupt,Sample_Tiks_in_Interrupt:longword;
- Synthesizer:procedure(Buf:pointer);
- Real_End,LoopAllowed:boolean;
- StdChannelsAllocation:integer;*)
+ ChType:ChTypes = YM_Chip;
+ AY_Tiks_In_Interrupt:longword;
 
 procedure Synthesizer_Stereo16(Buf:pointer);
-procedure Synthesizer_Stereo16_P(Buf:pointer);
 procedure Synthesizer_Stereo8(Buf:pointer);
-procedure Synthesizer_Stereo8_P(Buf:pointer);
 procedure Synthesizer_Mono16(Buf:pointer);
-procedure Synthesizer_Mono16_P(Buf:pointer);
 procedure Synthesizer_Mono8(Buf:pointer);
-procedure Synthesizer_Mono8_P(Buf:pointer);
-procedure MakeBuffer(Buf:pointer);
-(*procedure SetEnvelopeRegister(Value:byte);
-procedure SetMixerRegister(Value:byte);
-procedure SetAmplA(Value:byte);
-procedure SetAmplB(Value:byte);
-procedure SetAmplC(Value:byte);*)
-procedure SetDefault(samrate,nchan,sambit:integer);
+procedure ResetAYChipEmulation(chip:integer;zeroregs:boolean);
+
+procedure SynthesizerZX50(Buf:pointer);
+
+procedure MakeBufferTracker(Buf:pointer);
+procedure SetBuffers(len,num:integer);
+procedure Set_Sample_Rate(SR:integer);
+procedure Set_Sample_Bit(SB:integer);
+procedure Set_Stereo(St:integer);
+procedure Set_Chip_Frq(Fr:integer);
+procedure Set_Player_Frq(Fr:integer);
+procedure SetFilter(Filt:boolean);
+
 procedure Calculate_Level_Tables;
 function ToggleChanMode:string;
-function SetStdChannelsAllocation(CA:integer):string;
-procedure SetIntFreq(f:integer);
-procedure SetSampleRate(f:integer);
-procedure SetBuffers(len,num:integer);
-procedure SetBitRate(SB:integer);
-procedure SetNChans(St:integer);
-procedure Set_Optimization(Q:boolean);
-procedure SetAYFreq(f:integer);
-procedure SetFilter(Filt:boolean;M:integer);
-procedure CalcFiltKoefs;
 
 implementation
 
-uses Childwin, Main;
+uses
+  ChildWin, Main, trfuncs;
+
+var
+  Level_AR,Level_AL,
+  Level_BR,Level_BL,
+  Level_CR,Level_CL:array[0..31]of Integer;
+  PrevLeft,PrevRight:integer;
+  LevelL,LevelR,Left_Chan,Right_Chan:integer;
+  Left_Chan1,Right_Chan1:integer;
+  Tick_Counter:packed record
+  case integer of
+  0:(Lo:word;
+     Hi:word);
+  1:(Re:integer);
+  end;
 
 type
  TS16 = packed array[0..0] of record
@@ -356,6 +316,8 @@ else
 end;
 
 function NoiseGenerator(Seed:integer):integer;
+begin
+{$ifdef cpu32}
 asm
  shld edx,eax,16
  shld ecx,eax,19
@@ -366,98 +328,53 @@ asm
  inc eax
  xor eax,ecx
 end;
+{$else}
+Result := (((Seed shl 1) or 1) xor ((Seed shr 16) xor (Seed shr 13) and 1)) and $1ffff;
+{$endif}
+end;
 
 procedure TSoundChip.Synthesizer_Logic_Q;
 begin
 inc(Ton_Counter_A.Hi);
-if Ton_Counter_A.Hi >= AYRegisters.TonA then
+if Ton_Counter_A.Hi >= RegisterAY.TonA then
  begin
   Ton_Counter_A.Hi := 0;
   Ton_A := Ton_A xor 1
  end;
 inc(Ton_Counter_B.Hi);
-if Ton_Counter_B.Hi >= AYRegisters.TonB then
+if Ton_Counter_B.Hi >= RegisterAY.TonB then
  begin
   Ton_Counter_B.Hi := 0;
   Ton_B := Ton_B xor 1
  end;
 inc(Ton_Counter_C.Hi);
-if Ton_Counter_C.Hi >= AYRegisters.TonC then
+if Ton_Counter_C.Hi >= RegisterAY.TonC then
  begin
   Ton_Counter_C.Hi := 0;
   Ton_C := Ton_C xor 1
  end;
 inc(Noise_Counter.Hi);
 if (Noise_Counter.Hi and 1 = 0) and
-   (Noise_Counter.Hi >= AYRegisters.Noise shl 1) then
+   (Noise_Counter.Hi >= RegisterAY.Noise shl 1) then
  begin
   Noise_Counter.Hi := 0;
   Noise.Seed := NoiseGenerator(Noise.Seed);
  end;
 if Envelope_Counter.Hi = 0 then Case_EnvType;
 inc(Envelope_Counter.Hi);
-if Envelope_Counter.Hi >= AYRegisters.Envelope then
- Envelope_Counter.Hi := 0
-end;
-
-procedure TSoundChip.Synthesizer_Logic_P;
-var
- k:word;
- k2:longword;
-begin
-
-inc(Ton_Counter_A.Re,Delay_In_Tiks);
-k := AYRegisters.TonA; if k = 0 then inc(k);
-if k <= Ton_Counter_A.Hi then
- begin
-  Ton_A := Ton_A xor ((Ton_Counter_A.Hi div k) and 1);
-  Ton_Counter_A.Hi := Ton_Counter_A.Hi mod k
- end;
-
-inc(Ton_Counter_B.Re,Delay_In_Tiks);
-k := AYRegisters.TonB; if k = 0 then inc(k);
-if k <= Ton_Counter_B.Hi then
- begin
-  Ton_B := Ton_B xor ((Ton_Counter_B.Hi div k) and 1);
-  Ton_Counter_B.Hi := Ton_Counter_B.Hi mod k
- end;
-
-inc(Ton_Counter_C.Re,Delay_In_Tiks);
-k := AYRegisters.TonC; if k = 0 then inc(k);
-if k <= Ton_Counter_C.Hi then
- begin
-  Ton_C := Ton_C xor ((Ton_Counter_C.Hi div k) and 1);
-  Ton_Counter_C.Hi := Ton_Counter_C.Hi mod k
- end;
-
-inc(Noise_Counter.Re,Delay_In_Tiks);
-k := AYRegisters.Noise; if k = 0 then inc(k);
-k := k shl 1;
-if Noise_Counter.Hi >= k then
- begin
-  Noise_Counter.Hi := Noise_Counter.Hi mod k;
-  Noise.Seed := NoiseGenerator(Noise.Seed);
- end;
-
-k2 := AYRegisters.Envelope; if k2 = 0 then inc(k2);
-if Envelope_Counter.Hi = 0 then inc(Envelope_Counter.Hi,k2);
-while (Envelope_Counter.Hi >= k2) do
- begin
-  dec(Envelope_Counter.Hi,k2);
-  Case_EnvType
- end;
-inc(Envelope_Counter.Re,int64(Delay_In_Tiks) shl 16)
+if Envelope_Counter.Hi >= RegisterAY.Envelope then
+ Envelope_Counter.Hi := 0;
 end;
 
 procedure TSoundChip.SetMixerRegister(Value:byte);
 begin
-AYRegisters.Mixer := Value;
+RegisterAY.Mixer := Value;
 Ton_EnA := (Value and 1) = 0;
 Noise_EnA := (Value and 8) = 0;
 Ton_EnB := (Value and 2) = 0;
 Noise_EnB := (Value and 16) = 0;
 Ton_EnC := (Value and 4) = 0;
-Noise_EnC := (Value and 32) = 0
+Noise_EnC := (Value and 32) = 0;
 end;
 
 procedure TSoundChip.SetEnvelopeRegister(Value:byte);
@@ -468,39 +385,77 @@ if (Value and 4) = 0 then
  ampl := 32
 else
  ampl := -1;
-AYRegisters.EnvType := Value;
+RegisterAY.EnvType := Value;
 Case Value of
-0..3,9: Case_EnvType := Case_EnvType_0_3__9;
-4..7,15:Case_EnvType := Case_EnvType_4_7__15;
-8:      Case_EnvType := Case_EnvType_8;
-10:     Case_EnvType := Case_EnvType_10;
-11:     Case_EnvType := Case_EnvType_11;
-12:     Case_EnvType := Case_EnvType_12;
-13:     Case_EnvType := Case_EnvType_13;
-14:     Case_EnvType := Case_EnvType_14;
+0..3,9: Case_EnvType := @Case_EnvType_0_3__9;
+4..7,15:Case_EnvType := @Case_EnvType_4_7__15;
+8:      Case_EnvType := @Case_EnvType_8;
+10:     Case_EnvType := @Case_EnvType_10;
+11:     Case_EnvType := @Case_EnvType_11;
+12:     Case_EnvType := @Case_EnvType_12;
+13:     Case_EnvType := @Case_EnvType_13;
+14:     Case_EnvType := @Case_EnvType_14;
 end;
 end;
 
 procedure TSoundChip.SetAmplA(Value:byte);
 begin
-AYRegisters.AmplitudeA := Value;
+RegisterAY.AmplitudeA := Value;
 Envelope_EnA := (Value and 16) = 0;
 end;
 
 procedure TSoundChip.SetAmplB(Value:byte);
 begin
-AYRegisters.AmplitudeB := Value;
+RegisterAY.AmplitudeB := Value;
 Envelope_EnB := (Value and 16) = 0;
 end;
 
 procedure TSoundChip.SetAmplC(Value:byte);
 begin
-AYRegisters.AmplitudeC := Value;
+RegisterAY.AmplitudeC := Value;
 Envelope_EnC := (Value and 16) = 0;
+end;
+
+procedure TSoundChip.SetAYRegister(Num:integer;Value:byte);
+begin
+case Num of
+13:
+ SetEnvelopeRegister(Value and 15);
+1,3,5:
+ RegisterAY.Index[Num] := Value and 15;
+6:
+ RegisterAY.Noise := Value and 31;
+7: SetMixerRegister(Value and 63);
+8: SetAmplA(Value and 31);
+9: SetAmplB(Value and 31);
+10:SetAmplC(Value and 31);
+0,2,4,11,12:
+ RegisterAY.Index[Num] := Value;
+end
+end;
+
+procedure TSoundChip.SetAYRegisterFast(Num:integer;Value:byte);
+begin
+case Num of
+13:
+ SetEnvelopeRegister(Value);
+1,3,5:
+ RegisterAY.Index[Num] := Value;
+6:
+ RegisterAY.Noise := Value;
+7: SetMixerRegister(Value);
+8: SetAmplA(Value);
+9: SetAmplB(Value);
+10:SetAmplC(Value);
+0,2,4,11,12:
+ RegisterAY.Index[Num] := Value;
+end;
 end;
 
 //sorry for assembler, I can't make effective qword procedure on pascal...
 function ApplyFilter(Lev:integer;var Filt_X:TFilt_K):integer;
+{$ifdef cpu32}
+begin
 asm
         push    ebx
         push    esi
@@ -508,7 +463,8 @@ asm
         add     esp,-8
         mov     ecx,Filt_M
         mov     edi,Filt_K
-        lea     esi,edi+ecx*4
+//        lea     esi,edi+ecx*4
+        lea     esi,edi[ecx*4] //FPC
         mov     ebx,[edx]
         mov     ecx,Filt_I
         mov     [ebx+ecx*4],eax
@@ -518,6 +474,10 @@ asm
 @lp:    dec     ecx
         jns     @gz
         mov     ecx,Filt_M
+//        sets    al
+//        dec     eax
+
+
 @gz:    mov     eax,[ebx+ecx*4]
         add     edi,4
         imul    dword ptr [edi]
@@ -537,6 +497,24 @@ asm
         adc     edx,0
 @nm:    shrd    eax,edx,24
 end;
+{$else}
+var
+ Res:int64;
+ j:integer;
+begin
+Filt_X[Filt_I] := Lev;
+Res := Lev*Filt_K[0];
+for j := 1 to Filt_M do
+ begin
+  if Filt_I > 0 then
+   Dec(Filt_I)
+  else
+   Filt_I := Filt_M;
+  Inc(Res,Filt_X[Filt_I]*Filt_K[j]);
+ end;
+Result := Res div $1000000;
+{$endif}
+end;
 
 procedure TSoundChip.Synthesizer_Mixer_Q;
 var
@@ -552,8 +530,8 @@ if k <> 0 then
  begin
   if Envelope_EnA then
    begin
-    inc(LevL,Level_AL[AYRegisters.AmplitudeA * 2 + 1]);
-    inc(LevR,Level_AR[AYRegisters.AmplitudeA * 2 + 1])
+    inc(LevL,Level_AL[RegisterAY.AmplitudeA * 2 + 1]);
+    inc(LevR,Level_AR[RegisterAY.AmplitudeA * 2 + 1])
    end
   else
    begin
@@ -568,8 +546,8 @@ if Noise_EnB then k := k and Noise.Val;
 if k <> 0 then
  if Envelope_EnB then
   begin
-   inc(LevL,Level_BL[AYRegisters.AmplitudeB * 2 + 1]);
-   inc(LevR,Level_BR[AYRegisters.AmplitudeB * 2 + 1])
+   inc(LevL,Level_BL[RegisterAY.AmplitudeB * 2 + 1]);
+   inc(LevR,Level_BR[RegisterAY.AmplitudeB * 2 + 1])
   end
  else
   begin
@@ -583,8 +561,8 @@ if Noise_EnC then k := k and Noise.Val;
 if k <> 0 then
  if Envelope_EnC then
   begin
-   inc(LevL,Level_CL[AYRegisters.AmplitudeC * 2 + 1]);
-   inc(LevR,Level_CR[AYRegisters.AmplitudeC * 2 + 1])
+   inc(LevL,Level_CL[RegisterAY.AmplitudeC * 2 + 1]);
+   inc(LevR,Level_CR[RegisterAY.AmplitudeC * 2 + 1])
   end
  else
   begin
@@ -593,151 +571,174 @@ if k <> 0 then
   end;
 
 inc(LevelL,LevL);
-inc(LevelR,LevR)
+inc(LevelR,LevR);
 end;
 
-procedure Synthesizer_Stereo16;
+procedure FillVis;
 var
- Tmp:integer;
+ i:integer;
+begin
+for i := 0 to NumberOfSoundChips-1 do
+ PlayingGrid[MkVisPos].M[i] := (PlVars[i].CurrentPosition and $1FF) +
+                             (PlVars[i].CurrentPattern shl 9) +
+                             (PlVars[i].CurrentLine shl 17);
+Inc(MkVisPos);
+if MkVisPos >= VisPosMax then MkVisPos := 0;
+Inc(VisPoint,VisStep);
+end;
+
+function Interpolator16(l1,l0,ofs:integer):integer;
+begin
+Result := (l1 - l0) * ofs div 65536 + l0;
+if Result > 32767 then
+ Result := 32767
+else if Result < -32768 then
+ Result := -32768;
+end;
+
+function Interpolator8(l1,l0,ofs:integer):integer;
+begin
+Result := (l1 - l0) * ofs div 65536 + l0 + 128;
+if Result > 255 then
+ Result := 255
+else if Result < 0 then
+ Result := 0;
+end;
+
+function Averager16(l:integer):integer;
+begin
+Result := l div Tick_Counter.Hi;
+if Result > 32767 then
+ Result := 32767
+else if Result < -32768 then
+ Result := -32768;
+end;
+
+function Averager8(l:integer):integer;
+begin
+Result := 128 + l div Tick_Counter.Hi;
+if Result > 255 then
+ Result := 255
+else if Result < 0 then
+ Result := 0;
+end;
+
+procedure Synthesizer_Stereo16(Buf:pointer);
+var
+ Tmp,i:integer;
 begin
 repeat
 Tmp := 0; LevelL := Tmp; LevelR := Tmp;
-for Tmp := 1 to NumberOfSoundChips do
+if Tick_Counter.Re >= Tik.Re then
  begin
-  SoundChip[Tmp].Synthesizer_Logic_Q;
-  SoundChip[Tmp].Synthesizer_Mixer_Q;
+  repeat
+   if IsFilt > 0 then
+    begin
+     Tmp := Tik.Re - Tick_Counter.Re + 65536;
+     PS16(Buf)^[BuffLen].Left := Interpolator16(Left_Chan,PrevLeft,Tmp);
+     PS16(Buf)^[BuffLen].Right := Interpolator16(Right_Chan,PrevRight,Tmp);
+    end
+   else
+    begin
+     PS16(Buf)^[BuffLen].Left := Averager16(Left_Chan1);
+     PS16(Buf)^[BuffLen].Right := Averager16(Right_Chan1);
+    end;
+   inc(Tik.Re,integer(Delay_In_Tiks));
+   if NOfTicks = VisPoint then FillVis;
+   Inc(NOfTicks);
+   Inc(BuffLen);
+   if BuffLen = BufferLength then
+    begin
+     if Current_Tik < Number_Of_Tiks.Hi then
+      IntFlag := True;
+     exit
+    end
+  until Tick_Counter.Re < Tik.Re; //simple upsampler
+  dec(Tik.Re,Tick_Counter.Re);
+  Tmp := 0; Left_Chan1 := Tmp; Right_Chan1 := Tmp; Tick_Counter.Re := Tmp;
  end;
-if IsFilt then
+for i := 0 to NumberOfSoundChips-1 do
+ begin
+  SoundChip[i].Synthesizer_Logic_Q;
+  SoundChip[i].Synthesizer_Mixer_Q;
+ end;
+if IsFilt >= 0 then
  begin
   Tmp := Filt_I;
   LevelL := ApplyFilter(LevelL,Filt_XL);
   Filt_I := Tmp;
   LevelR := ApplyFilter(LevelR,Filt_XR)
  end;
-inc(Left_Chan,LevelL);
-inc(Right_Chan,LevelR);
-Inc(Current_Tik);
-Inc(Tick_Counter);
-if Tick_Counter >= Tik.Hi then
- begin
-  Inc(Tik.Re,Delay_In_Tiks);
-  Dec(Tik.Hi,Tick_Counter);
-  Tmp := Left_Chan div Tick_Counter;
-  if Tmp > 32767 then
-   Tmp := 32767
-  else if Tmp < -32768 then
-   Tmp := -32768;
-  PS16(Buf)^[BuffLen].Left := Tmp;
-  Tmp := Right_Chan div Tick_Counter;
-  if Tmp > 32767 then
-   Tmp := 32767
-  else if Tmp < -32768 then
-   Tmp := -32768;
-  PS16(Buf)^[BuffLen].Right := Tmp;
-  Inc(BuffLen);
-  if NOfTicks = VisPoint then
-   begin
-    PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
-                                (PlVars[1].CurrentPattern shl 9) +
-                                (PlVars[1].CurrentLine shl 17);
-    if NumberOfSoundChips > 1 then
-     PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
-                                 (PlVars[2].CurrentPattern shl 9) +
-                                 (PlVars[2].CurrentLine shl 17);
-    if MkVisPos < VisPosMax - 1 then
-     Inc(MkVisPos)
-    else
-     MkVisPos := 0;
-    Inc(VisPoint,VisStep)
-   end;
-  Inc(NOfTicks);
-  Tmp := 0;
-  Left_Chan:= Tmp;
-  Right_Chan := Tmp;
-  Tick_Counter := Tmp;
-  if BuffLen = BufferLength then
-   begin
-    if Current_Tik < Number_Of_Tiks.Hi then
-     IntFlag := True;
-    exit
-   end
- end
+PrevLeft := Left_Chan;
+Left_Chan := LevelL;
+inc(Left_Chan1,LevelL);
+PrevRight := Right_Chan;
+Right_Chan := LevelR;
+inc(Right_Chan1,LevelR);
+
+inc(Current_Tik);
+Inc(Tick_Counter.Hi);
 until Current_Tik >= Number_Of_Tiks.Hi;
-Tmp := 0;
-Number_Of_Tiks.hi := Tmp;
-Current_Tik := Tmp
+Tmp := 0; Number_Of_Tiks.Hi := Tmp; Current_Tik := Tmp
 end;
 
-procedure Synthesizer_Stereo8;
+procedure Synthesizer_Stereo8(Buf:pointer);
 var
- Tmp:integer;
+ Tmp,i:integer;
 begin
 repeat
 Tmp := 0; LevelL := Tmp; LevelR := Tmp;
-for Tmp := 1 to NumberOfSoundChips do
+if Tick_Counter.Re >= Tik.Re then
  begin
-  SoundChip[Tmp].Synthesizer_Logic_Q;
-  SoundChip[Tmp].Synthesizer_Mixer_Q;
+  repeat
+   if IsFilt > 0 then
+    begin
+     Tmp := Tik.Re - Tick_Counter.Re + 65536;
+     PS8(Buf)^[BuffLen].Left := Interpolator8(Left_Chan,PrevLeft,Tmp);
+     PS8(Buf)^[BuffLen].Right := Interpolator8(Right_Chan,PrevRight,Tmp);
+    end
+   else
+    begin
+     PS8(Buf)^[BuffLen].Left := Averager8(Left_Chan1);
+     PS8(Buf)^[BuffLen].Right := Averager8(Right_Chan1);
+    end;
+   inc(Tik.Re,integer(Delay_In_Tiks));
+   if NOfTicks = VisPoint then FillVis;
+   Inc(NOfTicks);
+   Inc(BuffLen);
+   if BuffLen = BufferLength then
+    begin
+     if Current_Tik < Number_Of_Tiks.Hi then
+      IntFlag := True;
+     exit
+    end
+  until Tick_Counter.Re < Tik.Re; //simple upsampler
+  dec(Tik.Re,Tick_Counter.Re);
+  Tmp := 0; Left_Chan1 := Tmp; Right_Chan1 := Tmp; Tick_Counter.Re := Tmp;
  end;
-if IsFilt then
+for i := 0 to NumberOfSoundChips-1 do
+ begin
+  SoundChip[i].Synthesizer_Logic_Q;
+  SoundChip[i].Synthesizer_Mixer_Q;
+ end;
+if IsFilt >= 0 then
  begin
   Tmp := Filt_I;
   LevelL := ApplyFilter(LevelL,Filt_XL);
   Filt_I := Tmp;
   LevelR := ApplyFilter(LevelR,Filt_XR)
  end;
-inc(Left_Chan,LevelL);
-inc(Right_Chan,LevelR);
+PrevLeft := Left_Chan;
+Left_Chan := LevelL;
+inc(Left_Chan1,LevelL);
+PrevRight := Right_Chan;
+Right_Chan := LevelR;
+inc(Right_Chan1,LevelR);
+
 Inc(Current_Tik);
-Inc(Tick_Counter);
-if Tick_Counter >= Tik.Hi then
- begin
-  Inc(Tik.Re,Delay_In_Tiks);
-  Dec(Tik.Hi,Tick_Counter);
-  Tmp := Left_Chan div Tick_Counter;
-  if Tmp > 127 then
-   Tmp := 127
-  else if Tmp < -128 then
-   Tmp := -128;
-  PS8(Buf)^[BuffLen].Left := 128 +Tmp;
-  Tmp := Right_Chan div Tick_Counter;
-  if Tmp > 127 then
-   Tmp := 127
-  else if Tmp < -128 then
-   Tmp := -128;
-  PS8(Buf)^[BuffLen].Right := 128 + Tmp;
-  Inc(BuffLen);
-  if NOfTicks = VisPoint then
-   begin
-    PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
-                                (PlVars[1].CurrentPattern shl 9) +
-                                (PlVars[1].CurrentLine shl 17);
-    if NumberOfSoundChips > 1 then
-     PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
-                                 (PlVars[2].CurrentPattern shl 9) +
-                                 (PlVars[2].CurrentLine shl 17);
-    if MkVisPos < VisPosMax - 1 then
-     Inc(MkVisPos)
-    else
-     MkVisPos := 0;
-    Inc(VisPoint,VisStep)
-   end;
-  Inc(NOfTicks);
-  Tmp := 0;
-  Left_Chan := Tmp;
-  Right_Chan := Tmp;
-  Tick_Counter := Tmp;
-  if BuffLen = BufferLength then
-   begin
-    if Current_Tik < Number_Of_Tiks.Hi then
-     IntFlag := True;
-    exit
-   end
- end
+Inc(Tick_Counter.Hi);
 until Current_Tik >= Number_Of_Tiks.Hi;
-Tmp := 0;
-Number_Of_Tiks.hi := Tmp;
-Current_Tik := Tmp
+Tmp := 0; Number_Of_Tiks.hi := Tmp; Current_Tik := Tmp;
 end;
 
 procedure TSoundChip.Synthesizer_Mixer_Q_Mono;
@@ -751,7 +752,7 @@ if Ton_EnA then k := Ton_A;
 if Noise_EnA then k := k and Noise.Val;
 if k <> 0 then
  if Envelope_EnA then
-  inc(Lev,Level_AL[AYRegisters.AmplitudeA * 2 + 1])
+  inc(Lev,Level_AL[RegisterAY.AmplitudeA * 2 + 1])
  else
   inc(Lev,Level_AL[Ampl]);
 
@@ -760,7 +761,7 @@ if Ton_EnB then k := Ton_B;
 if Noise_EnB then k := k and Noise.Val;
 if k <> 0 then
  if Envelope_EnB then
-  inc(Lev,Level_BL[AYRegisters.AmplitudeB * 2 + 1])
+  inc(Lev,Level_BL[RegisterAY.AmplitudeB * 2 + 1])
  else
   inc(Lev,Level_BL[Ampl]);
 
@@ -769,481 +770,212 @@ if Ton_EnC then k := Ton_C;
 if Noise_EnC then k := k and Noise.Val;
 if k <> 0 then
  if Envelope_EnC then
-  inc(Lev,Level_CL[AYRegisters.AmplitudeC * 2 + 1])
+  inc(Lev,Level_CL[RegisterAY.AmplitudeC * 2 + 1])
  else
   inc(Lev,Level_CL[Ampl]);
 
-inc(LevelL,Lev)
+inc(LevelL,Lev);
 end;
 
-procedure Synthesizer_Mono16;
+procedure Synthesizer_Mono16(Buf:pointer);
 var
- Tmp:integer;
+ Tmp,i:integer;
 begin
 repeat
 LevelL := 0;
-for Tmp := 1 to NumberOfSoundChips do
+if Tick_Counter.Re >= Tik.Re then
  begin
-  SoundChip[Tmp].Synthesizer_Logic_Q;
-  SoundChip[Tmp].Synthesizer_Mixer_Q_Mono;
- end;
-if IsFilt then
- LevelL := ApplyFilter(LevelL,Filt_XL);
-inc(Left_Chan,LevelL);
-Inc(Current_Tik);
-Inc(Tick_Counter);
-if Tick_Counter >= Tik.Hi then
- begin
-  Inc(Tik.Re,Delay_In_Tiks);
-  Dec(Tik.Hi,Tick_Counter);
-  Tmp := Left_Chan div Tick_Counter;
-  if Tmp > 32767 then
-   Tmp := 32767
-  else if Tmp < -32768 then
-   Tmp := -32768;
-  PM16(Buf)^[BuffLen] := Tmp;
-  Inc(BuffLen);
-  if NOfTicks = VisPoint then
-   begin
-    PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
-                                (PlVars[1].CurrentPattern shl 9) +
-                                (PlVars[1].CurrentLine shl 17);
-    if NumberOfSoundChips > 1 then
-     PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
-                                 (PlVars[2].CurrentPattern shl 9) +
-                                 (PlVars[2].CurrentLine shl 17);
-    if MkVisPos < VisPosMax - 1 then
-     Inc(MkVisPos)
-    else
-     MkVisPos := 0;
-    Inc(VisPoint,VisStep)
-   end;
-  Inc(NOfTicks);
-  Tmp := 0;
-  Left_Chan := Tmp;
-  Tick_Counter := Tmp;
-  if BuffLen = BufferLength then
-   begin
-    if Current_Tik < Number_Of_Tiks.Hi then
-     IntFlag := True;
-    exit
-   end
- end
-until Current_Tik >= Number_Of_Tiks.Hi;
-Tmp := 0;
-Number_Of_Tiks.hi := Tmp;
-Current_Tik := Tmp
-end;
-
-procedure Synthesizer_Mono8;
-var
- Tmp:integer;
-begin
-repeat
-LevelL := 0;
-for Tmp := 1 to NumberOfSoundChips do
- begin
-  SoundChip[Tmp].Synthesizer_Logic_Q;
-  SoundChip[Tmp].Synthesizer_Mixer_Q_Mono;
- end; 
-if IsFilt then
- LevelL := ApplyFilter(LevelL,Filt_XL);
-inc(Left_Chan,LevelL);
-inc(Current_Tik);
-inc(Tick_Counter);
-if Tick_Counter >= Tik.Hi then
- begin
-  inc(Tik.Re,Delay_In_Tiks);
-  dec(Tik.Hi,Tick_Counter);
-  Tmp := Left_Chan div Tick_Counter;
-  if Tmp > 127 then
-   Tmp := 127
-  else if Tmp < -128 then
-   Tmp := -128;
-  PM8(Buf)^[BuffLen] := 128 + Tmp;
-  Inc(BuffLen);
-  if NOfTicks = VisPoint then
-   begin
-    PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
-                                (PlVars[1].CurrentPattern shl 9) +
-                                (PlVars[1].CurrentLine shl 17);
-    if NumberOfSoundChips > 1 then
-     PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
-                                 (PlVars[2].CurrentPattern shl 9) +
-                                 (PlVars[2].CurrentLine shl 17);
-    if MkVisPos < VisPosMax - 1 then
-     Inc(MkVisPos)
-    else
-     MkVisPos := 0;
-    Inc(VisPoint,VisStep)
-   end;
-  Inc(NOfTicks);
-  Tmp := 0;
-  Left_Chan := Tmp;
-  Tick_Counter := Tmp;
-  if BuffLen = BufferLength then
-   begin
-    if Current_Tik < Number_Of_Tiks.Hi then
-     IntFlag := True;
-    exit
-   end
- end
-until Current_Tik >= Number_Of_Tiks.Hi;
-Tmp := 0;
-Number_Of_Tiks.hi := Tmp;
-Current_Tik := Tmp
-end;
-
-procedure Synthesizer_Stereo16_P;
-var
- LevL,LevR,k,c:integer;
-begin
-repeat
-for c := 1 to NumberOfSoundChips do
- SoundChip[c].Synthesizer_Logic_P;
-
-LevL := 0;
-LevR := LevL;
-
-for c := 1 to NumberOfSoundChips do
- with SoundChip[c] do
-  begin
-   k := 1;
-   if Ton_EnA then k := Ton_A;
-   if Noise_EnA then k := k and Noise.Val;
-   if k <> 0 then
-    if Envelope_EnA then
-     begin
-      inc(LevL,Level_AL[AYRegisters.AmplitudeA * 2 + 1]);
-      inc(LevR,Level_AR[AYRegisters.AmplitudeA * 2 + 1])
-     end
-    else
-     begin
-      inc(LevL,Level_AL[Ampl]);
-      inc(LevR,Level_AR[Ampl])
-     end;
-
-  k := 1;
-  if Ton_EnB then k := Ton_B;
-  if Noise_EnB then k := k and Noise.Val;
-  if k <> 0 then
-   if Envelope_EnB then
-    begin
-     inc(LevL,Level_BL[AYRegisters.AmplitudeB * 2 + 1]);
-     inc(LevR,Level_BR[AYRegisters.AmplitudeB * 2 + 1])
-    end
+  repeat
+   if IsFilt > 0 then
+    PM16(Buf)^[BuffLen] := Interpolator16(Left_Chan,PrevLeft,Tik.Re - Tick_Counter.Re + 65536)
    else
+    PM16(Buf)^[BuffLen] := Averager16(Left_Chan1);
+   inc(Tik.Re,integer(Delay_In_Tiks));
+   if NOfTicks = VisPoint then FillVis;
+   Inc(NOfTicks);
+   Inc(BuffLen);
+   if BuffLen = BufferLength then
     begin
-     inc(LevL,Level_BL[Ampl]);
-     inc(LevR,Level_BR[Ampl])
-    end;
+     if Current_Tik < Number_Of_Tiks.Hi then
+      IntFlag := True;
+     exit
+    end
+  until Tick_Counter.Re < Tik.Re; //simple upsampler
+  dec(Tik.Re,Tick_Counter.Re);
+  Tmp := 0; Left_Chan1 := Tmp; Tick_Counter.Re := Tmp;
+ end;
+for i := 0 to NumberOfSoundChips-1 do
+ begin
+  SoundChip[i].Synthesizer_Logic_Q;
+  SoundChip[i].Synthesizer_Mixer_Q_Mono;
+ end;
+if IsFilt >= 0 then
+ LevelL := ApplyFilter(LevelL,Filt_XL);
 
-   k := 1;
-   if Ton_EnC then k := Ton_C;
-   if Noise_EnC then k := k and Noise.Val;
-   if k <> 0 then
-    if Envelope_EnC then
+PrevLeft := Left_Chan;
+Left_Chan := LevelL;
+inc(Left_Chan1,LevelL);
+
+Inc(Current_Tik);
+Inc(Tick_Counter.Hi);
+until Current_Tik >= Number_Of_Tiks.Hi;
+Tmp := 0; Number_Of_Tiks.hi := Tmp; Current_Tik := Tmp;
+end;
+
+procedure Synthesizer_Mono8(Buf:pointer);
+var
+ Tmp,i:integer;
+begin
+repeat
+LevelL := 0;
+if Tick_Counter.Re >= Tik.Re then
+ begin
+  repeat
+   if IsFilt > 0 then
+    PM8(Buf)^[BuffLen] := Interpolator8(Left_Chan,PrevLeft,Tik.Re - Tick_Counter.Re + 65536)
+   else
+    PM8(Buf)^[BuffLen] := Averager8(Left_Chan1);
+   inc(Tik.Re,integer(Delay_In_Tiks));
+   if NOfTicks = VisPoint then FillVis;
+   Inc(NOfTicks);
+   Inc(BuffLen);
+   if BuffLen = BufferLength then
+    begin
+     if Current_Tik < Number_Of_Tiks.Hi then
+      IntFlag := True;
+     exit
+    end
+  until Tick_Counter.Re < Tik.Re; //simple upsampler
+  dec(Tik.Re,Tick_Counter.Re);
+  Tmp := 0; Left_Chan1 := Tmp; Tick_Counter.Re := Tmp;
+ end;
+for i := 0 to NumberOfSoundChips-1 do
+ begin
+  SoundChip[i].Synthesizer_Logic_Q;
+  SoundChip[i].Synthesizer_Mixer_Q_Mono;
+ end;
+if IsFilt >= 0 then
+ LevelL := ApplyFilter(LevelL,Filt_XL);
+
+PrevLeft := Left_Chan;
+Left_Chan := LevelL;
+inc(Left_Chan1,LevelL);
+
+Inc(Current_Tik);
+Inc(Tick_Counter.Hi);
+until Current_Tik >= Number_Of_Tiks.Hi;
+Tmp := 0; Number_Of_Tiks.Hi := Tmp; Current_Tik := Tmp;
+end;
+
+procedure ResetAYChipEmulation(chip:integer;zeroregs:boolean);
+begin
+ with SoundChip[chip] do
+  begin
+    if zeroregs then
      begin
-      inc(LevL,Level_CL[AYRegisters.AmplitudeC * 2 + 1]);
-      inc(LevR,Level_CR[AYRegisters.AmplitudeC * 2 + 1])
-     end
-    else
-     begin
-      inc(LevL,Level_CL[Ampl]);
-      inc(LevR,Level_CR[Ampl])
+      FillChar(RegisterAY,14,0);
+      SetEnvelopeRegister(0);
+      SetMixerRegister(0);
+      SetAmplA(0);
+      SetAmplB(0);
+      SetAmplC(0);
+      Current_RegisterAY := 0;
      end;
- end;
-
-if LevL > 32767 then LevL := 32767;
-if LevR > 32767 then LevR := 32767;
-
-PS16(Buf)^[BuffLen].Left := LevL;
-PS16(Buf)^[BuffLen].Right := LevR;
-Inc(BuffLen);
-if NOfTicks = VisPoint then
- begin
-  PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
-                              (PlVars[1].CurrentPattern shl 9) +
-                              (PlVars[1].CurrentLine shl 17);
-  if NumberOfSoundChips > 1 then
-   PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
-                               (PlVars[2].CurrentPattern shl 9) +
-                               (PlVars[2].CurrentLine shl 17);
-  if MkVisPos < VisPosMax - 1 then
-   Inc(MkVisPos)
-  else
-   MkVisPos := 0;
-  Inc(VisPoint,VisStep)
- end;
-Inc(NOfTicks);
-Inc(Current_Tik);
-if BuffLen = BufferLength then
- begin
-  if Current_Tik < Number_Of_Tiks.Hi then
-   IntFlag := True;
-  exit
- end;
-until Current_Tik >= Number_Of_Tiks.Hi;
-k := 0;
-Number_Of_Tiks.hi := k;
-Current_Tik := k
-end;
-
-procedure Synthesizer_Stereo8_P;
-var
- LevL,LevR,k,c:integer;
-begin
-repeat
-for c := 1 to NumberOfSoundChips do
- SoundChip[c].Synthesizer_Logic_P;
-
-LevL := 128;
-LevR := LevL;
-
-for c := 1 to NumberOfSoundChips do
- with SoundChip[c] do
-  begin
-    k := 1;
-    if Ton_EnA then k := Ton_A;
-    if Noise_EnA then k := k and Noise.Val;
-    if k <> 0 then
-     if Envelope_EnA then
-      begin
-       inc(LevL,Level_AL[AYRegisters.AmplitudeA * 2 + 1]);
-       inc(LevR,Level_AR[AYRegisters.AmplitudeA * 2 + 1])
-      end
-     else
-      begin
-       inc(LevL,Level_AL[Ampl]);
-       inc(LevR,Level_AR[Ampl])
-      end;
-
-    k := 1;
-    if Ton_EnB then k := Ton_B;
-    if Noise_EnB then k := k and Noise.Val;
-    if k <> 0 then
-     if Envelope_EnB then
-      begin
-       inc(LevL,Level_BL[AYRegisters.AmplitudeB * 2 + 1]);
-       inc(LevR,Level_BR[AYRegisters.AmplitudeB * 2 + 1])
-      end
-     else
-      begin
-       inc(LevL,Level_BL[Ampl]);
-       inc(LevR,Level_BR[Ampl])
-      end;
-
-    k := 1;
-    if Ton_EnC then k := Ton_C;
-    if Noise_EnC then k := k and Noise.Val;
-    if k <> 0 then
-     if Envelope_EnC then
-      begin
-       inc(LevL,Level_CL[AYRegisters.AmplitudeC * 2 + 1]);
-       inc(LevR,Level_CR[AYRegisters.AmplitudeC * 2 + 1])
-      end
-     else
-      begin
-       inc(LevL,Level_CL[Ampl]);
-       inc(LevR,Level_CR[Ampl])
-      end;
+    First_Period := False;
+    Ampl := 0;
+    Number_Of_Tiks.Re := 0;
+    Current_Tik := 0;
+    Envelope_Counter.Re := 0;
+    Ton_Counter_A.Re := 0;
+    Ton_Counter_B.Re := 0;
+    Ton_Counter_C.Re := 0;
+    Noise_Counter.Re := 0;
+    Ton_A := 0;
+    Ton_B := 0;
+    Ton_C := 0;
+    Noise.Seed := $ffff;
+    Noise.Val := 0;
   end;
-
-if LevL > 255 then LevL := 255;
-if LevR > 255 then LevR := 255;
-
-PS8(Buf)^[BuffLen].Left := LevL;
-PS8(Buf)^[BuffLen].Right := LevR;
-Inc(BuffLen);
-if NOfTicks = VisPoint then
- begin
-  PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
-                              (PlVars[1].CurrentPattern shl 9) +
-                              (PlVars[1].CurrentLine shl 17);
-  if NumberOfSoundChips > 1 then
-   PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
-                               (PlVars[2].CurrentPattern shl 9) +
-                               (PlVars[2].CurrentLine shl 17);
-  if MkVisPos < VisPosMax - 1 then
-   Inc(MkVisPos)
-  else
-   MkVisPos := 0;
-  Inc(VisPoint,VisStep)
- end;
-Inc(NOfTicks);
-Inc(Current_Tik);
-if BuffLen = BufferLength then
- begin
-  if Current_Tik < Number_Of_Tiks.Hi then
-   IntFlag := True;
-  exit
- end
-until Current_Tik >= Number_Of_Tiks.Hi;
-k := 0;
-Number_Of_Tiks.hi := k;
-Current_Tik := k
+ PrevLeft := 0; PrevRight := 0;
+ Left_Chan := 0; Right_Chan := 0;
+ Left_Chan1 := 0; Right_Chan1 := 0;
+ Tick_Counter.Re := 0;
+ Tik.Re := Delay_In_Tiks;
+ Flg := 0;
+ IntFlag := False;
 end;
 
-procedure Synthesizer_Mono16_P;
+procedure Calculate_Level_Tables;
 var
- Lev,k,c:integer;
+ i,b,l,r:integer;
+ Index_A,Index_B,Index_C:integer;
+ k:real;
 begin
-repeat
-for c := 1 to NumberOfSoundChips do
- SoundChip[c].Synthesizer_Logic_P;
-
-Lev := 0;
-
-for c := 1 to NumberOfSoundChips do
- with SoundChip[c] do
-  begin
-    k := 1;
-    if Ton_EnA then k := Ton_A;
-    if Noise_EnA then k := k and Noise.Val;
-    if k <> 0 then
-     if Envelope_EnA then
-      Inc(Lev,Level_AL[AYRegisters.AmplitudeA * 2 + 1])
-     else
-      Inc(Lev,Level_AL[Ampl]);
-
-    k := 1;
-    if Ton_EnB then k := Ton_B;
-    if Noise_EnB then k := k and Noise.Val;
-    if k <> 0 then
-     if Envelope_EnB then
-      inc(Lev,Level_BL[AYRegisters.AmplitudeB * 2 + 1])
-     else
-      inc(Lev,Level_BL[Ampl]);
-
-    k := 1;
-    if Ton_EnC then k := Ton_C;
-    if Noise_EnC then k := k and Noise.Val;
-    if k <> 0 then
-     if Envelope_EnC then
-      inc(Lev,Level_CL[AYRegisters.AmplitudeC * 2 + 1])
-     else
-      inc(Lev,Level_CL[Ampl]);
-  end;
-
-if Lev > 32767 then Lev := 32767;
-
-PM16(Buf)^[BuffLen] := Lev;
-Inc(BuffLen);
-if NOfTicks = VisPoint then
+if NumberOfChannels = 2 then
  begin
-  PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
-                              (PlVars[1].CurrentPattern shl 9) +
-                              (PlVars[1].CurrentLine shl 17);
-  if NumberOfSoundChips > 1 then
-   PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
-                               (PlVars[2].CurrentPattern shl 9) +
-                               (PlVars[2].CurrentLine shl 17);
-  if MkVisPos < VisPosMax - 1 then
-   Inc(MkVisPos)
-  else
-   MkVisPos := 0;
-  Inc(VisPoint,VisStep)
- end;
-Inc(NOfTicks);
-Inc(Current_Tik);
-if BuffLen = BufferLength then
- begin
-  if Current_Tik < Number_Of_Tiks.Hi then
-   IntFlag := True;
-  exit
- end
-until Current_Tik >= Number_Of_Tiks.Hi;
-k := 0;
-Number_Of_Tiks.hi := k;
-Current_Tik := k
-end;
-
-procedure Synthesizer_Mono8_P;
-var
- Lev,k,c:integer;
-begin
-repeat
-for c := 1 to NumberOfSoundChips do
- SoundChip[c].Synthesizer_Logic_P;
-
-Lev := 128;
-
-for c := 1 to NumberOfSoundChips do
- with SoundChip[c] do
-  begin
-    k := 1;
-    if Ton_EnA then k := Ton_A;
-    if Noise_EnA then k := k and Noise.Val;
-    if k <> 0 then
-     if Envelope_EnA then
-      inc(Lev,Level_AL[AYRegisters.AmplitudeA * 2 + 1])
-     else
-      inc(Lev,Level_AL[Ampl]);
-
-    k := 1;
-    if Ton_EnB then k := Ton_B;
-    if Noise_EnB then k := k and Noise.Val;
-    if k <> 0 then
-     if Envelope_EnB then
-      inc(Lev,Level_BL[AYRegisters.AmplitudeB * 2 + 1])
-     else
-      inc(Lev,Level_BL[Ampl]);
-
-    k := 1;
-    if Ton_EnC then k := Ton_C;
-    if Noise_EnC then k := k and Noise.Val;
-    if k <> 0 then
-     if Envelope_EnC then
-      inc(Lev,Level_CL[AYRegisters.AmplitudeC * 2 + 1])
-     else
-      inc(Lev,Level_CL[Ampl]);
-  end;
-  
-if Lev > 255 then Lev := 255;
-
-PM8(Buf)^[BuffLen] := Lev;
-Inc(BuffLen);
-if NOfTicks = VisPoint then
- begin
-  PlayingGrid[MkVisPos].M1 := (PlVars[1].CurrentPosition and $1FF) +
-                              (PlVars[1].CurrentPattern shl 9) +
-                              (PlVars[1].CurrentLine shl 17);
-  if NumberOfSoundChips > 1 then
-   PlayingGrid[MkVisPos].M2 := (PlVars[2].CurrentPosition and $1FF) +
-                               (PlVars[2].CurrentPattern shl 9) +
-                               (PlVars[2].CurrentLine shl 17);
-  if MkVisPos < VisPosMax - 1 then
-   Inc(MkVisPos)
-  else
-   MkVisPos := 0;
-  Inc(VisPoint,VisStep)
- end;
-Inc(NOfTicks);
-Inc(Current_Tik);
-if BuffLen = BufferLength then
- begin
-  if Current_Tik < Number_Of_Tiks.Hi then
-   IntFlag := True;
-  exit
- end
-until Current_Tik >= Number_Of_Tiks.Hi;
-k := 0;
-Number_Of_Tiks.hi := k;
-Current_Tik := k
-end;
-
-procedure FrameSynthesizer(Buf:pointer);
-begin
-if not IntFlag then
- begin
- if Optimization_For_Quality then
-  Number_Of_Tiks.hi := AY_Tiks_In_Interrupt
- else
-  Number_Of_Tiks.hi := Sample_Tiks_In_Interrupt
+  Index_A := Index_AL; Index_B := Index_BL; Index_C := Index_CL;
+  l := (Index_AL + Index_BL + Index_CL) * 2;
+  r := (Index_AR + Index_BR + Index_CR) * 2;
+  if l < r then
+   l := r;
  end
 else
+ begin
+  Index_A := Index_AL + Index_AR; Index_B := Index_BL + Index_BR; Index_C := Index_CL + Index_CR;
+  l := (Index_A + Index_B + Index_C) * 2;
+ end;
+if l = 0 then
+ inc(l);
+if SampleBit = 8 then
+ r := 127
+else
+ r := 32767;
+k := exp(MainForm.GlobalVolume * ln(2) / MainForm.GlobalVolumeMax) - 1;
+case ChType of
+AY_Chip:
+ for i := 0 to 15 do
+  begin
+   b := trunc(Index_A/l*Amplitudes_AY[i]/65535*r*k+0.5);
+   Level_AL[i*2] := b; Level_AL[i*2 + 1] := b;
+   b := trunc(Index_AR/l*Amplitudes_AY[i]/65535*r*k+0.5);
+   Level_AR[i*2] := b; Level_AR[i*2 + 1] := b;
+   b := trunc(Index_B/l*Amplitudes_AY[i]/65535*r*k+0.5);
+   Level_BL[i*2] := b; Level_BL[i*2 + 1] := b;
+   b := trunc(Index_BR/l*Amplitudes_AY[i]/65535*r*k+0.5);
+   Level_BR[i*2] := b; Level_BR[i*2 + 1] := b;
+   b := trunc(Index_C/l*Amplitudes_AY[i]/65535*r*k+0.5);
+   Level_CL[i*2] := b; Level_CL[i*2 + 1] := b;
+   b := trunc(Index_CR/l*Amplitudes_AY[i]/65535*r*k+0.5);
+   Level_CR[i*2] := b; Level_CR[i*2 + 1] := b;
+  end;
+YM_Chip:
+ for i := 0 to 31 do
+  begin
+   Level_AL[i] := trunc(Index_A/l*Amplitudes_YM[i]/65535*r*k+0.5);
+   Level_AR[i] := trunc(Index_AR/l*Amplitudes_YM[i]/65535*r*k+0.5);
+   Level_BL[i] := trunc(Index_B/l*Amplitudes_YM[i]/65535*r*k+0.5);
+   Level_BR[i] := trunc(Index_BR/l*Amplitudes_YM[i]/65535*r*k+0.5);
+   Level_CL[i] := trunc(Index_C/l*Amplitudes_YM[i]/65535*r*k+0.5);
+   Level_CR[i] := trunc(Index_CR/l*Amplitudes_YM[i]/65535*r*k+0.5);
+  end;
+end;
+end;
+
+function ToggleChanMode:string;
+begin
+Inc(StdChannelsAllocation);
+if StdChannelsAllocation > 3 then
+ StdChannelsAllocation := 0;
+Result := SetStdChannelsAllocation(StdChannelsAllocation);
+end;
+
+procedure SynthesizerZX50(Buf:pointer);
+begin
+if not IntFlag then
+ Number_Of_Tiks.hi := AY_Tiks_In_Interrupt
+else
  IntFlag := False;
-Synthesizer(Buf)
+Synthesizer(Buf);
 end;
 
 procedure Get_Registers;
@@ -1289,452 +1021,204 @@ PMPlayLine:
 end;
 end;
 
-procedure MakeBuffer(Buf:pointer);
+procedure MakeBufferTracker(Buf:pointer);
 var
  i:integer;
 begin
 BuffLen := 0;
-if IntFlag then FrameSynthesizer(Buf);
+if IntFlag then SynthesizerZX50(Buf);
 if IntFlag then exit;
 if LineReady then
  begin
   LineReady := False;
-  FrameSynthesizer(Buf)
+  SynthesizerZX50(Buf);
  end;
 while not Real_End_All and (BuffLen < BufferLength) do
  begin
   Real_End_All := True;
-  for i := 1 to NumberOfSoundChips do
+  for i := 0 to NumberOfSoundChips-1 do
    begin
     Module_SetPointer(PlayingWindow[i].VTMP,i);
     Get_Registers;
     Real_End_All := Real_End_All and Real_End[i];
    end;
-  if not Real_End_All then FrameSynthesizer(Buf)
- end
-end;
-
-procedure Calculate_Level_Tables;
-var i,b,l,r:integer;
-Index_A,Index_B,Index_C:integer;
-k:real;
-begin
-Index_A:=Index_AL;Index_B:=Index_BL;Index_C:=Index_CL;
-l:=Index_A+Index_B+Index_C;
-r:=Index_AR+Index_BR+Index_CR;
-if NumberOfChannels = 2 then
- begin
-  if l < r then
-   l := r;
- end
-else
- begin
-  l := l + r;
-  inc(Index_A,Index_AR);
-  inc(Index_B,Index_BR);
-  inc(Index_C,Index_CR)
+  if not Real_End_All then SynthesizerZX50(Buf);
  end;
-if l = 0 then inc(l);
-if SampleBit=8 then r:=127 else r:=32767;
-l:=255*r div l;
-case Emulating_Chip of
-AY_Chip:for i:=0 to 15 do
-        begin
-        b:=round(Index_A/255*Amplitudes_AY[i]);
-        b:=round(b/65535*l);
-        Level_AL[i*2]:=b;Level_AL[i*2+1]:=b;
-        b:=round(Index_AR/255*Amplitudes_AY[i]);
-        b:=round(b/65535*l);
-        Level_AR[i*2]:=b;Level_AR[i*2+1]:=b;
-        b:=round(Index_B/255*Amplitudes_AY[i]);
-        b:=round(b/65535*l);
-        Level_BL[i*2]:=b;Level_BL[i*2+1]:=b;
-        b:=round(Index_BR/255*Amplitudes_AY[i]);
-        b:=round(b/65535*l);
-        Level_BR[i*2]:=b;Level_BR[i*2+1]:=b;
-        b:=round(Index_C/255*Amplitudes_AY[i]);
-        b:=round(b/65535*l);
-        Level_CL[i*2]:=b;Level_CL[i*2+1]:=b;
-        b:=round(Index_CR/255*Amplitudes_AY[i]);
-        b:=round(b/65535*l);
-        Level_CR[i*2]:=b;Level_CR[i*2+1]:=b;
-        end;
-YM_Chip:for i:=0 to 31 do
-        begin
-        b:=round(Index_A/255*Amplitudes_YM[i]);
-        Level_AL[i]:=round(b/65535*l);
-        b:=round(Index_AR/255*Amplitudes_YM[i]);
-        Level_AR[i]:=round(b/65535*l);
-        b:=round(Index_B/255*Amplitudes_YM[i]);
-        Level_BL[i]:=round(b/65535*l);
-        b:=round(Index_BR/255*Amplitudes_YM[i]);
-        Level_BR[i]:=round(b/65535*l);
-        b:=round(Index_C/255*Amplitudes_YM[i]);
-        Level_CL[i]:=round(b/65535*l);
-        b:=round(Index_CR/255*Amplitudes_YM[i]);
-        Level_CR[i]:=round(b/65535*l);
-        end;
-end;
-k := exp(MainForm.GlobalVolume * ln(2) / MainForm.GlobalVolumeMax) - 1;
-for i := 0 to 31 do
- begin
-  Level_AL[i] := round(Level_AL[i] * k);
-  Level_AR[i] := round(Level_AR[i] * k);
-  Level_BL[i] := round(Level_BL[i] * k);
-  Level_BR[i] := round(Level_BR[i] * k);
-  Level_CL[i] := round(Level_CL[i] * k);
-  Level_CR[i] := round(Level_CR[i] * k);
- end
-end;
-
-procedure SetDefault;
-begin
-SampleRate := samrate;
-AY_Freq := AY_Freq_Def;
-Interrupt_Freq := Interrupt_Freq_Def;
-Delay_In_Tiks := round(8192 / SampleRate * AY_Freq);
-AY_Tiks_In_Interrupt := round(AY_Freq / (Interrupt_Freq / 1000 * 8));
-Sample_Tiks_in_Interrupt := round(SampleRate / Interrupt_Freq * 1000);
-SampleBit := sambit;
-NumberOfBuffers := NumberOfBuffersDef;
-BufLen_ms := BufLen_msDef;
-BufferLength := round(BufLen_ms * SampleRate / 1000);
-NumberOfChannels := nchan;
-StdChannelsAllocation := StdChannelsAllocationDef;
-Index_AL := Index_AL_Def; Index_AR := Index_AR_Def;
-Index_BL := Index_BL_Def; Index_BR := Index_BR_Def;
-Index_CL := Index_CL_Def; Index_CR := Index_CR_Def;
-Emulating_Chip := YM_Chip;
-Calculate_Level_Tables;
-SetLength(waveOutBuffers,NumberOfBuffers);
-VisStep := round(SampleRate*500/Interrupt_Freq);
-VisPosMax := round(BufferLength * NumberOfBuffers / VisStep) + 1;
-VisTickMax := VisStep * VisPosMax;
-SetLength(PlayingGrid,VisPosMax);
-IsFilt := True;
-Filt_M := Filt_NKoefs;
-SetLength(Filt_K,Filt_NKoefs + 1);
-CalcFiltKoefs;
-SetLength(Filt_XL,Filt_NKoefs + 1);
-SetLength(Filt_XR,Filt_NKoefs + 1);
-FillChar(Filt_XL[0],(Filt_M + 1) * 4,0);
-FillChar(Filt_XR[0],(Filt_M + 1) * 4,0);
-Filt_I := 0
-end;
-
-function ToggleChanMode;
-begin
-Inc(StdChannelsAllocation);
-if StdChannelsAllocation > 3 then
- StdChannelsAllocation := 0;
-Result := SetStdChannelsAllocation(StdChannelsAllocation)
-end;
-
-function SetStdChannelsAllocation;
-var
- Echo:integer;
-begin
-Result := '';
-StdChannelsAllocation := CA;
-case Emulating_Chip of
-AY_Chip:
- Echo := 85
-else
- Echo := 13;
-end; 
-case StdChannelsAllocation of
-0:
- begin
-  MidChan := 0;
-  Result := 'Mono';
-  Index_AL := 255; Index_AR := 255;
-  Index_BL := 255; Index_BR := 255;
-  Index_CL := 255; Index_CR := 255
- end;
-1:
- begin
-  MidChan := 1;
-  Result := 'ABC';
-  Index_AL := 255; Index_AR := Echo;
-  Index_BL := 170; Index_BR := 170;
-  Index_CL := Echo; Index_CR := 255
- end;
-2:
- begin
-  MidChan := 2;
-  Result := 'ACB';
-  Index_AL := 255; Index_AR := Echo;
-  Index_CL := 170; Index_CR := 170;
-  Index_BL := Echo; Index_BR := 255
- end;
-3:
- begin
-  MidChan := 0;
-  Result := 'BAC';
-  Index_BL := 255; Index_BR := Echo;
-  Index_AL := 170; Index_AR := 170;
-  Index_CL := Echo; Index_CR := 255
- end;
-4:
- begin
-  MidChan := 2;
-  Result := 'BCA';
-  Index_BL := 255; Index_BR := Echo;
-  Index_CL := 170; Index_CR := 170;
-  Index_AL := Echo; Index_AR := 255
- end;
-5:
- begin
-  MidChan := 0;
-  Result := 'CAB';
-  Index_CL := 255; Index_CR := Echo;
-  Index_AL := 170; Index_AR := 170;
-  Index_BL := Echo; Index_BR := 255
- end;
-6:
- begin
-  MidChan := 1;
-  Result := 'CBA';
-  Index_CL := 255; Index_CR := Echo;
-  Index_BL := 170; Index_BR := 170;
-  Index_AL := Echo; Index_AR := 255
- end
-end;
-Calculate_Level_Tables
-end;
-
-procedure SetIntFreq;
-var
- R:boolean;
-begin
-if (f < 1000) or (f > 2000000) then exit;
-R := IsPlaying and not Reseted and (PlayMode = PMPlayModule);
-if not R and IsPlaying and not Reseted then StopPlaying;
-if R then ResetPlaying;
-Interrupt_Freq := f;
-AY_Tiks_In_Interrupt := round(AY_Freq / (Interrupt_Freq / 1000 * 8));
-Sample_Tiks_in_Interrupt := round(SampleRate / Interrupt_Freq * 1000);
-VisStep := round(SampleRate*500/Interrupt_Freq);
-VisPosMax := round(BufferLength * NumberOfBuffers / VisStep) + 1;
-VisTickMax := VisStep * VisPosMax;
-SetLength(PlayingGrid,VisPosMax);
-if R then
- begin
-  PlayingWindow[1].RerollToLine(1);
-  UnresetPlaying;
- end;
-end;
-
-procedure SetSampleRate(f:integer);
-begin
-SampleRate := f;
-Delay_In_Tiks := round(8192 / SampleRate * AY_Freq);
-Sample_Tiks_in_Interrupt := round(SampleRate / Interrupt_Freq * 1000);
-VisStep := round(SampleRate*500/Interrupt_Freq);
-BufferLength := round(BufLen_ms * SampleRate / 1000);
-VisPosMax := round(BufferLength * NumberOfBuffers / VisStep) + 1;
-VisTickMax := VisStep * VisPosMax;
-SetLength(PlayingGrid,VisPosMax);
-CalcFiltKoefs
 end;
 
 procedure SetBuffers(len,num:integer);
 begin
+if digsoundthread_active then exit;
+if (num < 2) or (num > 10) then exit;
+if (len < 5) or (len > 2000) then exit;
 BufLen_ms := len;
 NumberOfBuffers := num;
-SetLength(waveOutBuffers,NumberOfBuffers);
 BufferLength := round(BufLen_ms * SampleRate / 1000);
 VisPosMax := round(BufferLength * NumberOfBuffers / VisStep) + 1;
 VisTickMax := VisStep * VisPosMax;
-SetLength(PlayingGrid,VisPosMax)
+SetLength(PlayingGrid,VisPosMax);
 end;
 
-procedure SetBitRate(SB:integer);
+procedure Set_Sample_Rate(SR:integer);
 begin
+if IsPlaying then exit;
+if not ((SR >= 8000) and (SR < 300000)) then exit;
+SampleRate := SR;
+VisStep := round(SampleRate/100);
+BufferLength := round(BufLen_ms * SampleRate / 1000);
+VisPosMax := round(BufferLength * NumberOfBuffers / VisStep) + 1;
+VisTickMax := VisStep * VisPosMax;
+SetLength(PlayingGrid,VisPosMax);
+Delay_In_Tiks := round(8192/SampleRate*AY_Freq);
+SetFilter(FilterWant);
+end;
+
+procedure SetSynthesizer;
+begin
+if NumberOfChannels = 2 then
+ begin
+  if SampleBit = 8 then
+   Synthesizer := @Synthesizer_Stereo8
+  else
+   Synthesizer := @Synthesizer_Stereo16;
+ end
+else if SampleBit = 8 then
+ Synthesizer := @Synthesizer_Mono8
+else
+ Synthesizer := @Synthesizer_Mono16;
+Calculate_Level_Tables;
+end;
+
+procedure Set_Sample_Bit(SB:integer);
+begin
+if IsPlaying then exit;
 SampleBit := SB;
-if Optimization_For_Quality then
- begin
-  if NumberOfChannels = 2 then
-   begin
-    if SB = 8 then
-     Synthesizer := Synthesizer_Stereo8
-    else
-     Synthesizer := Synthesizer_Stereo16;
-   end
-  else if SB = 8 then
-   Synthesizer := Synthesizer_Mono8
-  else
-   Synthesizer := Synthesizer_Mono16;
- end
-else
- begin
-  if NumberOfChannels = 2 then
-   begin
-    if SB = 8 then
-     Synthesizer := Synthesizer_Stereo8_P
-    else
-     Synthesizer := Synthesizer_Stereo16_P;
-   end
-  else if SB = 8 then
-   Synthesizer := Synthesizer_Mono8_P
-  else
-   Synthesizer := Synthesizer_Mono16_P;
- end;
-Calculate_Level_Tables
+SetSynthesizer;
 end;
 
-procedure SetNChans(St:integer);
+procedure Set_Stereo(St:integer);
 begin
+if IsPlaying then exit;
 NumberOfChannels := St;
-if Optimization_For_Quality then
- begin
-  if St = 2 then
-   begin
-    if SampleBit = 8 then
-     Synthesizer := Synthesizer_Stereo8
-    else
-     Synthesizer := Synthesizer_Stereo16
-   end
-  else
-   if SampleBit = 8 then
-    Synthesizer := Synthesizer_Mono8
-   else
-    Synthesizer := Synthesizer_Mono16
- end
-else
- begin
-  if St = 2 then
-   begin
-    if SampleBit = 8 then
-     Synthesizer := Synthesizer_Stereo8_P
-    else
-     Synthesizer := Synthesizer_Stereo16_P
-   end
-  else
-   if SampleBit = 8 then
-    Synthesizer := Synthesizer_Mono8_P
-   else
-    Synthesizer := Synthesizer_Mono16_P
- end;
-Calculate_Level_Tables
+SetSynthesizer;
 end;
 
-procedure Set_Optimization(Q:boolean);
-var
- R:boolean;
+procedure Set_Chip_Frq(Fr:integer);
 begin
-if Optimization_For_Quality = Q then exit;
-R := IsPlaying and not Reseted and (PlayMode = PMPlayModule);
-if not R and IsPlaying and not Reseted then StopPlaying;
-if R then ResetPlaying;
-Optimization_For_Quality := Q;
-if Q then
+if (Fr >= 1000000) and (Fr <= 3546800) then
  begin
-  Current_Tik := round(Current_Tik / SampleRate * (AY_Freq div 8));
-  Number_Of_Tiks.Re := round(Number_Of_Tiks.Re / SampleRate * (AY_Freq div 8));
-  if NumberOfChannels = 2 then
-   begin
-    if SampleBit = 8 then
-     Synthesizer := Synthesizer_Stereo8
-    else
-     Synthesizer := Synthesizer_Stereo16
-   end
-  else if SampleBit = 8 then
-   Synthesizer := Synthesizer_Mono8
-  else
-   Synthesizer := Synthesizer_Mono16
- end
-else
- begin
-  Current_Tik := round(Current_Tik / (AY_Freq div 8) * SampleRate);
-  Number_Of_Tiks.Re := round(Number_Of_Tiks.Re / (AY_Freq div 8) * SampleRate);
-  if NumberOfChannels = 2 then
-   begin
-    if SampleBit = 8 then
-     Synthesizer := Synthesizer_Stereo8_P
-    else
-     Synthesizer := Synthesizer_Stereo16_P
-   end
-  else if SampleBit = 8 then
-   Synthesizer := Synthesizer_Mono8_P
-  else
-   Synthesizer := Synthesizer_Mono16_P
- end;
-if R then
- begin
-  PlayingWindow[1].RerollToLine(1);
-  UnresetPlaying;
+  digsoundloop_catch;
+  try
+    AY_Freq := Fr;
+    Delay_In_Tiks := round(8192/SampleRate * AY_Freq);
+    Tik.Re := Delay_In_Tiks;
+    AY_Tiks_In_Interrupt := round(AY_Freq/(Interrupt_Freq/1000 * 8));
+    SetFilter(FilterWant);
+  finally
+    digsoundloop_release;
+  end;
  end;
 end;
 
-procedure SetAYFreq(f:integer);
-var
- R:boolean;
+procedure Set_Player_Frq(Fr:integer);
 begin
-if (f < 1000000) or (f > 3546800) then exit;
-R := IsPlaying and not Reseted and (PlayMode = PMPlayModule);
-if not R and IsPlaying and not Reseted then StopPlaying;
-if R then ResetPlaying;
-AY_Freq := f;
-Delay_In_Tiks := round(8192 / SampleRate * AY_Freq);
-AY_Tiks_In_Interrupt := round(AY_Freq / (Interrupt_Freq / 1000 * 8));
-CalcFiltKoefs;
-if R then
+if (Fr >= 1000) and (Fr <= 2000000) and (Interrupt_Freq <> Fr) then
  begin
-  PlayingWindow[1].RerollToLine(1);
-  UnresetPlaying;
+  digsoundloop_catch;
+  try
+    Interrupt_Freq := Fr;
+    AY_Tiks_In_Interrupt := trunc(AY_Freq/(Interrupt_Freq/1000*8)+0.5);
+  finally
+    digsoundloop_release;
+  end;
  end;
 end;
 
 procedure CalcFiltKoefs;
+const
+ MaxF = 9200;
 var
- i,i2,Filt_M2:integer;
- K,F,C:double;
+ i:integer;
+ K,F,C,i2,Filt_M2:double;
  FKt:array of double;
 begin
-C := Pi * SampleRate / (AY_Freq div 8);
-SetLength(FKt,Filt_M + 1);
-Filt_M2 := Filt_M div 2;
+//Work range [0..MaxF)
+//Range [MaxF..SampleRate / 2) is easy cut-off from 0 to -53 dB
+//Cut-off range is [SampleRate / 2.. AY_Freq div 8 / 2] (-53 dB)
+//for Ay_Freq = 1773400 Hz:
+(*
+Полезная область - 0..11083,75 Гц (10)
+221675->44100 - 67 (коэффициентов)
+221675->48000 - 57
+221675->96000 - 20
+221675->110000 - 17
+
+Полезная область - 0..10076,14 (11)
+221675->22050 - 771
+
+Полезная область - 0..9236,46 (12)
+221675->22050 - 409
+
+Полезная область - 0..8525,96 (13)
+221675->22050 - 293
+*)
+IsFilt := 0;
+C := 22050; if SampleRate >= 44100 then
+ begin
+  C := SampleRate / 2;
+  inc(IsFilt);
+ end;
+Filt_M := round(3.3/(C - MaxF) * (AY_Freq div 8));
+if AY_Freq * Filt_M > 3500000 * 50 then //90% of usage for my Celeron 850 MHz
+ begin
+  Filt_M := round(3500000 * 50 / AY_Freq);
+  IsFilt := 0;
+ end;
+C := Pi * (MaxF + C) / (AY_Freq div 8);
+SetLength(FKt,Filt_M);
+Filt_M2 := (Filt_M - 1) / 2;
 K := 0;
-for i := 0 to Filt_M do
+for i := 0 to Filt_M - 1 do
  begin
   i2 := i - Filt_M2;
   if i2 = 0 then
    F := C
   else
-   F := sin(C * i2) / i2 * (0.54 - 0.46 * cos(2 * Pi / Filt_M * i));
+   F := sin(C * i2) / i2 * (0.54 + 0.46 * cos(2 * Pi / Filt_M * i2));
   FKt[i] := F;
-  K := K + F
+  K := K + F;
  end;
-for i := 0 to Filt_M do
- Filt_K[i] := round(FKt[i] / K * $1000000)
+SetLength(Filt_K,Filt_M);
+for i := 0 to Filt_M - 1 do
+ Filt_K[i] := round(FKt[i] / K * $1000000);
+FiltInfo := Mes_FIR + ' (' + IntToStr(Filt_M) + ' '+Mes_PTS+')';
+if IsFilt = 0 then FiltInfo := FiltInfo + ' + ' + LowerCase(Mes_Averager);
+dec(Filt_M);
 end;
 
-procedure SetFilter(Filt:boolean;M:integer);
-var
- R:boolean;
+procedure SetFilter(Filt:boolean);
 begin
-if (Filt_M = M) and (IsFilt = Filt) then exit;
-R := IsPlaying and not Reseted and (PlayMode = PMPlayModule);
-if not R and IsPlaying and not Reseted then StopPlaying;
-if R then ResetPlaying;
-IsFilt := Filt;
-if Filt_M <> M then
- begin
-  Filt_M := M;
-  SetLength(Filt_K,M + 1);
+digsoundloop_catch;
+try
+  FilterWant := Filt;
+  if not Filt or (SampleRate >= AY_Freq div 8) then
+   begin
+    IsFilt := -1;
+    Filt_K := nil;
+    Filt_XL := nil;
+    Filt_XR := nil;
+    FiltInfo := Mes_Averager;
+    Exit;
+   end;
   CalcFiltKoefs;
-  SetLength(Filt_XL,M + 1);
-  SetLength(Filt_XR,M + 1);
+  SetLength(Filt_XL,Filt_M + 1);
+  SetLength(Filt_XR,Filt_M + 1);
   FillChar(Filt_XL[0],(Filt_M + 1) * 4,0);
   FillChar(Filt_XR[0],(Filt_M + 1) * 4,0);
   Filt_I := 0;
- end;
-if R then
- begin
-  PlayingWindow[1].RerollToLine(1);
-  UnresetPlaying;
- end;
+finally
+  digsoundloop_release;
+end;
 end;
 
 end.

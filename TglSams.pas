@@ -1,9 +1,19 @@
+{
+This is part of Vortex Tracker II project
+(c)2000-2022 S.V.Bulba
+Author Sergey Bulba
+E-mail: svbulba@gmail.com
+Support page: http://bulba.untergrund.net/
+}
+
 unit TglSams;
+
+{$mode objfpc}{$H+}
 
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls;
 
 type
@@ -23,9 +33,9 @@ var
 
 implementation
 
-uses Main, Childwin, trfuncs;
+uses Main, ChildWin, trfuncs;
 
-{$R *.dfm}
+{$R *.lfm}
 
 procedure TToglSams.FormCreate(Sender: TObject);
 var
@@ -44,7 +54,7 @@ for i := 1 to 31 do
      Width := 32;
      Tag := i;
      Checked := True;
-     OnClick := CheckBoxClick;
+     OnClick := @CheckBoxClick;
     end;
  end;
 ClientWidth := 4*40 + 4;
@@ -63,7 +73,7 @@ with CurrentWindow do
    begin
     sam := (Sender as TCheckBox).Tag;
     ValidateSample2(sam);
-    VTMP.Samples[sam].Enabled := (Sender as TCheckBox).Checked;
+    VTMP^.Samples[sam]^.Enabled := (Sender as TCheckBox).Checked;
    end;
 end;
 
@@ -80,8 +90,8 @@ for i := 0 to MainForm.MDIChildCount - 1 do
   if VTM <> nil then
    for j := 1 to 31 do
     begin
-     sam := VTM.Samples[j];
-     if sam <> nil then sam.Enabled := True;
+     sam := VTM^.Samples[j];
+     if sam <> nil then sam^.Enabled := True;
     end;
  end;
 end;

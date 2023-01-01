@@ -1,21 +1,33 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
 unit options;
 
+{$mode objfpc}{$H+}
+
+
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
-  StdCtrls, ComCtrls, ExtCtrls, Buttons;
+  {$IFDEF Windows}
+  Windows,
+  {$ELSE Windows}
+  WinVersion,
+  {$ENDIF Windows}
+  SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  StdCtrls, ComCtrls, ExtCtrls, Buttons, digsound;
 
 type
+
+  { TForm1 }
+
   TForm1 = class(TForm)
+   Label9: TLabel;
     OpsPages: TPageControl;
     TabSheet1: TTabSheet;
     Button1: TButton;
@@ -28,7 +40,7 @@ type
     Button3: TButton;
     FontDialog1: TFontDialog;
     Label3: TLabel;
-    AYEmu: TTabSheet;
+    ChipEmu: TTabSheet;
     ChipSel: TRadioGroup;
     ChanSel: TRadioGroup;
     IntSel: TRadioGroup;
@@ -37,7 +49,7 @@ type
     OpMod: TTabSheet;
     RadioGroup1: TRadioGroup;
     SaveHead: TRadioGroup;
-    WOAPITAB: TTabSheet;
+    DigiSndTab: TTabSheet;
     SR: TRadioGroup;
     BR: TRadioGroup;
     NCh: TRadioGroup;
@@ -51,19 +63,12 @@ type
     Label5: TLabel;
     Label6: TLabel;
     SpeedButton1: TSpeedButton;
-    Opt: TRadioGroup;
+    Resamp: TRadioGroup;
     Label7: TLabel;
     LBChg: TLabel;
     ChFreq: TRadioGroup;
     SelDev: TGroupBox;
-    Edit3: TEdit;
-    Button4: TButton;
     ComboBox1: TComboBox;
-    FiltersGroup: TGroupBox;
-    FiltChk: TCheckBox;
-    FiltNK: TTrackBar;
-    Label9: TLabel;
-    Label10: TLabel;
     OtherOps: TTabSheet;
     PriorGrp: TRadioGroup;
     EdChipFrq: TEdit;
@@ -89,14 +94,11 @@ type
     procedure NChClick(Sender: TObject);
     procedure PlayStarts;
     procedure PlayStops;
-    procedure OptClick(Sender: TObject);
+    procedure ResampClick(Sender: TObject);
     procedure ChFreqClick(Sender: TObject);
-    procedure Button4Click(Sender: TObject);
     procedure ComboBox1Change(Sender: TObject);
     procedure SaveHeadClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    procedure FiltChkClick(Sender: TObject);
-    procedure FiltNKChange(Sender: TObject);
     procedure PriorGrpClick(Sender: TObject);
     function GetValue(const s:string):integer;
     procedure EdChipFrqExit(Sender: TObject);
@@ -118,9 +120,9 @@ var
 
 implementation
 
-uses AY, WaveOutAPI, Main, Childwin, trfuncs, MMSystem;
+uses AY, digsoundcode, Main, trfuncs;
 
-{$R *.DFM}
+{$R *.lfm}
 
 function TForm1.GetValue(const s:string):integer;
 var
@@ -132,7 +134,7 @@ end;
 
 procedure TForm1.Edit1Exit(Sender: TObject);
 begin
-Edit1.Text := IntToStr(UpDown1.Position)
+Edit1.Text := IntToStr(UpDown1.Position);
 end;
 
 procedure TForm1.Button3Click(Sender: TObject);
@@ -141,19 +143,19 @@ FontDialog1.Font := Edit2.Font;
 if FontDialog1.Execute then
  begin
   Edit2.Font := FontDialog1.Font;
-  Edit2.Text := FontDialog1.Font.Name
- end
+  Edit2.Text := FontDialog1.Font.Name;
+ end;
 end;
 
 procedure TForm1.ChipSelClick(Sender: TObject);
 begin
-MainForm.SetEmulatingChip(ChTypes(ChipSel.ItemIndex + 1))
+MainForm.SetEmulatingChip(ChTypes(ChipSel.ItemIndex + 1));
 end;
 
 procedure TForm1.ChanSelClick(Sender: TObject);
 begin
 if StdChannelsAllocation <> ChanSel.ItemIndex then
- MainForm.ToggleChanAlloc.Caption :=  SetStdChannelsAllocation(ChanSel.ItemIndex)
+ MainForm.ToggleChanAlloc.Caption :=  SetStdChannelsAllocation(ChanSel.ItemIndex);
 end;
 
 procedure TForm1.IntSelClick(Sender: TObject);
@@ -176,15 +178,16 @@ case IntSel.ItemIndex of
   f := GetValue(EdIntFrq.Text);
   if f < 0 then exit
  end;
-else exit
+else
+ Exit;
 end;
 if f <> Interrupt_Freq then
- MainForm.SetIntFreqEx(f)
+ MainForm.SetIntFreqEx(f);
 end;
 
 procedure TForm1.ChanVisAllocClick(Sender: TObject);
 begin
-MainForm.SetChannelsAllocationVis(ChanVisAlloc.ItemIndex)
+MainForm.SetChannelsAllocationVis(ChanVisAlloc.ItemIndex);
 end;
 
 procedure TForm1.RadioGroup1Click(Sender: TObject);
@@ -199,7 +202,7 @@ begin
 SetBuffers(TrackBar1.Position,NumberOfBuffers);
 LBLen.Caption := IntToStr(BufLen_ms) + ' ms';
 LBTot.Caption := IntToStr(BufLen_ms * NumberOfBuffers) + ' ms';
-LBChg.Caption := LBTot.Caption
+LBChg.Caption := LBTot.Caption;
 end;
 
 procedure TForm1.TrackBar2Change(Sender: TObject);
@@ -207,30 +210,33 @@ begin
 SetBuffers(BufLen_ms,TrackBar2.Position);
 LBNum.Caption := IntToStr(NumberOfBuffers);
 LBTot.Caption := IntToStr(BufLen_ms * NumberOfBuffers) + ' ms';
-LBChg.Caption := LBTot.Caption
+LBChg.Caption := LBTot.Caption;
 end;
 
 procedure TForm1.SRClick(Sender: TObject);
 begin
 case SR.ItemIndex of
-0:SetSampleRate(11025);
-1:SetSampleRate(22050);
-2:SetSampleRate(44100);
-3:SetSampleRate(48000)
-end
+0:Set_Sample_Rate(11025);
+1:Set_Sample_Rate(22050);
+2:Set_Sample_Rate(44100);
+3:Set_Sample_Rate(48000);
+4:Set_Sample_Rate(96000);
+5:Set_Sample_Rate(192000);
+end;
+Label9.Caption:=FiltInfo;
 end;
 
 procedure TForm1.BRClick(Sender: TObject);
 begin
 case BR.ItemIndex of
-0:SetBitRate(8);
-1:SetBitRate(16)
-end
+0:Set_Sample_Bit(8);
+1:Set_Sample_Bit(16);
+end;
 end;
 
 procedure TForm1.NChClick(Sender: TObject);
 begin
-SetNChans(NCh.ItemIndex + 1)
+Set_Stereo(NCh.ItemIndex + 1);
 end;
 
 procedure TForm1.PlayStarts;
@@ -241,7 +247,7 @@ NCh.Enabled := False;
 Buff.Enabled := False;
 Label7.Visible := True;
 LBChg.Visible := True;
-SelDev.Enabled := False
+SelDev.Enabled := False;
 end;
 
 procedure TForm1.PlayStops;
@@ -252,13 +258,13 @@ NCh.Enabled := True;
 Buff.Enabled := True;
 Label7.Visible := False;
 LBChg.Visible := False;
-SelDev.Enabled := True
+SelDev.Enabled := True;
 end;
 
-procedure TForm1.OptClick(Sender: TObject);
+procedure TForm1.ResampClick(Sender: TObject);
 begin
-Set_Optimization(Opt.ItemIndex = 0);
-FiltersGroup.Visible := Optimization_For_Quality
+SetFilter(Resamp.ItemIndex<>0);
+Label9.Caption:=FiltInfo;
 end;
 
 procedure TForm1.ChFreqClick(Sender: TObject);
@@ -279,74 +285,43 @@ case ChFreq.ItemIndex of
     EdChipFrq.SetFocus;
    end; 
   f := GetValue(EdChipFrq.Text);
-  if f < 0 then exit
+  if f < 0 then
+   Exit
  end;
-else exit
+else
+ Exit
 end;
 if f <> AY_Freq then
- SetAYFreq(f)
-end;
-
-procedure TForm1.Button4Click(Sender: TObject);
-var
- i,n:integer;
- WOC:WAVEOUTCAPS;
-begin
-ComboBox1.Visible := False;
-n := waveOutGetNumDevs;
-if n = 0 then
- begin
-  WODevice := WAVE_MAPPER;
-  Edit3.Text := 'Wave mapper';
-  exit
- end;
-ComboBox1.Clear;
-ComboBox1.Items.Add('Wave mapper');
-for i := 0 to n - 1 do
- begin
-  WOCheck(waveOutGetDevCaps(i,@WOC,SizeOf(WOC)));
-  ComboBox1.Items.Add(WOC.szPname)
- end;
-if Integer(WODevice) > n - 1 then WODevice := WAVE_MAPPER;
-ComboBox1.ItemIndex := Integer(WODevice) + 1;
-ComboBox1Change(Sender);
-ComboBox1.Visible := True
+ Set_Chip_Frq(f);
+Label9.Caption:=FiltInfo;
 end;
 
 procedure TForm1.ComboBox1Change(Sender: TObject);
 begin
-WODevice := ComboBox1.ItemIndex - 1;
-Edit3.Text := ComboBox1.Items[WODevice + 1]
+Set_WODevice(ComboBox1.ItemIndex,ComboBox1.Items[ComboBox1.ItemIndex]);
 end;
 
 procedure TForm1.SaveHeadClick(Sender: TObject);
 begin
 VortexModuleHeader := SaveHead.ItemIndex <> 1;
-DetectModuleHeader := SaveHead.ItemIndex = 2
+DetectModuleHeader := SaveHead.ItemIndex = 2;
 end;
 
 procedure TForm1.FormShow(Sender: TObject);
 begin
-OpsPages.SetFocus
+OpsPages.SetFocus;
 end;
-
-procedure TForm1.FiltChkClick(Sender: TObject);
-begin
-SetFilter(FiltChk.Checked,Filt_M)
-end;
-
-procedure TForm1.FiltNKChange(Sender: TObject);
-begin
-SetFilter(IsFilt,round(exp(FiltNK.Position * Ln(2))))
-end;
-
 
 procedure TForm1.PriorGrpClick(Sender: TObject);
 begin
+{$IFDEF Windows}
 if PriorGrp.ItemIndex = 0 then
  MainForm.SetPriority(NORMAL_PRIORITY_CLASS)
 else
  MainForm.SetPriority(HIGH_PRIORITY_CLASS)
+{$ELSE Windows}
+NonWin;
+{$ENDIF Windows}
 end;
 
 procedure TForm1.EdChipFrqExit(Sender: TObject);
@@ -354,7 +329,7 @@ begin
 if ChFreq.ItemIndex <> 5 then
  ChFreq.ItemIndex := 5
 else
- ChFreqClick(Sender)
+ ChFreqClick(Sender);
 end;
 
 procedure TForm1.EdIntFrqExit(Sender: TObject);
@@ -362,10 +337,10 @@ begin
 if IntSel.ItemIndex <> 5 then
  IntSel.ItemIndex := 5
 else
- IntSelClick(Sender)
+ IntSelClick(Sender);
 end;
 
-procedure TForm1.ChangeTrColor;
+procedure TForm1.ChangeTrColor(Lb1,Lb2:TLabel;Bk:boolean);
 begin
 if Bk then
  ColorDialog1.Color := Lb1.Color
@@ -388,17 +363,17 @@ end;
 
 procedure TForm1.Label8Click(Sender: TObject);
 begin
-ChangeTrColor(Label8,Label11,True)
+ChangeTrColor(Label8,Label11,True);
 end;
 
 procedure TForm1.Label12Click(Sender: TObject);
 begin
-ChangeTrColor(Label12,Label13,True)
+ChangeTrColor(Label12,Label13,True);
 end;
 
 procedure TForm1.Label14Click(Sender: TObject);
 begin
-ChangeTrColor(Label14,nil,True)
+ChangeTrColor(Label14,nil,True);
 end;
 
 procedure TForm1.Label11Click(Sender: TObject);

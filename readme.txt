@@ -1,7 +1,7 @@
-Vortex Tracker II v1.0 beta 19
-(c)2000-2009 S.V.Bulba
+Vortex Tracker II v1.0 beta 20
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 
 History
@@ -31,11 +31,15 @@ Vortex Tracker II can import ZX Spectrum music files (modules) of next types:
  6) Global Tracker 1.x (*.gtr);
  7) Pro Sound Creator 1.xx (*.psc);
  8) compiled  Pro Sound Maker modules (*.psm);
- 9) compiled ASC Sound Master modules (*.asc);
- 10) compiled Sound Tracker and Super Sonic modules (*.stc);
- 11) compiled Sound Tracker Pro modules (*.stp);
- 12) compiled SQ-Tracker modules (*.sqt);
- 13) Amadeus (Fuxoft AY Language) modules (*.fxm, *.ay).
+ 9) compiled ASC Sound Master 0.xx modules (*.as0);
+ 10) compiled ASC Sound Master 1.xx modules (*.asc);
+ 11) uncompiled Sound Tracker modules (*.st1);
+ 12) compiled Sound Tracker and Super Sonic modules (*.stc);
+ 13) compiled Sound Tracker 3 (*.st3);
+ 14) uncompiled Sound Tracker Pro modules (*.stf);
+ 15) compiled Sound Tracker Pro modules (*.stp);
+ 16) compiled SQ-Tracker modules (*.sqt);
+ 17) Amadeus (Fuxoft AY Language) modules (*.fxm, *.ay).
 
 VT II detects module type only by filename extension (mask), and no any
 additional checks are performed. These extensions are used in well-known player
@@ -47,15 +51,16 @@ modules are imported after user prompt.
 
 Any two tracker modules (except FXM) can be stored in one file with 16 bytes
 identifier at the end of file. For text format identifier is not need. After
-loading such pair VT II turns on Turbo-Sound mode and tiles both windows
+loading such pair VT II turns on Turbo-Sound mode and aligns both windows
 horizontally.
 
 Vortex Tracker II saves result only in one format is Pro Tracker 3.xx (*.pt3).
 You can play these files in different players-emulators (the most known is
-Win32 emulator Ay_Emul), on real ZX Spectrum in many players (Little Viewer,
-Quick Commander, Real Commander, BestView, Pusher, ZXAmp and so on) or by
-built-in playing routines. Also you can include YM-sound into your PC-programs
-(see Ay_Emul sources, YM-Engine or SquareTone at http://bulba.untergrund.net/).
+Windows and Linux emulator Ay_Emul), on real ZX Spectrum in many players
+(Little Viewer, Quick Commander, Real Commander, BestView, Pusher, ZXAmp, The
+Viewer and so on) or by built-in playing routines. Also you can include
+YM-sound into your PC-programs (see Ay_Emul sources, YM-Engine or SquareTone at
+http://bulba.untergrund.net/).
 
 During editing you can save work versions of module in text format. It allows
 to save all temporary not used ornaments, samples and patterns. Also, text
@@ -63,10 +68,10 @@ format is easy editable in any text editor. Of course, text format is only
 one chance to save your music, if PT3 saving is not available due size
 limitations (65536 bytes).
 
-In Turbo-Sound mode during saving one of module second module is saving to the
+In Turbo-Sound mode during saving one of module second module is saved to the
 end of file too.
 
-In fact, Vortex Tracker II is Win32 version of ZX Spectrum Pro Tracker 3.xx.
+In fact, Vortex Tracker II is PC version of ZX Spectrum Pro Tracker 3.xx.
 The most compatible version is Pro Tracker v3.6x-3.7x of Alone Coder (a.k.a.
 Dima Bystrov). Vortex Tracker II is fully compatible with any Pro Tracker v3.5x
 in "ProTracker 3.5" mode.
@@ -86,10 +91,29 @@ Note: new 3xxx interpretation changes behavior of ASC modules import also.
 
 This version has next new features:
 
-02/08/2009:
+06/17/2022:
 
-1. TAD has pointed, that initally unused or loaded samples can be muted (after
-   appearing version with Toggle Samples tool). Fixed.
+1.Text module loader slightly extended to load Ivan Pirog's vt2, vtp, vts and vto.
+
+06/16/2022:
+
+1. Windows 9x is not supported now.
+2. Bug fix: right length in hobeta header for non-TS module without player (was
+   16 bytes bigger).
+3. Digital sound engine changed to Ay_Emul 2.9 beta 31's.
+4. More perfect AY emulation engine from Ay_Emul 2.9 beta 31.
+5. Options are stored in VT.cfg now (like Ay_Emul in home folder of current
+   user, or in VT executable folder, if you move it or create empty yourself).
+6. STC loader can extract author' strings from 'KSA SOFTWARE COMPILATION OF '
+   and 'SOUND TRACKER COMPILATION OF ', insterted in Ay_Emul methodic.
+7. Added import of uncompiled Sound Tracker 1.xx (ST1 file extension).
+8. Added import of compiled Sound Tracker 3 (ST3 file extension).
+9. Added import of uncompiled Sound Tracker Pro (STF file extension).
+10.Added import of compiled ASC Sound Master 0 (AS0 file extension).
+11.TS-module's windows are aligned after opening even if other modules was
+   loaded bedore.
+12.In windows loop play mode added checking if TS-pair to skip replaying twice.
+13.If TS-window playing starts, linked TS-window brings to foreground now.
 
 Known problems
 --------------
@@ -451,8 +475,8 @@ For more usability VT II synchronizes tracks of two modules in both play and
 edit tracks modes (including cursors position), activates 2nd window after
 reaching tracks editor cursor right or left position, during saving any of
 TS-pair module, 2nd is added to the end of result file, during loading
-TS-modules (including special format from PT v3.6+) creates TS-pair and tiles
-it vertically (if only two windows are opened).
+TS-modules (including special format from PT v3.6+) creates TS-pair and aligns
+it horizontally.
 
 Examples of playing on ZX can be found in ZX-magazine InfoGuide #8.
 
@@ -476,13 +500,12 @@ All 'Windows' tab sheet settings are applied to already open windows.
 'Chip emulation' tab sheet
 
 Choose chip type, chip and interrupt frequency, hearable channels allocation,
-and one of emulation algorithm. Some changes can be listened after time is shown
-in lower right corner of tab sheet. Some musicians use tricks, which can be
-rightly emulated only in "for quality" mode. Some of them can be emulated
-rightly only with filter (checked by default). Of course, high quality requires
-more processor time. So, if your system can not produce solid sound, reduce
-emulation quality or decrease bitrate or samplerate at 'Wave out' tabsheet.
-In Turbo-Sound (Turbo-AY) mode used identical setting for both chips.
+and one of resample algorithm. Some changes can be heard after time shown in
+lower right corner of tab sheet. Some musicians use tricks, which can sound
+rightly only if FIR-filter is selected (checked by default). Of course,
+FIR-filter requires more processor time. So, if your system cannot produce
+solid sound, select Averager or decrease bitrate or sample rate at 'Wave out'
+tabsheet. In Turbo-Sound mode used identical setting for both chips.
 
 'Compatibility' tab sheet
 
@@ -512,9 +535,8 @@ stop playing press corresponding button of the sheet.
 
  Sample rate
 
-  Samples frequency, more values for more quality, but it requires more system
-  resources. Some sound cards not support 44100 and 48000 Hz, so can be error
-  messages are displayed (or sound quality will be worse).
+  Samples frequency, more value for more quality. If some frequency is not
+  supported by sound card can be error messages or sound quality will be worse.
 
  Bit rate
 
@@ -526,22 +548,19 @@ stop playing press corresponding button of the sheet.
 
  Wave out device
 
-  'Wave mapper' as default. To get full device list, push 'Get full list'
-  button.
+  'Wave mapper' as default.
 
  Buffers
 
   Buffer size and number of buffers. Try to find optimal values for you system.
   Smaller buffer size for quicker reaction. More buffers for stable sound. Total
-  length of buffers are calculated at low side of group. My system has stable
-  sound even with 6 buffers of 5 ms length.
+  length of buffers are calculated at low side of group.
 
 'Other' tab sheet
 
  Application priority
 
-  Select normal or high priority. High priority is a only one way to get stable
-  sound in background of Windows 9x/Me systems.
+  Select normal or high priority.
   
 Track manager
 -------------
@@ -651,11 +670,11 @@ Distribution
 ------------
 
 Vortex Tracker II is free program. There are two kind of original distribution:
-binary (VT.exe with documentation) and sources (source files as Delphi 7 project
+binary (VT.exe with documentation) and sources (source files as Lazarus project
 with documentation). You can use and distribute sources freely, simply credit me
 somewhere in your projects, where you include all or part of the sources and
 (or) my algorithms.
 
 Sergey Bulba
 
-24 of August 2002 - 23 of February 2009
+24 of August 2002 - 19 of June 2022

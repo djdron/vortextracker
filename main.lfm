@@ -1,0 +1,995 @@
+object MainForm: TMainForm
+  Left = 275
+  Height = 397
+  Top = 119
+  Width = 557
+  Caption = 'Vortex Tracker II'
+  ClientHeight = 377
+  ClientWidth = 557
+  Color = clAppWorkspace
+  Font.Color = clBlack
+  Font.Height = -11
+  FormStyle = fsMDIForm
+  Menu = MainMenu1
+  OnClose = FormClose
+  OnCreate = FormCreate
+  Position = poDefaultPosOnly
+  LCLVersion = '2.2.0.4'
+  Visible = True
+  object StatusBar: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 354
+    Width = 557
+    AutoHint = True
+    Color = clBtnFace
+    Panels = <>
+    ParentColor = False
+  end
+  object ToolBar2: TToolBar
+    Left = 0
+    Height = 46
+    Top = 0
+    Width = 557
+    AutoSize = True
+    BorderWidth = 1
+    ButtonHeight = 22
+    ButtonWidth = 29
+    Color = clBtnFace
+    Images = ImageList1
+    Indent = 5
+    ParentColor = False
+    ParentShowHint = False
+    PopupMenu = PopupMenu3
+    ShowHint = True
+    TabOrder = 1
+    object ToolButton9: TToolButton
+      Left = 5
+      Top = 2
+      Action = FileNew1
+    end
+    object ToolButton1: TToolButton
+      Left = 34
+      Top = 2
+      Action = FileOpen1
+    end
+    object ToolButton2: TToolButton
+      Left = 63
+      Top = 2
+      Action = FileSave1
+    end
+    object ToolButton3: TToolButton
+      Left = 92
+      Height = 22
+      Top = 2
+      Caption = 'ToolButton3'
+      Style = tbsSeparator
+    end
+    object ToolButton4: TToolButton
+      Left = 137
+      Top = 2
+      Action = EditCut1
+    end
+    object ToolButton5: TToolButton
+      Left = 166
+      Top = 2
+      Action = EditCopy1
+    end
+    object ToolButton6: TToolButton
+      Left = 195
+      Top = 2
+      Action = EditPaste1
+    end
+    object ToolButton7: TToolButton
+      Left = 224
+      Height = 22
+      Top = 2
+      Caption = 'ToolButton7'
+      Style = tbsSeparator
+    end
+    object ToolButton23: TToolButton
+      Left = 232
+      Top = 2
+      Action = Undo
+    end
+    object ToolButton24: TToolButton
+      Left = 261
+      Top = 2
+      Action = Redo
+    end
+    object ToolButton22: TToolButton
+      Left = 290
+      Height = 22
+      Top = 2
+      Caption = 'ToolButton22'
+      Style = tbsSeparator
+    end
+    object ToolButton8: TToolButton
+      Left = 298
+      Top = 2
+      Action = WindowCascade1
+    end
+    object ToolButton10: TToolButton
+      Left = 327
+      Top = 2
+      Action = WindowTileHorizontal1
+    end
+    object ToolButton11: TToolButton
+      Left = 356
+      Top = 2
+      Action = WindowTileVertical1
+    end
+    object ToolButton12: TToolButton
+      Left = 385
+      Height = 22
+      Top = 2
+      Caption = 'ToolButton12'
+      Style = tbsSeparator
+      Wrap = True
+    end
+    object ToolButton14: TToolButton
+      Left = 393
+      Top = 2
+      Action = Stop1
+    end
+    object ToolButton18: TToolButton
+      Left = 422
+      Top = 2
+      Action = PlayFromPos1
+    end
+    object ToolButton13: TToolButton
+      Left = 451
+      Top = 2
+      Action = Play1
+    end
+    object ToolButton20: TToolButton
+      Left = 480
+      Top = 2
+      Action = PlayPatFromLine
+    end
+    object ToolButton21: TToolButton
+      Left = 509
+      Top = 2
+      Action = PlayPat
+    end
+    object ToolButton15: TToolButton
+      Left = 5
+      Top = 24
+      Action = ToggleLooping
+      AllowAllUp = True
+      Grouped = True
+      Style = tbsCheck
+    end
+    object ToolButton17: TToolButton
+      Left = 34
+      Top = 24
+      Action = ToggleLoopingAll
+      AllowAllUp = True
+      Grouped = True
+      Style = tbsCheck
+    end
+    object ToolButton25: TToolButton
+      Left = 63
+      Hint = 'Toggle samples|Switch on/off standalone samples'
+      Top = 24
+      Caption = 'ToolButton25'
+      ImageIndex = 31
+      OnClick = Togglesamples1Click
+    end
+    object ToolButton16: TToolButton
+      Left = 92
+      Height = 22
+      Top = 24
+      Caption = 'ToolButton16'
+      Style = tbsSeparator
+    end
+    object ToolButton26: TToolButton
+      Left = 100
+      Hint = 'Tracks manager|Copy/move/swap/transpose tracks'
+      Top = 24
+      Caption = 'ToolButton26'
+      ImageIndex = 42
+      OnClick = Tracksmanager1Click
+    end
+    object ToolButton27: TToolButton
+      Left = 129
+      Hint = 'Global transposition|Transpose channel/pattern/module'
+      Top = 24
+      Caption = 'ToolButton27'
+      ImageIndex = 36
+      OnClick = Globaltransposition1Click
+    end
+    object ToolButton28: TToolButton
+      Left = 158
+      Height = 22
+      Top = 24
+      Caption = 'ToolButton28'
+      Style = tbsSeparator
+    end
+    object SpeedButton1: TSpeedButton
+      Left = 166
+      Height = 22
+      Top = 24
+      Width = 23
+      Action = ToggleChip
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'MS Sans Serif'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object SpeedButton2: TSpeedButton
+      Left = 189
+      Height = 22
+      Top = 24
+      Width = 33
+      Action = ToggleChanAlloc
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'MS Sans Serif'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object ToolButton19: TToolButton
+      Left = 222
+      Height = 22
+      Top = 24
+      Caption = 'ToolButton19'
+      Style = tbsSeparator
+    end
+    object TrackBar1: TTrackBar
+      Left = 230
+      Height = 22
+      Hint = 'Volume control'
+      Top = 24
+      Width = 75
+      Frequency = 8
+      Max = 64
+      OnChange = TrackBar1Change
+      PageSize = 8
+      Position = 56
+      TabStop = False
+      TabOrder = 0
+    end
+    object ToolButton29: TToolButton
+      Left = 538
+      Height = 22
+      Top = 2
+      Caption = 'ToolButton29'
+      Style = tbsSeparator
+    end
+    object ToolButton30: TToolButton
+      Left = 129
+      Height = 22
+      Top = 2
+      Caption = 'ToolButton30'
+      Style = tbsSeparator
+    end
+    object ToolButton31: TToolButton
+      Left = 100
+      Top = 2
+      Caption = 'ToolButton31'
+      ImageIndex = 21
+      OnClick = Options1Click
+    end
+  end
+  object MainMenu1: TMainMenu
+    Images = ImageList1
+    Left = 40
+    Top = 200
+    object File1: TMenuItem
+      Caption = '&File'
+      Hint = 'File related commands'
+      object FileNewItem: TMenuItem
+        Action = FileNew1
+      end
+      object FileOpenItem: TMenuItem
+        Action = FileOpen1
+      end
+      object FileCloseItem: TMenuItem
+        Action = FileClose1
+      end
+      object FileSaveItem: TMenuItem
+        Action = FileSave1
+      end
+      object FileSaveAsItem: TMenuItem
+        Action = FileSaveAs1
+      end
+      object Exports1: TMenuItem
+        Caption = 'Exports'
+        object SaveSNDHMenu: TMenuItem
+          Caption = 'Save in SNDH (Atari ST)'
+          OnClick = SaveSNDHMenuClick
+        end
+        object SaveforZXMenu: TMenuItem
+          Caption = 'Save with ZX Spectrum player'
+          OnClick = SaveforZXMenuClick
+        end
+      end
+      object N1: TMenuItem
+        Caption = '-'
+      end
+      object Options1: TMenuItem
+        Caption = 'Options...'
+        ImageIndex = 21
+        OnClick = Options1Click
+      end
+      object N2: TMenuItem
+        Caption = '-'
+      end
+      object RFile1: TMenuItem
+        Visible = False
+        OnClick = RFile1Click
+      end
+      object RFile2: TMenuItem
+        Visible = False
+        OnClick = RFile2Click
+      end
+      object RFile3: TMenuItem
+        Visible = False
+        OnClick = RFile3Click
+      end
+      object RFile4: TMenuItem
+        Visible = False
+        OnClick = RFile4Click
+      end
+      object RFile5: TMenuItem
+        Visible = False
+        OnClick = RFile5Click
+      end
+      object RFile6: TMenuItem
+        Visible = False
+        OnClick = RFile6Click
+      end
+      object N3: TMenuItem
+        Caption = '-'
+        Visible = False
+      end
+      object FileExitItem: TMenuItem
+        Action = FileExit1
+      end
+    end
+    object Play2: TMenuItem
+      Caption = 'Play'
+      Hint = 'Playback controls'
+      object Stop2: TMenuItem
+        Action = Stop1
+      end
+      object Play3: TMenuItem
+        Action = PlayFromPos1
+      end
+      object Play4: TMenuItem
+        Action = Play1
+      end
+      object Playpatternfromcurrentline1: TMenuItem
+        Action = PlayPatFromLine
+      end
+      object Playpatternfromstart1: TMenuItem
+        Action = PlayPat
+      end
+      object Togglelooping1: TMenuItem
+        Action = ToggleLooping
+      end
+      object Toggleloopingall1: TMenuItem
+        Action = ToggleLoopingAll
+      end
+      object N8: TMenuItem
+        Caption = '-'
+      end
+      object Togglesamples1: TMenuItem
+        Caption = 'Toggle samples'
+        Hint = 'Switch on/off standalone samples'
+        ImageIndex = 31
+        ShortCut = 16461
+        OnClick = Togglesamples1Click
+      end
+    end
+    object Edit1: TMenuItem
+      Caption = '&Edit'
+      Hint = 'Edit commands'
+      object Undo1: TMenuItem
+        Action = Undo
+      end
+      object Redo1: TMenuItem
+        Action = Redo
+      end
+      object N7: TMenuItem
+        Caption = '-'
+      end
+      object CutItem: TMenuItem
+        Action = EditCut1
+      end
+      object CopyItem: TMenuItem
+        Action = EditCopy1
+      end
+      object PasteItem: TMenuItem
+        Action = EditPaste1
+      end
+      object N4: TMenuItem
+        Caption = '-'
+      end
+      object Tracksmanager1: TMenuItem
+        Caption = 'Tracks manager'
+        Hint = 'Copy/move/swap/transpose tracks'
+        ImageIndex = 42
+        ShortCut = 16468
+        OnClick = Tracksmanager1Click
+      end
+      object Globaltransposition1: TMenuItem
+        Caption = 'Global transposition'
+        Hint = 'Transpose channel/pattern/module'
+        ImageIndex = 36
+        ShortCut = 49236
+        OnClick = Globaltransposition1Click
+      end
+    end
+    object Window1: TMenuItem
+      Caption = '&Window'
+      Hint = 'Window related commands'
+      object WindowCascadeItem: TMenuItem
+        Action = WindowCascade1
+      end
+      object WindowTileItem: TMenuItem
+        Action = WindowTileHorizontal1
+      end
+      object WindowTileItem2: TMenuItem
+        Action = WindowTileVertical1
+      end
+      object WindowMinimizeItem: TMenuItem
+        Action = WindowMinimizeAll1
+      end
+      object WindowArrangeItem: TMenuItem
+        Action = WindowArrangeAll1
+      end
+    end
+    object Help1: TMenuItem
+      Caption = '&Help'
+      Hint = 'Help topics'
+      object HelpAboutItem: TMenuItem
+        Action = HelpAbout1
+      end
+    end
+  end
+  object OpenDialog: TOpenDialog
+    Title = 'Open module(s):'
+    DefaultExt = '.PT3'
+    Filter = 'All supported files|*.txt;*.pt3;*.pt2;*.st1;*.stc;*.st3;*.stf;*.stp;*.sqt;*.as0;*.asc;*.psc;*.fls;*.pt1;*.gtr;*.ftc;*.fxm;*.ay;*.psm;*.vt2|Pro Tracker 3.xx files (PT3)|*.pt3|Pro Tracker 2.xx files (PT2)|*.pt2|Sound Tracker 1.x uncompiled files (ST1)|*.st1|Sound Tracker 1.x compiled files (STC)|*.stc|Sound Tracker 3 compiled files (ST3)|*.st3|Sound Tracker Pro uncompiled files (STF)|*.stf|Sound Tracker Pro compiled files (STP)|*.stp|SQ-Tracker compiled files (SQT)|*.sqt|ASC Sound Master 0 compiled files (AS0)|*.as0|ASC Sound Master compiled files (ASC)|*.asc|Pro Sound Creator files (PSC)|*.psc|Flash Tracker files (FLS)|*.fls|Pro Tracker 1.xx files (PT1)|*.pt1|Global Tracker 1.x (GTR)|*.gtr|Fast Tracker (FTC)|*.ftc|Fuxoft''s AY Language (FXM, AY AMAD)|*.fxm;*.ay|Pro Sound Maker files (PSM)|*.psm'
+    Options = [ofAllowMultiSelect, ofPathMustExist, ofEnableSizing]
+    Left = 8
+    Top = 200
+  end
+  object ActionList1: TActionList
+    Images = ImageList1
+    Left = 72
+    Top = 200
+    object Play1: TAction
+      Category = 'Play'
+      Caption = 'Play from start'
+      Hint = 'Play from start|Play module from start'
+      ImageIndex = 38
+      OnExecute = Play1Execute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 117
+    end
+    object FileNew1: TAction
+      Category = 'File'
+      Caption = '&New'
+      Hint = 'New|Create a new file'
+      ImageIndex = 6
+      OnExecute = FileNew1Execute
+      ShortCut = 16462
+    end
+    object FileOpen1: TAction
+      Category = 'File'
+      Caption = '&Open'
+      Hint = 'Open|Open a file'
+      ImageIndex = 7
+      OnExecute = FileOpen1Execute
+      ShortCut = 16463
+    end
+    object PlayFromPos1: TAction
+      Category = 'Play'
+      Caption = 'Play'
+      Hint = 'Play|Play module from current position'
+      ImageIndex = 18
+      OnExecute = PlayFromPos1Execute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 116
+    end
+    object FileClose1: TAction
+      Category = 'File'
+      Caption = '&Close'
+      Hint = 'Close|Close current file'
+      OnExecute = FileClose1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object FileSave1: TAction
+      Category = 'File'
+      Caption = '&Save'
+      Hint = 'Save|Save current file'
+      ImageIndex = 8
+      OnExecute = FileSave1Execute
+      OnUpdate = FileSave1Update
+      ShortCut = 16467
+    end
+    object FileSaveAs1: TAction
+      Category = 'File'
+      Caption = 'Save &As...'
+      Hint = 'Save As|Save current file with different name'
+      OnExecute = FileSaveAs1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object FileExit1: TAction
+      Category = 'File'
+      Caption = 'E&xit'
+      Hint = 'Exit|Exit application'
+      OnExecute = FileExit1Execute
+    end
+    object EditCut1: TAction
+      Category = 'Edit'
+      Caption = 'Cu&t'
+      Hint = 'Cut|Cuts the selection and puts it on the Clipboard'
+      ImageIndex = 0
+      OnExecute = EditCut1Execute
+      OnUpdate = EditCut1Update
+      ShortCut = 16472
+    end
+    object EditCopy1: TAction
+      Category = 'Edit'
+      Caption = '&Copy'
+      Hint = 'Copy|Copies the selection and puts it on the Clipboard'
+      ImageIndex = 1
+      OnExecute = EditCopy1Execute
+      OnUpdate = EditCopy1Update
+      ShortCut = 16451
+    end
+    object EditPaste1: TAction
+      Category = 'Edit'
+      Caption = '&Paste'
+      Hint = 'Paste|Inserts Clipboard contents'
+      ImageIndex = 2
+      OnExecute = EditPaste1Execute
+      OnUpdate = EditPaste1Update
+      ShortCut = 16470
+    end
+    object WindowCascade1: TAction
+      Category = 'Window'
+      Caption = '&Cascade'
+      Hint = 'Cascade'
+      ImageIndex = 17
+      OnExecute = WindowCascade1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object WindowTileHorizontal1: TAction
+      Category = 'Window'
+      Caption = 'Tile &Horizontally'
+      Hint = 'Tile Horizontally'
+      ImageIndex = 15
+      OnExecute = WindowTileHorizontal1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object WindowTileVertical1: TAction
+      Category = 'Window'
+      Caption = 'Tile &Vertically'
+      Hint = 'Tile Vertically'
+      ImageIndex = 16
+      OnExecute = WindowTileVertical1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object WindowMinimizeAll1: TAction
+      Category = 'Window'
+      Caption = '&Minimize All'
+      Hint = 'Minimize All'
+      OnExecute = WindowMinimizeAll1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object WindowArrangeAll1: TAction
+      Category = 'Window'
+      Caption = '&Arrange All'
+      Hint = 'Arrange All'
+      OnExecute = WindowArrangeAll1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object HelpAbout1: TAction
+      Category = 'Help'
+      Caption = '&About...'
+      Hint = 'About|Displays program information, version number, and copyright'
+      OnExecute = HelpAbout1Execute
+    end
+    object Stop1: TAction
+      Category = 'Play'
+      Caption = 'Stop'
+      Hint = 'Stop|Stop playing/Free device'
+      ImageIndex = 20
+      OnExecute = Stop1Execute
+      OnUpdate = Stop1Update
+      ShortCut = 27
+    end
+    object SetLoopPos: TAction
+      Category = 'Edit'
+      Caption = 'Set loop position'
+      Hint = 'Loop|Set loop position'
+      OnExecute = SetLoopPosExecute
+      OnUpdate = SetLoopPosUpdate
+      ShortCut = 76
+    end
+    object InsertPosition: TAction
+      Category = 'Edit'
+      Caption = 'Insert position'
+      Hint = 'Insert position'
+      OnExecute = InsertPositionExecute
+      OnUpdate = InsertPositionUpdate
+      ShortCut = 45
+    end
+    object DeletePosition: TAction
+      Category = 'Edit'
+      Caption = 'Delete position'
+      Hint = 'Delete Position'
+      OnExecute = DeletePositionExecute
+      OnUpdate = DeletePositionUpdate
+      ShortCut = 46
+    end
+    object ToggleLooping: TAction
+      Category = 'Play'
+      Caption = 'Toggle looping'
+      Hint = 'Loop|Toggle looping'
+      ImageIndex = 37
+      OnExecute = ToggleLoopingExecute
+      ShortCut = 16460
+    end
+    object ToggleChip: TAction
+      Caption = 'YM'
+      Hint = 'Chip|Toggle sound chip'
+      OnExecute = ToggleChipExecute
+      ShortCut = 49219
+    end
+    object ToggleChanAlloc: TAction
+      Caption = 'ABC'
+      Hint = 'Channels|Toggle channel allocation'
+      OnExecute = ToggleChanAllocExecute
+      ShortCut = 49217
+    end
+    object ToggleLoopingAll: TAction
+      Category = 'Play'
+      Caption = 'Toggle looping all'
+      Hint = 'Loop all|Toggle looping among all opened files'
+      ImageIndex = 39
+      OnExecute = ToggleLoopingAllExecute
+      ShortCut = 49228
+    end
+    object PlayPat: TAction
+      Category = 'Play'
+      Caption = 'Play pattern from start'
+      Hint = 'Play pattern from start|Play current pattern from start'
+      ImageIndex = 41
+      OnExecute = PlayPatExecute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 119
+    end
+    object PlayPatFromLine: TAction
+      Category = 'Play'
+      Caption = 'Play pattern'
+      Hint = 'Play pattern|Play current pattern from current line'
+      ImageIndex = 40
+      OnExecute = PlayPatFromLineExecute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 118
+    end
+    object Undo: TAction
+      Category = 'Edit'
+      Caption = 'Undo'
+      Hint = 'Undo|Undo last change'
+      ImageIndex = 3
+      OnExecute = UndoExecute
+      OnUpdate = UndoUpdate
+      ShortCut = 32776
+    end
+    object Redo: TAction
+      Category = 'Edit'
+      Caption = 'Redo'
+      Hint = 'Redo|Redo last undo'
+      ImageIndex = 4
+      OnExecute = RedoExecute
+      OnUpdate = RedoUpdate
+      ShortCut = 32781
+    end
+    object TransposeUp1: TAction
+      Category = 'Edit'
+      Caption = 'Transpose +1'
+      OnExecute = TransposeUp1Execute
+      OnUpdate = TransposeUp1Update
+      ShortCut = 107
+    end
+    object TransposeDown1: TAction
+      Category = 'Edit'
+      Caption = 'Transpose -1'
+      OnExecute = TransposeDown1Execute
+      OnUpdate = TransposeDown1Update
+      ShortCut = 109
+    end
+    object TransposeUp12: TAction
+      Category = 'Edit'
+      Caption = 'Transpose +12'
+      OnExecute = TransposeUp12Execute
+      OnUpdate = TransposeUp12Update
+      ShortCut = 16491
+    end
+    object TransposeDown12: TAction
+      Category = 'Edit'
+      Caption = 'Transpose -12'
+      OnExecute = TransposeDown12Execute
+      OnUpdate = TransposeDown12Update
+      ShortCut = 16493
+    end
+  end
+  object ImageList1: TImageList
+    Left = 104
+    Top = 200
+    Bitmap = {
+      4C7A2B00000010000000100000001C0F00000000000078DAED9D496C54471A80
+      9FA21C384639F99A23478EDC22349A03C7CC8D8CE68226D24C3452A41C464A34
+      A26D9A900C0C09898DC9C8192089314E62B6B0C481060C8ED91D92B018300E4B
+      00B3D806DB806D08FFD45FDDEF75BD7AB5FC55EFD9EE867EA8D44DBFFAFEBFB6
+      BFF62A0741F6CFC2050B40FCFF2B7575506DFCA2850B393367CE1C981304E09A
+      060BE6CF071FDD223F7FDE3C983F772EF8E603F2BE6C61DE5C788DA54361F162
+      2F1985B9AF70AEB0681114504EE9FF568EFB9F1FF92FBCF65AC415162E30CA10
+      DF175EA92BF10BCBBF95F244CB0BEF0B752F15F985023FCF9C17E2FB42DD9CF2
+      77160672FC1DFC56D0031A47E6F1191919819B376FC2C0C080AB0C78F4E851C4
+      9F3D7B96B3474E9DA6CAE07CA833E4F31AA7E3C3B023DFD3D3C3FDE223864D23
+      83BF97D34FC7A30E49462CEEBDBDBD917E315E21A7888B56BFA83B8C9B283FE4
+      E5B8170A05FE5E25179DCCAB5C5E8897AC3B946FCA54937E2A8FBAD3E8B7B92A
+      B16767FB3FDB5BE08E502F00EC2C0074EC0468ED8858510EF7F3761EE0CD7701
+      16BF2DCB602CE35B774230A72ED22BBBE0A53AC6327E918ADF19F131F752DCA1
+      6E3DDF01D0D20AD0C8DCCA16807C23C0BB2B4BE12E871D16BD99E4996E68E928
+      B28D8C5DD9682B3312DF51E64BBAF3824D8A4E51EE8A6C4BA8DBCEA31D88B61B
+      D3CDC21EF2727DA3A97F94E916FA171DEA155DC44BBA455E9786721C54750F51
+      BFB7ED57B0FDD79ED2936379243A933F1567F3A7F29FB3940B9D5C5B18A97C5A
+      FD2619B994653E57B399DA5301F6EE6A17147F14D9AEF50AB58EA0E8F7B5ED99
+      AA1B6A4FC58C19A8FE7DC61CA6F736193EE31957D6342732DD699A95FE34F14F
+      93FED4FC4F3B66858CD3DA16B6B47EAB790E905C6EC2B92E79CE899AA7E25C99
+      CC13E60213736D0AFDC6BA47157679DEC8C6CBBAC3B1661A1E59575E15761B6F
+      0B3BCE99B9F262D8A9BC2EEC36DE16761BEFE06A7D03FF7A1232A83F756D9B4F
+      FB06E70627E0FCAD09B8707BC227DFA1F3DC28ECE91B85BDE7C760DF8531D8CF
+      5CD7C53138D83F0EDD97C6A16760DCC8B7F40CC1FF0E0FC1BA2343B0E1E8307C
+      716C185A8F0FC3C613C3D0767204DA7B478CFC925D37A17EF720347C3708F9CE
+      41D7720C8B375E85BFB65D853798C3FFBFBEE18AD589FC1F1AFBE18F4D97F86F
+      1F77DDB13A39EFFEFEE7A6621D7FF981D5E9FA9D9487D06F785EED1E3C5DC4FF
+      E9F507D1BA90C9857E64FE2F6F3C24F32AFD7F7B8BCEBFF18F8709FEED771E91
+      F9B7FEF928C1FF6B299D7FA73EC92FFFCF0499CFFF7B22C1AF6E9E84E696496B
+      9E357E3A09AB1A93FC7FD74DC2E71BA7A0EDEB29F87ACB146CDE36055BB6175D
+      C7D62968EF9882D6F62958F7454C4FC47FB9A9C851CACDFA2F93FC374CC78EDD
+      8FB58C18FF4DDF4C2578640B07683CC649E6BF2F3C86EE9E27247EE7778F8130
+      FE9DA9FA24AD1E4A9D0969F803070E18DB2FA27E6DFD4D7D7CF834FAF15D2E97
+      E3F14787DF55E5C6C4B26FDC85BC428631DD4336E4157961E445E7CA8B71C770
+      B884DF927E9022FF12FD1F8FF20359B49955D0A7D0C68130BF9E283FA10BECF3
+      F3913F9D0C814F3891D5C91079555D659221853FC1EA6469D22F564E7575679A
+      FA2B4DFD47AD3F03455C44F72CEBAFF23184D3BA93C26E8DF152B1920C6DDAE8
+      D69BA4DFB5E9EBC943063C293D08E587921EA4F26658BB23859DC0FBB6694059
+      63C8D1D774D3F259B4CDB369EBA9D68C546D35650C51ECAB961FB9DF481F4304
+      B13EAB140E6D5F216475FD05838C4C788A9B26DE2AC3D076C5F24FC712F24F59
+      7E42D6D3F6A27E96D85FCB79D855A5CAF031EE346C4942CA7A09791F1921273A
+      9F30FBE89779D77A3347AAFF1CEA3B516EACEEB4CB48C4455B7FA9E3A1E6ED75
+      8636FF127587BECED0E65D24436473D6F89BEB8DB4B692A58C67703DC06B3E90
+      D216798CE16652B7FE1C0441B7624E803C86D4CD27B8F41F0C7312E0120E91D7
+      CED194E6FBC4FA4115776D78A3DE20A8FAA3DE7371AA394CD7F4ABAD23D2C7F9
+      96F1BF33CFDB8814BC4EFFEFBFFF0E8F1F3F8689890978F8F0218C8E8EC2BD7B
+      F760686808EEDCB90383838370FDFA75B87AF5AA929F9C9CE47B70C6C7C7398B
+      FB59EEDEBD0BB76EDDE2FB527EFBED37B872E50ADF9FA2E26D3A2F5FBE0C972E
+      5D828B172F4E4BFC673BFD55F13C77EE1C9C3973067EFEF9673875EA149C3871
+      028E1D3BA6E4C3B4EDEFEF87F3E7CFF3FD3FBFFCF20BFCF4D34F7C1FD0F1E3C7
+      E1E8D1A37C1D4FC5DB741E3E7C187EF8E1073878F060E6F1AFD9BFBE9CCDA6FD
+      E3EF69EC1F7F4F63FF3ABB50F1AA3A4767172A5E174F955DA8785D3C55B648B5
+      7FFC3D8DFDE3EF69EC1F7FAF64FB4FABCBA7AECF5A3F3E535353DC6E86878779
+      19C2BCC47CC47CA0F0BEE1A0F2BA74C82ACF43FB45DBBD71E306FCFAEBAFBC0C
+      A3CD60F953955999BF7FFF7E5467F8D47FC8DFBE7D7B56DA7F5916E63DDA2FDA
+      2EDA5E777737ECDBB70F76EFDE0DDBB66D23F35867207FE8D021BEFF17F9AD5B
+      B792F91F7FFC91D719C8EFDDBB1776EDDA45E2ABBCFD4FBDFE012D2D6964701E
+      162CF2DE73CC793CAFFF66DE6B4D8AF378FE1FCFA537B6B8DF87823C9E6BC7BB
+      05F07E849D05A7B3559C47B6A717584104E865AED0433F8B813CF30F67070046
+      1E01AB54DDF50BBC57FC4BE1F74E7F967E69F23F4DF90B82DA59C62A7D4C7BAD
+      A0C63FF37CED79366CD76F2FF3C9933859CCDA5BD6F6B4B7037CF619C0EAD500
+      CB96D17836E6639D6D80EFBF07D8B205E0F3CF019A9B0156ACA0F17D7DC03AEC
+      C530ECD801B06953B12D6361783578D5CEB3F12BEBF496C3B07973310C6BD6D0
+      F86BD7800D60810D768B61F8F6DB280C249E8DE1D940B8180636D685CECE280C
+      247E6404D820BE1C86FDFBA33090F8070F0006079361E8E820F1E8D09FCED54C
+      4C1AAB086B341427DB80B8768DF367388EC779ACB1B1B1682E0AE793704C8B73
+      3B2A3E9C739375E1738D95E7703E08C7C32A3E9A6B13F687E379617C2E5CB8C0
+      E773701C8D6341151FCE77853C5FABC3EFCCE1F8330C8FEAFC2CFE8EE1C3F162
+      C8F3B3CAF83DB68F5F583F14D211DF85E14BAC539664C478416EC89F64751E9F
+      130BF3488C87593F7F8763EBAEAEAEF8FEFA921E79DD33DAA1952BEF5DD8B367
+      0F1F572778FC14767545ACF01E191CCF6F66754C2CFD4A6CA0C81339FE9B58DD
+      B271E3C678FA09E920CB92F366DDBA75AC7A6C81B56BD742535313ABAA57C7CA
+      919C66625BE46033947B152A65FD308DDED8BA6D20E639650F59D2BF8B0C9DBF
+      34BC7B1CFC595B5A04CE7C9A73DBB3CB07A9D92CD22F6D1ACCE2B82517E4BC75
+      232B3A173932EB2227E1BF940714394A5668334C329461CD953F65DEC68A61F7
+      6145FD96780BFBE5E2BA35E99F289FA5363E50C9D1E91564C9FD96841C031B84
+      FED6AF5FAF956360039B9C50968535CA7160137276B031602EDD9EDB2A19B300
+      F8BD0BF31940E5CFF44EED0780FA4EEF4728338677663F621906A30CBD9F702F
+      2C1865F8E82FD996960FDF9BDEE978936C9995FD9864AB58D18F49B68E15FBF0
+      AEEF6A0FB53E00706755E5D785D5957F2A6BB21F0A4BB77F937DCF84FD9BE249
+      B17F535D4BB17F537D4FB17FBD0C9AFDEB653CDFF62FA6A33F0BCE326836E3CA
+      DA65D859D73E045D86E31CEC34E635CC401A4C4FFE65517EB228BF59D8CF34AC
+      9DD91B4EFF3B80AC7C9AB33B81FD0E0B32EF730F04314DC1E5A966BE54A6BD78
+      CE7AEA8F58704F7F9105475E6675E937CBF3F81561FF967794B377417CEC190F
+      9BCDFE29710BCCF7C828F553ED3F2026B48997FB9E72DB6FE36BFAFDF5A7A93F
+      2B701D2FABBA83DCF63F7DFA94EF0108CFC1E05916CABADB93274F62F98CEBF9
+      E1591442FDC1752187EBB5F889FB0D70EF00EEA327C485EF5310F5E33992F02C
+      C8E9D3A7F9DE81709D5D95F7E13E05F1EC099E1FC17327B87FFFC89123FCEC08
+      AEB3AB78D4D5D7D717D3159E55C1BDE7FBF7EFE7FBCF3B3B3B953CEAA2E423EE
+      5D57F1A8ABB8E61588ED6BFC3B736D6D6D4A3E8A1704C64F5C6B57F151BC549C
+      10A6E6E666258F7B0894E197E2B16AD52A258F7B0828E9B74CBD8F4CB9870075
+      AD58B102962F5F0EF97C1EEAEBEBB577405678DF6146EC1FCFCFE1DEA1254B96
+      78D93F7278860D3FD1B9DA7FC885CEC7FE43B66AED5FB621C99E48F6AFFB47B5
+      7F5D1D40B57F55DD55B3FFAA6AFFD1B9DA7F786E16CFB0A569FFF9B9D7D2F7E7
+      AEFDB7B4A1E4F65FF39DDCFE6BBE5BED5FD5EE0B726AF65F3D0B8829E2AB9AFB
+      057F962C8332F70DCF309F36FDB2C8BF2CCA4FED99B63D01B63511D0DC1107C4
+      BB03CB7ECAF37771D6BC86A6F24B65756175614DE1705A7DCA4C771671F74F7B
+      97B400831F20EB37EF6FA0ACF9D59E0A9ECB9C6E3E08D2F7D9B2E8F365F9B74B
+      67EB1C7DADED9ED5C7F7BE5E910FFB6FB3C0E7843DF8B90C78D1C9FE54EF645E
+      1716DDBBD9E245E7C353BEC778619C4EFA9E960F92BCAB7BFEDA4DFB19C69C7D
+      FD2510CE9D26F872DEA8F95C598E96D7CDFD48F3D04ADE14FE80A0DFC119E36F
+      FB34859FF269D2AFCB036AFE0586FCA7E45F4EB3F640C93F98D5FCF3394B5FAB
+      43C4C117DEFD70F72EC0952BC5FB237A7B010E1D2ADEFFB0752B009EF1C6BB34
+      3EFE18E0FDF7937F076E7C9CAC1B962F4FF26363F4BD52EFBD97E44747E97C72
+      1E19E0FE7D3A9FCF27F9F25A8B9D5FBA34C98F8C50FE3E76D16F4343921F1ED6
+      EFAD6A6F8FF3F5F5497E6848FDF7FDB66FE7F787C4F24FF57704B1EC5CBB16D7
+      B3670FC0B66D006D6DC5BB603EF904E0830F94BCA66C46652FCD780E5A5B9F87
+      B150EA3127B7EFF8DD6DEEF7D649BCC33D826A9E7E8FA09AA7DF23A8E6E9F708
+      AA79FA3D826A9E7E8FA095F78A3FFD1E416DFAA5C9FF14F33E95DAFEAAE37EE3
+      46F1DEA533678A7758757717EB4FBCBFE9ABAF00366C00F8F4537DD961BCB5DD
+      5DBB56CF5FBF6E2F1FEAF5DFE2BB78DDAFE6D7ACD1F38AFB89E47415F8643B61
+      E079DF05DB9FA6265617AC94DBEFE2BD5BD8EFE9EB33DB26B65FF1BBC878BF81
+      DF9975F972D46FD2CA607D275DBB07C9BD1249BE7C374EF2DDC0803DFD4D3C2B
+      7B56FEA38FF47C7FBFBDFC7DF8A19EBF78B178FFDBB163005D5DC57E27F61DF0
+      FE34BC0F00EF8153EF1FC8C2FE6A4F758D5F8CED87C959CB38F637B0CF10B6FB
+      D87EA263DFC9EDD84AF1FEE001EE9CFBACD8DFC03E83FBFDBF6519ACBF9141BF
+      B7F6D49E6AB0DFD47C05B421E9F782D6EAAFAAAABF5E7CE14550BAA79ADF994B
+      F00D25FF4F4BDF5F103E9F0AAEC4E71BF2918C8815E5BCA0F814DE297959CF4C
+      EB9779AA7E296D5F66C5CE96FE369ECB28E90FEEDC2BE75BE9BBCC072FAF8E38
+      D1A1FF900996E6B43CF7CB6488FA4336E6980C1D9F887FC38B31FDD4F8CBE5D7
+      9B6FA0A53F3EF87F579785EDFE1F8B78DE0B
+    }
+  end
+  object SaveDialog1: TSaveDialog
+    DefaultExt = '.txt'
+    Filter = 'Module in text file (only for work)|*.txt|Pro Tracker 3.xx file|*.pt3'
+    OnTypeChange = SaveDialog1TypeChange
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 136
+    Top = 200
+  end
+  object PopupMenu1: TPopupMenu
+    Left = 168
+    Top = 200
+    object Setloopposition1: TMenuItem
+      Action = SetLoopPos
+    end
+    object Insertposition1: TMenuItem
+      Action = InsertPosition
+    end
+    object Deleteposition1: TMenuItem
+      Action = DeletePosition
+    end
+  end
+  object SaveDialogSNDH: TSaveDialog
+    Filter = 'Atari ST''s SNDH files (SND, SNDH)|*.snd;*.sndh|Any file|*.*'
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 200
+    Top = 200
+  end
+  object SaveDialogZXAY: TSaveDialog
+    Filter = 'Hobeta with player ($c)|*.$c|Hobeta without player ($m)|*.$m|.AY-files (AY)|*.ay|SCL-files (SCL)|*.scl|ZX tape files (TAP)|*.tap|Any file|*.*'
+    OnTypeChange = SaveDialogZXAYTypeChange
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 232
+    Top = 200
+  end
+  object PopupMenu2: TPopupMenu
+    Left = 264
+    Top = 200
+    object Undo2: TMenuItem
+      Action = Undo
+    end
+    object Redo2: TMenuItem
+      Action = Redo
+    end
+    object N5: TMenuItem
+      Caption = '-'
+    end
+    object Copy1: TMenuItem
+      Action = EditCopy1
+    end
+    object Cut1: TMenuItem
+      Action = EditCut1
+    end
+    object Paste1: TMenuItem
+      Action = EditPaste1
+    end
+    object Merge1: TMenuItem
+      Caption = 'Merge'
+      Hint = 'Merge|Merges Clipboard contents'
+      ShortCut = 49238
+      OnClick = Merge1Click
+    end
+    object N6: TMenuItem
+      Caption = '-'
+    end
+    object ranspose11: TMenuItem
+      Action = TransposeUp1
+      Hint = '+1 semitone|Transpose selected notes and envelope periods 1 semitone up'
+    end
+    object ranspose12: TMenuItem
+      Action = TransposeDown1
+      Hint = '-1 semitone|Transpose selected notes and envelope periods 1 semitone down'
+    end
+    object ranspose121: TMenuItem
+      Action = TransposeUp12
+      Hint = '+12 semitones|Transpose selected notes and envelope periods 12 semitones up'
+    end
+    object ranspose122: TMenuItem
+      Action = TransposeDown12
+      Hint = '-12 semitones|Transpose selected notes and envelope periods 12 semitones down'
+    end
+    object N9: TMenuItem
+      Caption = '-'
+    end
+    object ExpandTwice1: TMenuItem
+      Caption = 'Expand pattern'
+      Hint = 'Expand pattern twice|Multiply pattern size x2 and insert empty line after each original line'
+      ShortCut = 106
+      OnClick = ExpandTwice1Click
+    end
+    object Compresspattern1: TMenuItem
+      Caption = 'Compress pattern'
+      Hint = 'Compress pattern twice|Remove each second line and divide pattern size /2'
+      ShortCut = 111
+      OnClick = Compresspattern1Click
+    end
+  end
+  object PopupMenu3: TPopupMenu
+    Left = 296
+    Top = 200
+    object File2: TMenuItem
+      Caption = 'File'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+    object Clipboard1: TMenuItem
+      Tag = 1
+      Caption = 'Clipboard'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+    object UndoRedo1: TMenuItem
+      Tag = 2
+      Caption = 'Undo/Redo'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+    object Window2: TMenuItem
+      Tag = 3
+      Caption = 'Window'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+    object Play5: TMenuItem
+      Tag = 4
+      Caption = 'Play'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+    object rack1: TMenuItem
+      Tag = 5
+      Caption = 'Track tools'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+  end
+  object VisTimer: TTimer
+    Enabled = False
+    Interval = 20
+    OnTimer = VisTimerTimer
+    Left = 330
+    Top = 200
+  end
+end

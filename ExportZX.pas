@@ -1,17 +1,19 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
 unit ExportZX;
 
+{$mode objfpc}{$H+}
+
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, ExtCtrls;
 
 type
@@ -74,7 +76,7 @@ var
 
 implementation
 
-{$R *.DFM}
+{$R *.lfm}
 
 procedure TExpDlg.Edit2Change(Sender: TObject);
 var
@@ -86,8 +88,8 @@ if Edit2.Modified then
   if j <> 0 then exit;
   Edit1.Text := IntToHex(i,4);
   TmpAddr := i;
-  ShowZXStat
- end
+  ShowZXStat;
+ end;
 end;
 
 procedure TExpDlg.Edit1Change(Sender: TObject);
@@ -111,7 +113,7 @@ if Edit1.Modified then
    end;
   Edit2.Text := IntToStr(i);
   TmpAddr := i;
-  ShowZXStat
+  ShowZXStat;
  end;
 end;
 
@@ -178,7 +180,7 @@ end;
 
 procedure TExpDlg.RadioGroup1Click(Sender: TObject);
 begin
-ShowZXStat
+ShowZXStat;
 end;
 
 end.

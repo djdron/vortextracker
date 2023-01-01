@@ -1,16 +1,18 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
 unit About;
 
+{$mode objfpc}{$H+}
+
 interface
 
-uses Windows, Classes, Graphics, Forms, Controls, StdCtrls,
+uses Classes, Graphics, Forms, Controls, StdCtrls,
   Buttons, ExtCtrls;
 
 type
@@ -37,13 +39,13 @@ var
 
 implementation
 
-{$R *.DFM}
+{$R *.lfm}
 
 uses Main;
 
 procedure TAboutBox.FormCreate(Sender: TObject);
 begin
-Version.Caption := HalfVersString
+Version.Caption := HalfVersString;
 end;
 
 end.

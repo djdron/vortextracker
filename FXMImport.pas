@@ -1,17 +1,19 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
 unit FXMImport;
 
+{$mode objfpc}{$H+}
+
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls;
 
 type
@@ -51,36 +53,36 @@ implementation
 
 uses trfuncs;
 
-{$R *.dfm}
+{$R *.lfm}
 
 procedure TFXMParams.Edit1Change(Sender: TObject);
 begin
-if Edit1.Modified then CheckAll
+if Edit1.Modified then CheckAll;
 end;
 
 procedure TFXMParams.Edit2Change(Sender: TObject);
 begin
-if Edit2.Modified then CheckAll
+if Edit2.Modified then CheckAll;
 end;
 
 procedure TFXMParams.Edit3Change(Sender: TObject);
 begin
-if Edit3.Modified then CheckAll
+if Edit3.Modified then CheckAll;
 end;
 
 procedure TFXMParams.Edit4Change(Sender: TObject);
 begin
-if Edit4.Modified then CheckAll
+if Edit4.Modified then CheckAll;
 end;
 
 procedure TFXMParams.Edit5Change(Sender: TObject);
 begin
-if Edit5.Modified then CheckAll
+if Edit5.Modified then CheckAll;
 end;
 
 procedure TFXMParams.Edit6Change(Sender: TObject);
 begin
-if Edit6.Modified then CheckAll
+if Edit6.Modified then CheckAll;
 end;
 
 procedure TFXMParams.FormShow(Sender: TObject);
@@ -119,7 +121,7 @@ begin
   begin
    s := Trim(Edit5.Text);
    Val(s,i,j);
-   flg := (j = 0) and ((i + 95) in [0..190])
+   flg := (j = 0) and (i >= -95) and (i <= 95);
   end;
  if flg then
   begin
@@ -129,6 +131,5 @@ begin
   end;
  Button1.Enabled := Flg;
 end;
-
 
 end.

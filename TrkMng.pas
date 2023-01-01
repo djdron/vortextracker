@@ -1,17 +1,19 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2022 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
 unit TrkMng;
 
+{$mode objfpc}{$H+}
+
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  Windows, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   ComCtrls, StdCtrls, Buttons;
 
 type
@@ -81,11 +83,11 @@ var
 
 implementation
 
-uses Main, Childwin, TrFuncs;
+uses Main, ChildWin, TrFuncs;
 
-{$R *.DFM}
+{$R *.lfm}
 
-procedure TTrMng.TracksOp;
+procedure TTrMng.TracksOp(FPat,FLin,FChn,TPat,TLin,TChn,TrOp:integer);
 var
  {FPLen,TPLen,}i,j:integer;
  cl:TChannelLine;
@@ -97,20 +99,20 @@ if MainForm.MDIChildCount = 0 then exit;
 CurrentWindow := TMDIChild(MainForm.ActiveMDIChild);
 with CurrentWindow do
  begin
-  if (VTMP.Patterns[FPat] = nil) and (VTMP.Patterns[TPat] = nil) then exit;
+  if (VTMP^.Patterns[FPat] = nil) and (VTMP^.Patterns[TPat] = nil) then exit;
   ValidatePattern2(FPat);
   ValidatePattern2(TPat);
   if TrOp = 0 then
    begin
-    New(OldPat); OldPat^ := VTMP.Patterns[TPat]^;
+    New(OldPat); OldPat^ := VTMP^.Patterns[TPat]^;
    end
   else
    begin
     if MessageDlg('This operation cannot be undo. Are you sure you want to continue?',mtConfirmation,[mbYes,mbNo],0) <> mrYes then exit;
     DisposeUndo(True);
    end;
-//  FPLen := VTMP.Patterns[FPat].Length;
-//  TPLen := VTMP.Patterns[TPat].Length;
+//  FPLen := VTMP^.Patterns[FPat]^.Length;
+//  TPLen := VTMP^.Patterns[TPat]^.Length;
   Flg := False;
   for i := 0 to TrMng.UpDown5.Position - 1 do
    begin
@@ -120,51 +122,51 @@ with CurrentWindow do
     Flg := True;
     if TrMng.CheckBox1.Checked then
      begin
-      j := VTMP.Patterns[FPat].Items[i + FLin].Envelope;
+      j := VTMP^.Patterns[FPat]^.Items[i + FLin].Envelope;
       case TrOp of
-      0:VTMP.Patterns[TPat].Items[i + TLin].Envelope := j;
+      0:VTMP^.Patterns[TPat]^.Items[i + TLin].Envelope := j;
       1:begin
-         VTMP.Patterns[TPat].Items[i + TLin].Envelope := j;
-         VTMP.Patterns[FPat].Items[i + FLin].Envelope := 0
+         VTMP^.Patterns[TPat]^.Items[i + TLin].Envelope := j;
+         VTMP^.Patterns[FPat]^.Items[i + FLin].Envelope := 0
         end;
       2:begin
-         VTMP.Patterns[FPat].Items[i + FLin].Envelope := VTMP.Patterns[TPat].Items[i + TLin].Envelope;
-         VTMP.Patterns[TPat].Items[i + TLin].Envelope := j
+         VTMP^.Patterns[FPat]^.Items[i + FLin].Envelope := VTMP^.Patterns[TPat]^.Items[i + TLin].Envelope;
+         VTMP^.Patterns[TPat]^.Items[i + TLin].Envelope := j
         end
       end
      end;
     if TrMng.CheckBox2.Checked then
      begin
-      j := VTMP.Patterns[FPat].Items[i + FLin].Noise;
+      j := VTMP^.Patterns[FPat]^.Items[i + FLin].Noise;
       case TrOp of
-      0:VTMP.Patterns[TPat].Items[i + TLin].Noise := j;
+      0:VTMP^.Patterns[TPat]^.Items[i + TLin].Noise := j;
       1:begin
-         VTMP.Patterns[TPat].Items[i + TLin].Noise := j;
-         VTMP.Patterns[FPat].Items[i + FLin].Noise := 0;
+         VTMP^.Patterns[TPat]^.Items[i + TLin].Noise := j;
+         VTMP^.Patterns[FPat]^.Items[i + FLin].Noise := 0;
         end;
       2:begin
-         VTMP.Patterns[FPat].Items[i + FLin].Noise := VTMP.Patterns[TPat].Items[i + TLin].Noise;
-         VTMP.Patterns[TPat].Items[i + TLin].Noise := j;
+         VTMP^.Patterns[FPat]^.Items[i + FLin].Noise := VTMP^.Patterns[TPat]^.Items[i + TLin].Noise;
+         VTMP^.Patterns[TPat]^.Items[i + TLin].Noise := j;
         end
       end
      end;
-    cl := VTMP.Patterns[FPat].Items[i + FLin].Channel[FChn];
+    cl := VTMP^.Patterns[FPat]^.Items[i + FLin].Channel[FChn];
     case TrOp of
-    0:VTMP.Patterns[TPat].Items[i + TLin].Channel[TChn] := cl;
+    0:VTMP^.Patterns[TPat]^.Items[i + TLin].Channel[TChn] := cl;
     1:begin
-       VTMP.Patterns[TPat].Items[i + TLin].Channel[TChn] := cl;
-       VTMP.Patterns[FPat].Items[i + FLin].Channel[FChn].Note := -1;
-       VTMP.Patterns[FPat].Items[i + FLin].Channel[FChn].Sample := 0;
-       VTMP.Patterns[FPat].Items[i + FLin].Channel[FChn].Ornament := 0;
-       VTMP.Patterns[FPat].Items[i + FLin].Channel[FChn].Volume := 0;
-       VTMP.Patterns[FPat].Items[i + FLin].Channel[FChn].Envelope := 0;
-       VTMP.Patterns[FPat].Items[i + FLin].Channel[FChn].Additional_Command.Number := 0;
-       VTMP.Patterns[FPat].Items[i + FLin].Channel[FChn].Additional_Command.Delay := 0;
-       VTMP.Patterns[FPat].Items[i + FLin].Channel[FChn].Additional_Command.Parameter := 0
+       VTMP^.Patterns[TPat]^.Items[i + TLin].Channel[TChn] := cl;
+       VTMP^.Patterns[FPat]^.Items[i + FLin].Channel[FChn].Note := -1;
+       VTMP^.Patterns[FPat]^.Items[i + FLin].Channel[FChn].Sample := 0;
+       VTMP^.Patterns[FPat]^.Items[i + FLin].Channel[FChn].Ornament := 0;
+       VTMP^.Patterns[FPat]^.Items[i + FLin].Channel[FChn].Volume := 0;
+       VTMP^.Patterns[FPat]^.Items[i + FLin].Channel[FChn].Envelope := 0;
+       VTMP^.Patterns[FPat]^.Items[i + FLin].Channel[FChn].Additional_Command.Number := 0;
+       VTMP^.Patterns[FPat]^.Items[i + FLin].Channel[FChn].Additional_Command.Delay := 0;
+       VTMP^.Patterns[FPat]^.Items[i + FLin].Channel[FChn].Additional_Command.Parameter := 0
       end;
     2:begin
-       VTMP.Patterns[FPat].Items[i + FLin].Channel[FChn] := VTMP.Patterns[TPat].Items[i + TLin].Channel[TChn];
-       VTMP.Patterns[TPat].Items[i + TLin].Channel[TChn] := cl
+       VTMP^.Patterns[FPat]^.Items[i + FLin].Channel[FChn] := VTMP^.Patterns[TPat]^.Items[i + TLin].Channel[TChn];
+       VTMP^.Patterns[TPat]^.Items[i + TLin].Channel[TChn] := cl
       end
     end
    end;
@@ -174,12 +176,12 @@ with CurrentWindow do
     if TrOp = 0 then
      begin
       AddUndo(CATracksManagerCopy,TPat,0);
-      ChangeList[ChangeCount - 1].Pattern := OldPat;
+      ChangeList[ChangeCount - 1].Pattern := {%H-}OldPat;
      end;
    end
   else if TrOp = 0 then
    Dispose(OldPat);
-  if (PatNum = TPat) or (PatNum = FPat) then Tracks.RedrawTracks(0);
+  if (PatNum = TPat) or (PatNum = FPat) then Tracks.RedrawTracks;
  end;
 end;
 
@@ -208,7 +210,7 @@ begin
 TracksOp(UpDown1.Position,UpDown2.Position,UpDown6.Position,UpDown3.Position,UpDown4.Position,UpDown7.Position,2)
 end;
 
-procedure TTrMng.Transp;
+procedure TTrMng.Transp(Pat,Lin,Chn:integer);
 var
  Chans:TChansArrayBool;
 begin
