@@ -5,11 +5,11 @@ object TrackInfoForm: TTrackInfoForm
   Caption = 'Track Info'
   ClientHeight = 486
   ClientWidth = 619
-  Color = clBlack
+  Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
-  Font.Name = 'MS Sans Serif'
+  Font.Name = 'Segoe UI'
   Font.Style = []
   FormStyle = fsStayOnTop
   OldCreateOrder = False
@@ -30,6 +30,7 @@ object TrackInfoForm: TTrackInfoForm
     ScrollBars = ssVertical
     TabOrder = 0
     WantReturns = False
+    Zoom = 100
   end
   object OK: TButton
     Left = 10
@@ -39,8 +40,8 @@ object TrackInfoForm: TTrackInfoForm
     Caption = 'OK'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
-    Font.Height = -11
-    Font.Name = 'MS Sans Serif'
+    Font.Height = -12
+    Font.Name = 'Segoe UI'
     Font.Style = [fsBold]
     ModalResult = 1
     ParentFont = False
