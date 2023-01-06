@@ -369,13 +369,6 @@ object MDIChild: TMDIChild
         Top = -2
         Width = 168
         Height = 58
-        BiDiMode = bdLeftToRight
-        Color = clBtnFace
-        Ctl3D = True
-        ParentBackground = False
-        ParentBiDiMode = False
-        ParentColor = False
-        ParentCtl3D = False
         TabOrder = 0
         object Label2: TLabel
           Left = 60
@@ -472,13 +465,6 @@ object MDIChild: TMDIChild
         Top = -2
         Width = 86
         Height = 58
-        BiDiMode = bdLeftToRight
-        Color = clBtnFace
-        Ctl3D = True
-        ParentBackground = False
-        ParentBiDiMode = False
-        ParentColor = False
-        ParentCtl3D = False
         TabOrder = 2
         object Label3: TLabel
           Left = 14
@@ -521,11 +507,6 @@ object MDIChild: TMDIChild
         Top = -2
         Width = 68
         Height = 58
-        BiDiMode = bdLeftToRight
-        Color = clBtnFace
-        ParentBackground = False
-        ParentBiDiMode = False
-        ParentColor = False
         TabOrder = 3
         object Label1: TLabel
           Left = 14
@@ -566,11 +547,6 @@ object MDIChild: TMDIChild
         Top = -2
         Width = 90
         Height = 58
-        BiDiMode = bdLeftToRight
-        Color = clBtnFace
-        ParentBackground = False
-        ParentBiDiMode = False
-        ParentColor = False
         TabOrder = 4
         object AutoStepBtn: TSpeedButton
           Left = 14
@@ -614,11 +590,6 @@ object MDIChild: TMDIChild
         Top = -2
         Width = 94
         Height = 58
-        BiDiMode = bdLeftToRight
-        Color = clBtnFace
-        ParentBackground = False
-        ParentBiDiMode = False
-        ParentColor = False
         TabOrder = 5
         object AutoEnvBtn: TSpeedButton
           Left = 14
