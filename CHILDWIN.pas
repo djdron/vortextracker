@@ -20991,7 +20991,9 @@ procedure TMDIChild.FormPaint(Sender: TObject);
 begin
   Canvas.Brush.Color := CFullScreenBackground;
   //Canvas.Brush.Color := clRed;
-  Canvas.FillRect(Rect(0, 0, ClientWidth, ClientHeight));
+  Canvas.FillRect(Rect(0, 0, PageControl1.Left, ClientHeight));
+  Canvas.FillRect(Rect(PageControl1.Left + PageControl1.Width, 0, ClientWidth, ClientHeight));
+  Canvas.FillRect(Rect(PageControl1.Left, PageControl1.Height, PageControl1.Left + PageControl1.Width, ClientHeight));
 end;
 
 procedure TMDIChild.FormDblClick(Sender: TObject);
