@@ -1,6 +1,6 @@
 object MDIChild: TMDIChild
-  Left = 826
-  Top = 63
+  Left = 0
+  Top = 0
   HorzScrollBar.Visible = False
   VertScrollBar.Visible = False
   BorderIcons = [biSystemMenu]
@@ -49,7 +49,7 @@ object MDIChild: TMDIChild
     Constraints.MinWidth = 634
     Images = MainForm.ImageList1
     ParentBiDiMode = False
-    TabHeight = 19
+    TabHeight = 23
     TabOrder = 0
     OnChange = PageControl1Change
     object PatternsSheet: TTabSheet
