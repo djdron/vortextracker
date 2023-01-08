@@ -1499,7 +1499,7 @@ begin
       if c.Closed then Exit;
       c.DisableAlign;
 
-      c.PageControl1.Top  := 10;
+      c.PageControl1.Top  := 0;
       c.PageControl1.Left := (Width div 2) - (c.PageControl1.Width div 2);
       c.PageControl1.Height := WorkAreaHeight(ClientHeight) - c.PageControl1.Top - 7;
 
@@ -1521,7 +1521,7 @@ begin
 
       c.DisableAlign;
       c.PageControl1.Left := 0;
-      c.PageControl1.Top  := 10;
+      c.PageControl1.Top  := 0;
       c.PageControl1.Height := WorkAreaHeight(ClientHeight) - c.PageControl1.Top + 5;
       c.HeightChanged := c.LastHeight <> c.PageControl1.Height;
       c.LastHeight := c.PageControl1.Height;
