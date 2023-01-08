@@ -29,9 +29,9 @@ object MainForm: TMainForm
   TextHeight = 13
   object StatusBar: TStatusBar
     Left = 0
-    Top = 539
+    Top = 536
     Width = 611
-    Height = 20
+    Height = 23
     AutoHint = True
     Panels = <
       item
