@@ -1501,7 +1501,7 @@ begin
 
       c.PageControl1.Top  := 0;
       c.PageControl1.Left := (Width div 2) - (c.PageControl1.Width div 2);
-      c.PageControl1.Height := WorkAreaHeight(ClientHeight) - c.PageControl1.Top - 7;
+      c.PageControl1.Height := WorkAreaHeight(ClientHeight) - c.PageControl1.Top + 5;
 
       c.TopBackgroundBox.Left    := c.PageControl1.Left;
       c.TopBackgroundBox.Width   := c.PageControl1.Width;   
